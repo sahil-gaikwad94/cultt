@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { fraunces, inter } from "./fonts";
+import { grotesk, inter, syne } from "./fonts";
 import RootEffects from "@/components/providers/RootEffects";
 import { Toaster } from "@/components/ui/Toaster";
 
@@ -16,14 +16,14 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#14120E",
+  themeColor: "#0A0B12",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="en" className={`${syne.variable} ${grotesk.variable} ${inter.variable}`}>
       <body className="bg-canvas text-ink font-sans antialiased grain">
         {children}
         <RootEffects />

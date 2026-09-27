@@ -1,28 +1,29 @@
 @import "tailwindcss";
 
 /* ───────────────────────────────────────────────────────
-   CULTURED — design tokens v2 · "warm noir, editorial heat"
-   Deep warm-black world with layered depth, one coral accent.
+   CULTURED — design tokens v3 · "quiet electricity"
+   Near-black indigo world, ONE soft violet accent,
+   Syne display / Space Grotesk labels / Inter body.
    ─────────────────────────────────────────────────────── */
 :root {
-  --c-bg: #100e0b;          /* app canvas — deeper, richer        */
-  --c-bg-2: #16130f;        /* raised canvas band                 */
-  --c-surface: #1c1913;     /* cards                              */
-  --c-surface-2: #242017;   /* nested / chips                     */
-  --c-surface-3: #2e2920;   /* hover / pressed                    */
-  --c-border: rgba(245, 241, 234, 0.08);   /* hairline            */
-  --c-border-lit: rgba(245, 241, 234, 0.14); /* lit edge (top)    */
-  --c-text: #f7f3ec;
-  --c-text-dim: #a8a193;
-  --c-text-faint: #6f695d;
-  --c-accent: #ff6b4a;      /* THE accent — used sparingly        */
-  --c-accent-2: #ff8f6b;    /* accent glow stop (art only)        */
-  --c-accent-ink: #14120e;  /* text on accent fills               */
-  --glow-accent: 0 0 0 rgba(0, 0, 0, 0), 0 6px 28px rgba(255, 107, 74, 0.32);
+  --c-bg: #0a0b12;          /* app canvas — deep ink navy          */
+  --c-bg-2: #0e0f18;        /* raised canvas band                  */
+  --c-surface: #13141d;     /* cards                               */
+  --c-surface-2: #1a1b27;   /* nested / chips                      */
+  --c-surface-3: #232433;   /* hover / pressed                     */
+  --c-border: rgba(241, 239, 250, 0.08);      /* hairline          */
+  --c-border-lit: rgba(241, 239, 250, 0.14);  /* lit edge (top)    */
+  --c-text: #f1effa;
+  --c-text-dim: #9f9db8;
+  --c-text-faint: #63637c;
+  --c-accent: #7c5cff;      /* THE accent — soft electric violet   */
+  --c-accent-2: #a78bfa;    /* accent glow stop (art only)         */
+  --c-accent-ink: #0b0c14;  /* text on accent fills                */
+  --glow-accent: 0 6px 28px rgba(124, 92, 255, 0.35);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 12px 32px -12px rgba(0, 0, 0, 0.65);
+    0 12px 32px -12px rgba(0, 0, 0, 0.7);
   --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 24px 60px -18px rgba(0, 0, 0, 0.8);
+    0 24px 60px -18px rgba(0, 0, 0, 0.85);
 }
 
 @theme inline {
@@ -42,8 +43,8 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
-  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-grotesk), ui-monospace, "SF Mono", Menlo, monospace;
 
   --radius-chip: 14px;
   --radius-card: 26px;
@@ -66,7 +67,7 @@
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: rgba(255, 107, 74, 0.32);
+    background: rgba(124, 92, 255, 0.4);
     color: var(--c-text);
   }
   button {
@@ -77,7 +78,7 @@
     height: 6px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(245, 241, 234, 0.12);
+    background: rgba(241, 239, 250, 0.12);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-track {
@@ -108,16 +109,16 @@
     box-shadow: var(--shadow-float);
   }
   .glass {
-    background: rgba(28, 25, 19, 0.62);
-    backdrop-filter: blur(18px) saturate(1.3);
-    -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    background: rgba(19, 20, 29, 0.66);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
     border: 1px solid var(--c-border-lit);
   }
   .hairline-t {
     border-top: 1px solid var(--c-border);
   }
 
-  /* ── type system: editorial scale ─────────────────────── */
+  /* ── type system: Syne display, Grotesk labels ───────── */
   .mono-label {
     font-family: var(--font-mono);
     font-size: 10.5px;
@@ -128,26 +129,26 @@
   }
   .display-xl {
     font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(34px, 10vw, 44px);
-    line-height: 1.02;
-    letter-spacing: -0.025em;
+    font-weight: 800;
+    font-size: clamp(34px, 10vw, 46px);
+    line-height: 0.98;
+    letter-spacing: -0.03em;
   }
   .display-lg {
     font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(26px, 7.4vw, 32px);
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    font-size: clamp(26px, 7.4vw, 34px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
   }
   .numeral {
-    font-family: var(--font-display);
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
   }
 
-  /* ── ambient art backdrops (media/ambient only, never chrome) ── */
+  /* ── ambient art backdrops (media/ambient only) ──────── */
   .aurora {
     position: absolute;
     inset: 0;
@@ -163,8 +164,8 @@
     max-width: 420px;
     max-height: 420px;
     border-radius: 50%;
-    filter: blur(70px);
-    opacity: 0.22;
+    filter: blur(74px);
+    opacity: 0.18;
     will-change: transform;
   }
   .aurora::before {
@@ -174,10 +175,10 @@
     animation: aurora-drift 14s ease-in-out infinite alternate;
   }
   .aurora::after {
-    background: #6c3bd4;
+    background: #22d3ee;
     bottom: -32%;
     left: -26%;
-    opacity: 0.16;
+    opacity: 0.1;
     animation: aurora-drift 18s ease-in-out infinite alternate-reverse;
   }
 
@@ -211,19 +212,18 @@
     transform-style: preserve-3d;
   }
 
-  /* shimmer skeleton — animated gradient sweep, never a bare spinner */
+  /* shimmer skeleton — never a bare spinner */
   .shimmer {
     background-image: linear-gradient(
       110deg,
       var(--c-surface) 8%,
-      rgba(245, 241, 234, 0.055) 18%,
+      rgba(241, 239, 250, 0.055) 18%,
       var(--c-surface) 33%
     );
     background-size: 220% 100%;
     animation: shimmer-sweep 1.6s linear infinite;
   }
 
-  /* below-the-fold feed perf guardrail */
   .cv-auto {
     content-visibility: auto;
     contain-intrinsic-size: auto 460px;
@@ -237,10 +237,10 @@
   }
 
   .text-sheet {
-    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6), 0 0 2px rgba(0, 0, 0, 0.5);
   }
 
-  /* meme caption rendering (placeholder tiles read as real memes) */
+  /* meme caption rendering */
   .meme-text {
     font-weight: 900;
     font-size: clamp(14px, 3.6vw, 17px);
@@ -253,7 +253,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* film-grain warmth over the whole app — subtle, static */
+  /* film-grain warmth — subtle, static */
   .grain::after {
     content: "";
     position: fixed;

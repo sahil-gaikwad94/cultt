@@ -8,20 +8,20 @@ import type {
 
 /* ── gradient library (photo/art placeholder tiles only — never chrome) ── */
 export const GRADIENTS = [
-  "linear-gradient(135deg, #ff8a5c 0%, #e8476d 48%, #7a2e8e 100%)",
-  "linear-gradient(150deg, #2a9d8f 0%, #26736b 45%, #0f3d3a 100%)",
-  "linear-gradient(135deg, #f4a261 0%, #e76f51 55%, #9c2b4e 100%)",
-  "linear-gradient(160deg, #8ec5fc 0%, #6c63c7 55%, #2b1e66 100%)",
-  "radial-gradient(circle at 30% 20%, #ffd166 0%, #ef476f 55%, #3d1c5e 100%)",
-  "linear-gradient(145deg, #43cbff 0%, #9733ee 100%)",
-  "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)",
-  "linear-gradient(160deg, #fdbb2d 0%, #22c1c3 100%)",
-  "linear-gradient(135deg, #ff6b4a 0%, #c1276a 60%, #2d1b4e 100%)",
-  "linear-gradient(140deg, #5ee7df 0%, #b490ca 100%)",
-  "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
-  "radial-gradient(circle at 70% 15%, #ff9a8b 0%, #ff6a88 35%, #8e54e9 100%)",
-  "linear-gradient(130deg, #f6d365 0%, #fda085 100%)",
-  "linear-gradient(150deg, #5f2c82 0%, #49a09d 100%)",
+  "linear-gradient(135deg, #7c5cff 0%, #b14bff 52%, #2b1e66 100%)",
+  "linear-gradient(150deg, #22d3ee 0%, #4f46e5 55%, #161a2e 100%)",
+  "linear-gradient(135deg, #a78bfa 0%, #6d28d9 55%, #1e1b4b 100%)",
+  "linear-gradient(160deg, #67e8f9 0%, #7c5cff 55%, #2e1065 100%)",
+  "radial-gradient(circle at 30% 20%, #c4b5fd 0%, #7c5cff 50%, #171436 100%)",
+  "linear-gradient(145deg, #22d3ee 0%, #a855f7 100%)",
+  "linear-gradient(135deg, #34d399 0%, #0ea5e9 100%)",
+  "linear-gradient(160deg, #f0abfc 0%, #22d3ee 100%)",
+  "linear-gradient(135deg, #7c5cff 0%, #ec4899 58%, #1e1b4b 100%)",
+  "linear-gradient(140deg, #5eead4 0%, #818cf8 100%)",
+  "linear-gradient(135deg, #ddd6fe 0%, #93c5fd 100%)",
+  "radial-gradient(circle at 70% 15%, #f472b6 0%, #e879f9 35%, #6d28d9 100%)",
+  "linear-gradient(130deg, #fde68a 0%, #f0abfc 100%)",
+  "linear-gradient(150deg, #4c1d95 0%, #0891b2 100%)",
 ] as const;
 
 const A = (i: number) => GRADIENTS[i % GRADIENTS.length];

@@ -1,25 +1,42 @@
 import localFont from "next/font/local";
 
 /**
- * Self-hosted via @fontsource packages (Google Fonts CDN is unavailable in
- * this environment) — same faces the spec asks for: Fraunces (display,
- * 500-weight range, incl. italic for the humor summary) + Inter (UI).
+ * Self-hosted via @fontsource packages (Google Fonts CDN is unavailable).
+ * v3 type system: Syne (display — wide, geometric, startup energy),
+ * Space Grotesk (labels/numerals), Inter (UI body).
  */
 
-export const fraunces = localFont({
+export const syne = localFont({
   src: [
     {
-      path: "../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2",
-      weight: "100 900",
+      path: "../../node_modules/@fontsource/syne/files/syne-latin-500-normal.woff2",
+      weight: "500",
       style: "normal",
     },
     {
-      path: "../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-italic.woff2",
-      weight: "100 900",
-      style: "italic",
+      path: "../../node_modules/@fontsource/syne/files/syne-latin-700-normal.woff2",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../../node_modules/@fontsource/syne/files/syne-latin-800-normal.woff2",
+      weight: "800",
+      style: "normal",
     },
   ],
-  variable: "--font-fraunces",
+  variable: "--font-syne",
+  display: "swap",
+});
+
+export const grotesk = localFont({
+  src: [
+    {
+      path: "../../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2",
+      weight: "300 700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-grotesk",
   display: "swap",
 });
 
