@@ -120,7 +120,7 @@ export default function MatrixView() {
           <div className="min-w-0">
             <span className="mono-label !text-[9.5px] text-ink-faint">decide together</span>
             <h1 className="display-lg mt-1 text-ink">Match Matrix</h1>
-            <p className="mono-label mt-1.5 !text-[10px] !tracking-[0.12em] text-ink-faint">
+            <p className="mono-label mt-1.5 !text-[9.5px] !tracking-[0.1em] whitespace-nowrap text-ink-faint">
               {queue.length} in queue · <span className="text-flame">{resonatesLeft} res</span> · {rewindsLeft} rewinds
             </p>
           </div>
