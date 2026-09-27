@@ -21,10 +21,10 @@ export function Chip({
     <Tag
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[12.5px] font-medium transition-colors",
+        "inline-flex h-8.5 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[12.5px] font-medium transition-all",
         active
-          ? "border-flame/60 bg-flame/12 text-flame"
-          : "border-hairline bg-panel-2/80 text-ink-dim hover:text-ink",
+          ? "border-flame/55 bg-flame/14 text-flame shadow-[0_4px_18px_-6px_rgba(255,107,74,0.45)]"
+          : "border-hairline bg-panel-2/70 text-ink-dim hover:text-ink hover:border-hairline-lit",
         onClick && "cursor-pointer",
         className
       )}

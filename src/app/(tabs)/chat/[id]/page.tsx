@@ -116,11 +116,11 @@ export default function ThreadPage() {
   return (
     <div className="flex h-full flex-col">
       {/* header */}
-      <header className="safe-t z-40 flex shrink-0 items-center gap-3 border-b border-hairline bg-canvas/92 px-3 pb-2.5 pt-2 backdrop-blur-xl">
+      <header className="safe-t z-40 flex shrink-0 items-center gap-3 border-b border-hairline bg-canvas/76 px-3.5 pb-3 pt-2 backdrop-blur-2xl">
         <button
           onClick={() => router.back()}
           aria-label="Back"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-panel-2 border border-hairline text-ink"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full glass text-ink"
         >
           <ChevronLeft size={19} />
         </button>
@@ -157,7 +157,7 @@ export default function ThreadPage() {
                 ? "you laughed at the same meme"
                 : "you both vibed with this track"}
             </p>
-            <div className="overflow-hidden rounded-[18px] border border-flame/40 bg-panel p-3">
+            <div className="overflow-hidden rounded-[20px] border border-flame/40 bg-panel p-3.5 shadow-[0_10px_36px_-14px_rgba(255,107,74,0.35)]">
               <GradientTile gradient={match.matchedOn.gradient} className="aspect-[16/9] rounded-[12px]">
                 <span className="meme-text absolute inset-0 flex items-center justify-center p-3 text-center text-[12px]">
                   {match.matchedOn.title}
@@ -197,7 +197,7 @@ export default function ThreadPage() {
                     "max-w-[78%] rounded-[18px] px-4 py-2.5 text-left text-[14.5px] leading-relaxed transition-shadow",
                     mine
                       ? "rounded-br-[6px] bg-flame text-flame-ink"
-                      : "rounded-bl-[6px] border border-hairline bg-panel-2 text-ink"
+                      : "rounded-bl-[6px] rounded-[20px] border border-hairline bg-panel-2 text-ink"
                   )}
                 >
                   {m.text}
@@ -232,7 +232,7 @@ export default function ThreadPage() {
           })}
 
           {typing && (
-            <div className="flex items-center gap-1.5 rounded-[18px] rounded-bl-[6px] border border-hairline bg-panel-2 px-4 py-3 self-start">
+            <div className="flex items-center gap-1.5 self-start rounded-[20px] rounded-bl-[6px] border border-hairline bg-panel-2 px-4 py-3">
               {[0, 1, 2].map((i) => (
                 <motion.span
                   key={i}
@@ -261,7 +261,7 @@ export default function ThreadPage() {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder={`Message ${match.name}…`}
-            className="h-11 flex-1 rounded-full border border-hairline bg-panel-2 px-4 text-[14.5px] text-ink placeholder:text-ink-faint focus:border-flame/40 focus:outline-none"
+            className="glass h-11 flex-1 rounded-full px-4 text-[14.5px] text-ink placeholder:text-ink-faint focus:border-flame/45 focus:outline-none"
           />
           <button
             onClick={send}
@@ -271,7 +271,7 @@ export default function ThreadPage() {
               "flex h-11 w-11 items-center justify-center rounded-full transition-colors",
               draft.trim()
                 ? "bg-flame text-flame-ink"
-                : "border border-hairline bg-panel-2 text-ink-faint"
+                : "border border-hairline-lit bg-flame text-flame-ink glow-flame"
             )}
           >
             <Send size={17} strokeWidth={2} />

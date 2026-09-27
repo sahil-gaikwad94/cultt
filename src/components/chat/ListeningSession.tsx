@@ -97,7 +97,7 @@ export function ListeningSession({
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 34 }}
           className="fixed inset-x-0 bottom-0 z-[260] max-h-[92dvh] overflow-hidden rounded-t-sheet border border-hairline bg-panel shadow-[0_-20px_70px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[#3a352c]" />
+          <div className="mx-auto mt-3 h-1 w-11 rounded-full bg-flame/50 shadow-[0_0_12px_rgba(255,107,74,0.5)]" />
           <div className="no-scrollbar max-h-[88dvh] overflow-y-auto px-5 pb-7 pt-3">
             {/* header */}
             <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export function ListeningSession({
                 <Avatar gradient="linear-gradient(135deg, #ff8a5c 0%, #7a2e8e 100%)" name="Alex" size={34} className="ring-2 ring-panel" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="font-display text-[18px] font-medium leading-tight text-ink">
+                <h2 className="font-display text-[20px] font-medium leading-tight tracking-[-0.01em] text-ink">
                   Listen together
                 </h2>
                 <p className="flex items-center gap-1.5 text-[11.5px] text-ink-faint">
@@ -158,7 +158,7 @@ export function ListeningSession({
             </div>
 
             {/* waveform scrubber — canvas, rAF-driven, timestamp drops */}
-            <div className="mt-4 rounded-[18px] border border-hairline bg-panel-2 p-4">
+            <div className="mt-4 rounded-[20px] glass p-4">
               <div className="relative">
                 <Waveform
                   seed={track.title.length * 13 + 7}

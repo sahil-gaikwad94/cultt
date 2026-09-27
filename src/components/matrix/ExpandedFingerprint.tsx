@@ -39,17 +39,17 @@ export function HumorBars({
             >
               {r.label}
             </span>
-            <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-panel-2 border border-hairline">
+            <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-panel-2 border border-hairline shadow-[inset_0_2px_6px_rgba(0,0,0,0.5)]">
               <motion.span
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.round(v * 100)}%` }}
                 transition={{ duration: compact ? 0.5 : 0.7, ease: "easeOut", delay: 0.1 }}
                 className={`absolute inset-y-0 left-0 rounded-full ${
-                  isTop ? "bg-flame" : "bg-[#4a4438]"
+                  isTop ? "bg-flame shadow-[0_0_14px_rgba(255,107,74,0.55)]" : "bg-[#4a4438]"
                 }`}
               />
             </div>
-            <span className="w-8 text-right text-[11.5px] tabular-nums text-ink-faint">
+            <span className="numeral w-8 text-right text-[13px] text-ink-dim">
               {Math.round(v * 100)}
             </span>
           </div>
@@ -94,7 +94,7 @@ export function FingerprintBody({ c }: { c: Candidate }) {
           {c.playlists.map((p) => (
             <div
               key={p.id}
-              className="flex items-center gap-3 rounded-[14px] border border-hairline bg-panel-2 px-3.5 py-3"
+              className="flex items-center gap-3 rounded-[16px] glass px-3.5 py-3"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#332e25] text-flame">
                 <Pin size={15} strokeWidth={2} />
@@ -131,7 +131,7 @@ export function FingerprintBody({ c }: { c: Candidate }) {
         <SectionTitle>Prompts</SectionTitle>
         <div className="flex flex-col gap-2.5">
           {c.prompts.map((p) => (
-            <div key={p.id} className="rounded-[14px] border border-hairline bg-panel-2 p-3.5">
+            <div key={p.id} className="rounded-[18px] card p-4">
               <p className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
                 {p.prompt}
               </p>
@@ -171,7 +171,7 @@ export function FingerprintBody({ c }: { c: Candidate }) {
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+    <h3 className="mono-label mb-3.5">
       {children}
     </h3>
   );
@@ -211,17 +211,17 @@ export function ExpandedFingerprint({
         <button
           onClick={onClose}
           aria-label="Collapse fingerprint"
-          className="absolute right-4 top-[max(14px,env(safe-area-inset-top))] z-10 flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink"
+          className="absolute right-4 top-[max(14px,env(safe-area-inset-top))] z-10 flex h-10 w-10 items-center justify-center rounded-full glass text-ink"
         >
           <X size={18} />
         </button>
       </div>
 
       {/* hero photo — SAME layoutId as the card photo → morph */}
-      <div className="relative mx-4 h-[240px] shrink-0">
+      <div className="relative mx-5 h-[280px] shrink-0">
         <motion.div
           layoutId={`photo-${candidate.id}`}
-          className="absolute inset-0 overflow-hidden rounded-[20px]"
+          className="absolute inset-0 overflow-hidden rounded-[24px] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.8)]"
           style={{ background: candidate.photoGradient }}
         >
           <div
@@ -241,7 +241,7 @@ export function ExpandedFingerprint({
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-4 pb-3.5">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-display text-[30px] font-medium leading-none text-white text-sheet">
+              <h2 className="font-display text-[34px] font-medium leading-none tracking-[-0.02em] text-white text-sheet">
                 {candidate.name}, {candidate.age}
               </h2>
               {candidate.verified && (
@@ -262,7 +262,7 @@ export function ExpandedFingerprint({
       </div>
 
       {/* shared signals */}
-      <div className="no-scrollbar mt-3 flex shrink-0 gap-2 overflow-x-auto px-4">
+      <div className="no-scrollbar mt-3.5 flex shrink-0 gap-2 overflow-x-auto px-5">
         <Chip onClick={onSharedChip} className="border-flame/40 bg-flame/10 text-flame">
           ♫ shared artist · {candidate.sharedArtist}
         </Chip>
@@ -271,24 +271,24 @@ export function ExpandedFingerprint({
         </Chip>
       </div>
 
-      <div className="no-scrollbar mt-4 flex-1 overflow-y-auto px-4">
+      <div className="no-scrollbar mt-4 flex-1 overflow-y-auto px-5">
         <p className="mb-5 text-[14px] leading-relaxed text-ink-dim">{candidate.blurb}</p>
         <FingerprintBody c={candidate} />
       </div>
 
       {/* actions — never forced into blind swiping */}
-      <div className="safe-b flex shrink-0 items-center gap-3 border-t border-hairline bg-canvas/95 px-4 pb-3 pt-3 backdrop-blur-xl">
+      <div className="safe-b flex shrink-0 items-center gap-2.5 border-t border-hairline bg-canvas/80 px-5 pb-3 pt-3.5 backdrop-blur-2xl">
         <button
           onClick={onPass}
           aria-label="Pass"
-          className="flex h-13 flex-1 items-center justify-center rounded-full border border-hairline bg-panel-2 text-[15px] font-medium text-ink"
+          className="flex h-13 flex-1 items-center justify-center rounded-full glass text-[15px] font-medium text-ink hover:bg-panel-3"
         >
           Pass
         </button>
         <button
           onClick={onLike}
           aria-label="Vibe"
-          className="flex h-13 flex-1 items-center justify-center rounded-full border border-hairline bg-panel-2 text-[15px] font-medium text-ink"
+          className="flex h-13 flex-1 items-center justify-center rounded-full glass text-[15px] font-medium text-ink hover:bg-panel-3"
         >
           Vibe
         </button>
@@ -296,7 +296,7 @@ export function ExpandedFingerprint({
           onClick={onResonate}
           disabled={!canResonate}
           aria-label="Resonate"
-          className="flex h-13 flex-[1.3] items-center justify-center gap-1.5 rounded-full bg-flame text-[15px] font-semibold text-flame-ink disabled:opacity-40"
+          className="flex h-13 flex-[1.3] items-center justify-center gap-1.5 rounded-full bg-flame text-[15px] font-semibold text-flame-ink glow-flame disabled:opacity-40 disabled:shadow-none"
         >
           <Sparkles size={17} strokeWidth={2} />
           Resonate · {resonatesLeft} left

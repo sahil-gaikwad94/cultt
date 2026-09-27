@@ -172,12 +172,12 @@ function CardShell({
   const reduced = useAppReduced();
   return (
     <motion.article
-      initial={reduced ? false : { opacity: 0, y: 26 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={reduced ? false : { opacity: 0, y: 34, scale: 0.985 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
+      transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 26 }}
       className={cn(
-        "rounded-card border border-hairline bg-panel p-3.5 shadow-[0_6px_28px_rgba(0,0,0,0.28)]",
+        "card p-4",
         index > 2 && "cv-auto",
         className
       )}
@@ -227,7 +227,8 @@ export function DailyDropCard({
   const reduced = useAppReduced();
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return (
-    <CardShell index={index} className="relative overflow-hidden p-0">
+    <CardShell index={index} className="relative overflow-hidden p-0 card-lift">
+      <div aria-hidden className="aurora" />
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 rounded-card border border-flame"
@@ -237,9 +238,7 @@ export function DailyDropCard({
       <div className="relative flex items-center justify-between px-4 pb-2.5 pt-3.5">
         <div className="flex items-center gap-2">
           <Sparkles size={15} className="text-flame" strokeWidth={2} />
-          <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-flame">
-            Daily Drop
-          </span>
+          <span className="mono-label !text-flame !text-[11px]">✦ Daily Drop</span>
         </div>
         <span className="text-[12px] text-ink-faint">{today} · editors&apos; pick</span>
       </div>
@@ -260,7 +259,7 @@ export function DailyDropCard({
               </div>
             </div>
           </GradientTile>
-          <div className="rounded-[14px] border border-hairline bg-panel-2 p-3">
+          <div className="rounded-[16px] glass p-3.5">
             <p className="truncate text-[13.5px] font-medium text-ink">{post.trackTitle}</p>
             <p className="truncate text-[12px] text-ink-dim">{post.trackArtist}</p>
             <div className="mt-2 flex items-center gap-2">
@@ -279,7 +278,7 @@ export function DailyDropCard({
         </div>
       </div>
 
-      <p className="border-t border-hairline px-4 py-3 text-[13.5px] leading-snug text-ink-dim">
+      <p className="relative border-t border-hairline px-4 py-3.5 text-[13.5px] italic leading-snug text-ink-dim">
         {post.caption}
       </p>
     </CardShell>

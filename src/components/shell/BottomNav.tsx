@@ -45,8 +45,8 @@ export default function BottomNav() {
   );
 
   return (
-    <nav className="safe-b relative z-50 shrink-0 px-4 pb-2 pt-1.5">
-      <div className="mx-auto flex h-[58px] w-full max-w-md items-center justify-around rounded-full border border-hairline bg-[#1a1712]/95 px-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+    <nav className="safe-b relative z-50 shrink-0 px-4 pb-2.5 pt-2">
+      <div className="mx-auto flex h-[62px] w-full max-w-[380px] items-center justify-around rounded-full glass px-1.5 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.85),0_1px_0_rgba(255,255,255,0.07)_inset]">
         {TABS.map((tab) => {
           const isActive = active === tab.href;
           const Icon = tab.icon;
@@ -56,16 +56,23 @@ export default function BottomNav() {
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "relative flex h-11 min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-full px-3 transition-colors",
+                "relative flex h-12 min-w-[68px] flex-col items-center justify-center gap-1 rounded-full px-3 transition-colors",
                 isActive ? "text-flame" : "text-ink-faint hover:text-ink-dim"
               )}
             >
               {isActive && (
-                <motion.span
-                  layoutId="nav-pill"
-                  className="absolute inset-0 -z-10 rounded-full bg-flame/10 border border-flame/25"
-                  transition={reduced ? { duration: 0 } : SPRING_SNAPPY}
-                />
+                <>
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="absolute inset-0 -z-10 rounded-full bg-flame/12 border border-flame/30 shadow-[0_6px_22px_-8px_rgba(255,107,74,0.55)]"
+                    transition={reduced ? { duration: 0 } : SPRING_SNAPPY}
+                  />
+                  <motion.span
+                    layoutId="nav-dot"
+                    className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-flame"
+                    transition={reduced ? { duration: 0 } : SPRING_SNAPPY}
+                  />
+                </>
               )}
               <span className="relative">
                 <Icon size={20} strokeWidth={1.75} />

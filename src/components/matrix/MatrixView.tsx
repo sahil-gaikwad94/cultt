@@ -115,14 +115,13 @@ export default function MatrixView() {
   return (
     <div className="flex h-full flex-col">
       {/* header — dual-mode toggle persistent at top */}
-      <header className="safe-t shrink-0 px-4 pb-2.5">
-        <div className="flex items-center justify-between gap-3">
+      <header className="safe-t shrink-0 px-5 pb-3">
+        <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-display text-[20px] font-medium leading-none text-ink">
-              Match Matrix
-            </h1>
-            <p className="mt-1 whitespace-nowrap text-[11px] text-ink-faint">
-              {queue.length} in queue · {resonatesLeft} res · {rewindsLeft} rewinds
+            <span className="mono-label !text-[9.5px] text-ink-faint">decide together</span>
+            <h1 className="display-lg mt-1 text-ink">Match Matrix</h1>
+            <p className="mono-label mt-1.5 !text-[10px] !tracking-[0.12em] text-ink-faint">
+              {queue.length} in queue · <span className="text-flame">{resonatesLeft} res</span> · {rewindsLeft} rewinds
             </p>
           </div>
           <Segmented
@@ -142,7 +141,7 @@ export default function MatrixView() {
         {queue.length === 0 ? (
           <EmptyState onRewind={handleRewind} canRewind={canRewind} />
         ) : (
-          <div className="absolute inset-x-4 bottom-1 top-1">
+          <div className="stage-3d absolute inset-x-4 bottom-1 top-1">
             {/* peeking cards behind */}
             {queue.slice(1, 3).map((c, i) => (
               <div
@@ -155,12 +154,13 @@ export default function MatrixView() {
                   pointerEvents: "none",
                 }}
               >
-                <div className="h-full w-full rounded-[24px] border border-hairline bg-panel" />
+                <div className="h-full w-full rounded-[26px] border border-hairline-lit bg-panel shadow-[0_16px_44px_rgba(0,0,0,0.55)]" />
               </div>
             ))}
 
             {/* top card */}
             <div key={top.id} className="absolute inset-0 z-20">
+              <div aria-hidden className="aurora" />
               <CandidateCard
                 candidate={top}
                 top={!fly}
@@ -176,7 +176,7 @@ export default function MatrixView() {
 
       {/* hint + actions */}
       {queue.length > 0 && (
-        <div className="shrink-0 px-4 pb-3 pt-2.5">
+        <div className="shrink-0 px-4 pb-3 pt-3">
           <p className="mb-2.5 text-center text-[11.5px] text-ink-faint">
             drag to decide · tap the photo for the full fingerprint
           </p>
@@ -275,13 +275,14 @@ function EmptyState({
       initial={reduced ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="absolute inset-x-4 inset-y-1 flex flex-col items-center justify-center gap-5 rounded-[24px] border border-hairline bg-panel px-7 text-center"
+      className="absolute inset-x-4 inset-y-1 flex flex-col items-center justify-center gap-5 overflow-hidden rounded-[26px] border border-hairline card px-7 text-center"
     >
-      <span className="flex h-16 w-16 items-center justify-center rounded-full border border-flame/40 bg-flame/10">
+      <div aria-hidden className="aurora" />
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-flame/40 bg-flame/10 shadow-[0_0_44px_-6px_rgba(255,107,74,0.4)]">
         <Flame size={28} className="text-flame" strokeWidth={1.75} />
       </span>
       <div>
-        <h2 className="font-display text-[24px] font-medium leading-tight text-ink">
+        <h2 className="display-lg text-ink">
           Queue&apos;s clear
         </h2>
         <p className="mx-auto mt-2 max-w-[270px] text-[14px] leading-relaxed text-ink-dim">

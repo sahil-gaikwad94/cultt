@@ -23,7 +23,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       className={cn(
-        "relative flex h-10 items-center gap-1 rounded-full bg-panel-2 p-1 border border-hairline",
+        "relative flex h-11 items-center gap-1 rounded-full p-1 glass",
         className
       )}
     >
@@ -36,14 +36,14 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative z-10 h-8 flex-1 rounded-full px-4 text-[13px] font-medium transition-colors",
+              "relative z-10 h-9 flex-1 rounded-full px-4 text-[13.5px] font-semibold tracking-tight transition-colors",
               active ? "text-ink" : "text-ink-faint hover:text-ink-dim"
             )}
           >
             {active && (
               <motion.span
                 layoutId={`seg-${id}`}
-                className="absolute inset-0 -z-10 rounded-full bg-[#332e25] border border-hairline"
+                className="absolute inset-0 -z-10 rounded-full bg-panel-3 border border-hairline-lit shadow-[0_6px_18px_-8px_rgba(0,0,0,0.7)]"
                 transition={reduced ? { duration: 0 } : SPRING_SNAPPY}
               />
             )}

@@ -39,7 +39,7 @@ export function StepShell({
   return (
     <div className="flex h-full flex-col px-6">
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar pb-4">
-        <h1 className="font-display text-[28px] font-medium leading-[1.15] tracking-tight text-ink">
+        <h1 className="display-lg text-ink">
           {title}
         </h1>
         {sub && <p className="mt-2 text-[14.5px] leading-relaxed text-ink-dim">{sub}</p>}

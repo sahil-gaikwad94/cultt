@@ -19,12 +19,12 @@ export default function ChatList() {
 
   return (
     <div className="min-h-full pb-4">
-      <header className="safe-t sticky top-0 z-40 border-b border-hairline bg-canvas/88 px-4 pb-3 backdrop-blur-xl">
+      <header className="safe-t sticky top-0 z-40 border-b border-hairline bg-canvas/72 px-5 pb-3.5 backdrop-blur-2xl">
         <div className="flex items-center justify-between pt-1.5">
-          <h1 className="font-display text-[22px] font-medium text-ink">Chat</h1>
+          <h1 className="display-lg text-ink">Chat</h1>
           <button
             aria-label="Search"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink-dim hover:text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full glass text-ink-dim hover:text-ink"
           >
             <Search size={17} strokeWidth={1.75} />
           </button>
@@ -33,7 +33,7 @@ export default function ChatList() {
 
       {/* new matches strip */}
       <section className="px-4 pt-4">
-        <h2 className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+        <h2 className="mono-label mb-3.5">
           New resonances
         </h2>
         <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1">
@@ -52,7 +52,7 @@ export default function ChatList() {
 
       {/* conversation list */}
       <section className="mt-5 px-4">
-        <h2 className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+        <h2 className="mono-label mb-2">
           Messages
         </h2>
         <div className="flex flex-col">
@@ -94,15 +94,15 @@ export default function ChatList() {
                     {preview}
                   </p>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-panel-2 px-2 py-0.5 text-[10.5px] text-ink-dim">
+                    <span className="inline-flex items-center gap-1 rounded-full glass px-2 py-0.5 text-[10.5px] text-ink-dim">
                       <Smile size={10} strokeWidth={2} />
                       {m.tasteScore}% twins
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-panel-2 px-2 py-0.5 text-[10.5px] text-ink-dim">
+                    <span className="inline-flex items-center gap-1 rounded-full glass px-2 py-0.5 text-[10.5px] text-ink-dim">
                       {m.mode === "dating" ? "dating" : "friends"}
                     </span>
                     {m.matchedOn?.kind === "track" && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-panel-2 px-2 py-0.5 text-[10.5px] text-ink-dim">
+                      <span className="inline-flex items-center gap-1 rounded-full glass px-2 py-0.5 text-[10.5px] text-ink-dim">
                         <Music2 size={10} strokeWidth={2} /> track
                       </span>
                     )}
@@ -112,7 +112,7 @@ export default function ChatList() {
             );
           })}
         </div>
-        <p className="mt-5 text-center text-[11.5px] leading-relaxed text-ink-faint">
+        <p className="mono-label mt-6 text-center !text-[9.5px] !tracking-[0.1em] leading-relaxed text-ink-faint">
           messaging is never paywalled — first message included,
           <br />
           every tier, every day

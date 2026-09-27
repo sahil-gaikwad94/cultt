@@ -109,7 +109,7 @@ export default function OnboardingFlow() {
           <button
             onClick={goBack}
             aria-label="Back"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full glass text-ink"
           >
             <ChevronLeft size={19} />
           </button>
@@ -119,7 +119,7 @@ export default function OnboardingFlow() {
                 key={s}
                 className={
                   i === idx
-                    ? "h-2 w-6 rounded-full bg-flame transition-all"
+                    ? "h-2.5 w-7 rounded-full bg-flame shadow-[0_0_14px_rgba(255,107,74,0.6)] transition-all"
                     : i < idx
                       ? "h-1.5 w-1.5 rounded-full bg-flame/50 transition-all"
                       : "h-1.5 w-1.5 rounded-full bg-panel-2 border border-hairline transition-all"
@@ -137,9 +137,9 @@ export default function OnboardingFlow() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
-            initial={reduced ? { opacity: 0 } : { opacity: 0, x: dir * 36 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, x: dir * -36 }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, x: dir * 52, scale: 0.975 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, x: dir * -34, scale: 0.975 }}
             transition={reduced ? { duration: 0 } : { duration: 0.3, ease: "easeOut" }}
             className="absolute inset-0"
           >
@@ -244,7 +244,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
 
       {/* top brand */}
       <div className="safe-t absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-2 pt-3">
-        <span className="font-display text-[15px] font-medium tracking-[0.3em] text-white/85 text-sheet">
+        <span className="font-mono text-[13px] font-semibold tracking-[0.44em] text-white/90 text-sheet">
           CULTURED
         </span>
       </div>
@@ -267,10 +267,10 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
             style={{ width: widthRef.current }}
           >
             <div className="relative z-10 max-w-[440px]">
-              <h1 className="onb-line whitespace-pre-line font-display text-[clamp(30px,8.5vw,40px)] font-medium leading-[1.12] tracking-tight text-white text-sheet">
+              <h1 className="onb-line whitespace-pre-line font-display text-[clamp(32px,9.4vw,46px)] font-medium leading-[1.06] tracking-[-0.025em] text-white text-sheet">
                 {s.headline}
               </h1>
-              <p className="onb-line mx-auto mt-5 max-w-[360px] text-[15px] leading-relaxed text-white/75 text-sheet">
+              <p className="onb-line mx-auto mt-5 max-w-[350px] text-[15.5px] leading-relaxed text-white/85 text-sheet">
                 {s.sub}
               </p>
             </div>
@@ -286,8 +286,10 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
               key={i}
               aria-label={`Slide ${i + 1}`}
               onClick={() => goTo(i)}
-              className={`h-2 rounded-full transition-all ${
-                i === slide ? "w-7 bg-flame" : "w-2 bg-white/35"
+              className={`h-2.5 rounded-full transition-all ${
+                i === slide
+                  ? "w-8 bg-flame shadow-[0_0_16px_rgba(255,107,74,0.7)]"
+                  : "w-2.5 bg-white/35 hover:bg-white/60"
               }`}
             />
           ))}
@@ -312,7 +314,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
             I already have an account
           </button>
         </div>
-        <p className="text-[11px] text-white/45 text-sheet">swipe to explore →</p>
+        <p className="mono-label !text-[9.5px] text-white/55 text-sheet">swipe to explore →</p>
       </div>
     </div>
   );

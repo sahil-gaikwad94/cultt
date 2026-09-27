@@ -26,13 +26,13 @@ export default function NotificationsView() {
     <div className="min-h-full pb-6">
       <PageHeader title="Notifications" />
 
-      <div className="flex flex-col gap-7 px-4 pt-5">
+      <div className="flex flex-col gap-8 px-5 pt-5">
         {SECTIONS.map((sec) => {
           const items = notifications.filter((n) => n.section === sec.id);
           return (
             <section key={sec.id}>
               <div className="mb-1 flex items-baseline justify-between">
-                <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-ink">
+                <h2 className="mono-label !text-ink">
                   {sec.label}
                 </h2>
                 <span className="text-[11px] text-ink-faint">{items.length}</span>
@@ -54,9 +54,9 @@ export default function NotificationsView() {
                     exit={{ opacity: 0, x: 40 }}
                     transition={{ duration: 0.28, ease: "easeOut" }}
                     className={cn(
-                      "relative flex items-start gap-3 rounded-[16px] border p-3.5 pr-10",
+                      "relative flex items-start gap-3 rounded-[20px] border p-4 pr-10",
                       n.unread
-                        ? "border-flame/30 bg-flame/6"
+                        ? "border-flame/35 bg-flame/8 shadow-[0_8px_30px_-14px_rgba(255,107,74,0.45)]"
                         : "border-hairline bg-panel"
                     )}
                   >

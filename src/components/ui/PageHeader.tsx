@@ -26,19 +26,19 @@ export function PageHeader({
       animate={{ opacity: 1, y: 0 }}
       transition={reduced ? { duration: 0 } : { duration: 0.28, ease: "easeOut" }}
       className={cn(
-        "safe-t sticky top-0 z-40 flex items-center gap-3 bg-canvas/88 px-4 pb-3 backdrop-blur-xl",
-        "border-b border-hairline",
+        "safe-t sticky top-0 z-40 flex items-center gap-3 px-5 pb-3.5 pt-2 backdrop-blur-2xl",
+        "bg-canvas/72 border-b border-hairline",
         className
       )}
     >
       <button
         onClick={() => (onBack ? onBack() : router.back())}
         aria-label="Back"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-panel-2 border border-hairline text-ink transition-colors hover:bg-[#2e2a22]"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full glass text-ink transition-colors hover:bg-panel-3"
       >
         <ChevronLeft size={20} strokeWidth={2} />
       </button>
-      <h1 className="font-display text-[19px] font-medium tracking-tight text-ink flex-1 truncate">
+      <h1 className="font-display text-[21px] font-medium tracking-[-0.02em] text-ink flex-1 truncate">
         {title}
       </h1>
       {right ? <div className="flex items-center gap-2">{right}</div> : null}

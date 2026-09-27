@@ -17,9 +17,9 @@ function Skeleton({ className }: { className?: string }) {
 
 function FeedSkeleton() {
   return (
-    <div className="flex flex-col gap-4 px-4" aria-busy="true" aria-label="Loading feed">
-      <Skeleton className="h-[300px]" />
-      <Skeleton className="h-[380px]" />
+    <div className="flex flex-col gap-5 px-5 pt-3" aria-busy="true" aria-label="Loading feed">
+      <Skeleton className="h-[320px] !rounded-[26px]" />
+      <Skeleton className="h-[400px] !rounded-[26px]" />
       <div className="flex gap-4 px-2">
         <Skeleton className="h-4 w-24 !rounded-full" />
         <Skeleton className="h-4 w-32 !rounded-full" />
@@ -125,7 +125,33 @@ export default function FeedView() {
 
   return (
     <>
-      <div ref={contentRef} className="flex flex-col gap-4 px-4 pb-10 pt-2">
+      <div ref={contentRef} className="flex flex-col gap-5 px-5 pb-10 pt-3">
+        {/* culture ticker — editorial energy, pure transform animation */}
+        <div className="marquee -mx-5 px-5" aria-hidden>
+          <span className="mono-label !text-[10px] !text-ink-faint whitespace-nowrap">
+            <span>TRENDING IN THE CULTURE</span>
+            <span className="!text-flame">✦</span>
+            <span>REGGAETON SUMMER</span>
+            <span>✦</span>
+            <span>GROUP CHAT MEMES</span>
+            <span>✦</span>
+            <span>UK GARAGE REVIVAL</span>
+            <span>✦</span>
+            <span>SLOW SUNDAYS</span>
+            <span>✦</span>
+            <span>TRENDING IN THE CULTURE</span>
+            <span className="!text-flame">✦</span>
+            <span>REGGAETON SUMMER</span>
+            <span>✦</span>
+            <span>GROUP CHAT MEMES</span>
+            <span>✦</span>
+            <span>UK GARAGE REVIVAL</span>
+            <span>✦</span>
+            <span>SLOW SUNDAYS</span>
+            <span>✦</span>
+          </span>
+        </div>
+
         {/* Daily Drop — pinned once per day */}
         <DailyDropCard
           post={dropPost}

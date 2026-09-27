@@ -45,6 +45,7 @@ export function CandidateCard({
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotate = useTransform(x, [-260, 260], [-15, 15]);
+  const rotateY = useTransform(x, [-260, 260], [9, -9]); // 3D board tilt while dragging
   const passOpacity = useTransform(x, [-150, -45], [1, 0]);
   const vibeOpacity = useTransform(x, [45, 150], [0, 1]);
   const resoOpacity = useTransform(y, [-150, -45], [1, 0]);
@@ -82,11 +83,11 @@ export function CandidateCard({
       drag={top ? "x" : false}
       dragElastic={0.7}
       dragMomentum={false}
-      style={{ x, y: top ? y : 0, rotate: top ? rotate : 0 }}
+      style={{ x, y: top ? y : 0, rotate: top ? rotate : 0, rotateY: top && !reduced ? rotateY : 0 }}
       onDragEnd={handleDragEnd}
       animate={undefined}
       initial={false}
-      className="absolute inset-0 flex touch-pan-y flex-col rounded-[24px] border border-hairline bg-panel p-3 shadow-[0_18px_50px_rgba(0,0,0,0.5)] will-change-transform"
+      className="absolute inset-0 flex touch-pan-y flex-col overflow-hidden rounded-[26px] border border-hairline-lit bg-panel p-3.5 shadow-[0_28px_70px_-18px_rgba(0,0,0,0.85)] will-change-transform"
     >
       {/* photo area — placeholder gradient tile (photos never gate the score) */}
       <div className="relative flex-1 min-h-0">
@@ -123,7 +124,7 @@ export function CandidateCard({
         {/* name/age over photo — ref composition */}
         <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
           <div className="flex items-center gap-2">
-            <h2 className="font-display text-[28px] font-medium leading-none text-white text-sheet">
+            <h2 className="font-display text-[32px] font-medium leading-none tracking-[-0.02em] text-white text-sheet">
               {candidate.name}, {candidate.age}
             </h2>
             {candidate.verified && (
@@ -142,7 +143,7 @@ export function CandidateCard({
         </div>
 
         {/* Taste Twins badge — the hook, top corner, before any decision */}
-        <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/45 px-3 py-1.5 backdrop-blur-md">
+        <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/50 px-3.5 py-1.5 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] backdrop-blur-md">
           <Sparkles size={13} className="text-flame" strokeWidth={2} />
           <span className="text-[12.5px] font-semibold text-white">
             {candidate.tasteScore}% taste twins
@@ -161,7 +162,7 @@ export function CandidateCard({
         {/* decision stamps */}
         <motion.div
           style={{ opacity: top ? passOpacity : 0 }}
-          className="absolute left-5 top-16 -rotate-12 rounded-[10px] border-[3px] border-ink-faint px-3 py-1"
+          className="absolute left-5 top-16 -rotate-12 rounded-[12px] border-[3px] border-ink-faint bg-black/40 px-3 py-1 backdrop-blur-sm"
         >
           <span className="text-[22px] font-black uppercase tracking-widest text-ink-faint">
             pass
@@ -169,7 +170,7 @@ export function CandidateCard({
         </motion.div>
         <motion.div
           style={{ opacity: top ? vibeOpacity : 0 }}
-          className="absolute right-5 top-16 rotate-12 rounded-[10px] border-[3px] border-flame px-3 py-1"
+          className="absolute right-5 top-16 rotate-12 rounded-[12px] border-[3px] border-flame bg-black/40 px-3 py-1 backdrop-blur-sm"
         >
           <span className="text-[22px] font-black uppercase tracking-widest text-flame">
             vibe
@@ -177,7 +178,7 @@ export function CandidateCard({
         </motion.div>
         <motion.div
           style={{ opacity: top ? resoOpacity : 0 }}
-          className="absolute left-1/2 top-14 -translate-x-1/2 rounded-[10px] border-[3px] border-flame px-3 py-1"
+          className="absolute left-1/2 top-14 -translate-x-1/2 rounded-[12px] border-[3px] border-flame bg-black/40 px-3 py-1 backdrop-blur-sm"
         >
           <span className="text-[18px] font-black uppercase tracking-widest text-flame">
             resonate
@@ -233,16 +234,16 @@ export function MatrixActions({
 }) {
   const reduced = useAppReduced();
   const btn =
-    "flex items-center justify-center rounded-full border border-hairline bg-[#221e18] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-colors";
+    "flex items-center justify-center rounded-full border border-hairline-lit bg-panel-2/90 shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-colors hover:bg-panel-3";
 
   return (
-    <div className="flex items-center justify-center gap-4">
+    <div className="mx-auto flex w-fit items-center justify-center gap-3 rounded-full glass px-4 py-2.5">
       <motion.button
         whileTap={reduced ? undefined : { scale: 0.9 }}
         onClick={onRewind}
         disabled={!canRewind}
         aria-label="Rewind last pass"
-        className={cn(btn, "h-12 w-12 text-ink-dim hover:text-ink disabled:opacity-35")}
+        className={cn(btn, "h-11 w-11 text-ink-dim hover:text-ink disabled:opacity-35")}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
@@ -254,7 +255,7 @@ export function MatrixActions({
         whileTap={reduced ? undefined : { scale: 0.9 }}
         onClick={onPass}
         aria-label="Pass"
-        className={cn(btn, "h-16 w-16 text-ink")}
+        className={cn(btn, "h-14 w-14 text-ink")}
       >
         <X size={26} strokeWidth={2.2} />
       </motion.button>
@@ -263,7 +264,7 @@ export function MatrixActions({
         whileTap={reduced ? undefined : { scale: 0.9 }}
         onClick={onLike}
         aria-label="Vibe"
-        className={cn(btn, "h-16 w-16 text-ink")}
+        className={cn(btn, "h-14 w-14 text-ink")}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />

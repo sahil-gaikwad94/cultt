@@ -80,10 +80,16 @@ export function MatchCelebration({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={t(reduced, { duration: 0.28, ease: "easeOut" })}
-      className="fixed inset-0 z-[400] flex flex-col items-center justify-center gap-8 bg-[#0d0b08]/92 px-6 backdrop-blur-xl"
+      className="fixed inset-0 z-[400] flex flex-col items-center justify-center gap-8 overflow-hidden bg-[#0d0b08]/94 px-6 backdrop-blur-xl"
     >
+      {/* ambient heat behind the stage */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="aurora" />
+        <div className="absolute left-1/2 top-[38%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-flame/25 blur-[90px]" />
+      </div>
+
       {/* stage: avatars orbit around the score */}
-      <div className="relative h-[260px] w-full max-w-[380px]">
+      <div className="relative h-[280px] w-full max-w-[380px]">
         {/* accent particle burst */}
         {!reduced && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -151,6 +157,7 @@ export function MatchCelebration({
 
         {/* the score — stays upright, dead center, on top */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <div aria-hidden className="absolute h-44 w-44 rounded-full border border-flame/25 shadow-[0_0_60px_rgba(255,107,74,0.22)]" />
           <motion.span
             initial={{ scale: 0.55, opacity: 0 }}
             animate={
@@ -163,12 +170,12 @@ export function MatchCelebration({
                 ? { duration: 0 }
                 : { scale: { duration: 0.5, delay: 0.05, ease: "easeOut" }, default: { duration: 0.3 } }
             }
-            className="font-display text-[68px] font-medium leading-none tracking-tight text-ink text-sheet tabular-nums"
+            className="font-display text-[76px] font-medium leading-none tracking-[-0.03em] text-ink text-sheet tabular-nums"
           >
             {count}
             <span className="text-flame">%</span>
           </motion.span>
-          <span className="mt-2 text-[12px] font-semibold uppercase tracking-[0.3em] text-ink-dim">
+          <span className="mono-label mt-2.5 !text-[10.5px] !tracking-[0.34em] text-ink-dim">
             taste twins
           </span>
         </div>
@@ -184,10 +191,10 @@ export function MatchCelebration({
               transition={reduced ? { duration: 0 } : { duration: 0.4, ease: "easeOut" }}
               className="flex flex-col items-center gap-2 text-center"
             >
-              <h2 className="font-display text-[30px] font-medium leading-tight text-ink">
+              <h2 className="font-display text-[34px] font-medium leading-[1.08] tracking-[-0.02em] text-ink">
                 It&apos;s a resonance.
               </h2>
-              <p className="max-w-[280px] text-[14px] leading-snug text-ink-dim">
+              <p className="max-w-[290px] text-[14.5px] leading-relaxed text-ink-dim">
                 You and {candidate.name} laughed at the same {candidate.sharedMemeCategory} bit
                 and share {candidate.sharedArtist}.
               </p>

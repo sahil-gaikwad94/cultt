@@ -38,15 +38,15 @@ export default function ProfileView() {
   return (
     <div className="min-h-full pb-6">
       {/* header */}
-      <header className="safe-t sticky top-0 z-40 border-b border-hairline bg-canvas/88 backdrop-blur-xl">
+      <header className="safe-t sticky top-0 z-40 border-b border-hairline bg-canvas/72 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-4 pb-3 pt-2">
-          <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+          <span className="mono-label">
             Your profile
           </span>
           <a
             href="/settings"
             aria-label="Settings"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink-dim hover:text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full glass text-ink-dim hover:text-ink"
           >
             <Settings size={17} strokeWidth={1.75} />
           </a>
@@ -62,7 +62,7 @@ export default function ProfileView() {
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h1 className="font-display text-[24px] font-medium leading-none text-ink">
+              <h1 className="font-display text-[27px] font-medium leading-none tracking-[-0.02em] text-ink">
                 {profileName}, {profileAge}
               </h1>
               <BadgeCheck size={18} className="text-flame" strokeWidth={2} aria-label="Verified" />
@@ -74,7 +74,7 @@ export default function ProfileView() {
         </div>
 
         {/* privacy toggle — database-enforced guarantee in the real build */}
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-[16px] border border-hairline bg-panel px-3.5 py-3">
+        <div className="mx-4 mb-3.5 flex items-center gap-3 rounded-[18px] glass px-3.5 py-3.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel-2 text-flame">
             {visibility === "matches_only" ? <Lock size={16} /> : <Eye size={16} />}
           </span>
@@ -177,13 +177,13 @@ export default function ProfileView() {
         {tab === "fingerprint" && (
           <div className="flex flex-col gap-6">
             <section>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3.5 flex items-center justify-between">
                 <SectionTitle>Humor style</SectionTitle>
                 <span className="text-[11px] text-ink-faint">
                   updates on every reaction
                 </span>
               </div>
-              <div className="rounded-[18px] border border-hairline bg-panel p-4">
+              <div className="card p-4.5">
                 <HumorBars humor={myFingerprint.humor} summary={myFingerprint.summary} />
               </div>
             </section>
@@ -220,7 +220,7 @@ export default function ProfileView() {
             </section>
 
             <section>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3.5 flex items-center justify-between">
                 <SectionTitle>Pinned playlists</SectionTitle>
                 <span className="text-[11px] text-ink-faint">tap pin to override curation</span>
               </div>

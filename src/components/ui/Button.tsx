@@ -9,16 +9,16 @@ type Variant = "flame" | "neutral" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
-  flame: "bg-flame text-flame-ink font-semibold hover:brightness-105",
-  neutral: "bg-panel-2 text-ink hover:bg-[#2e2a22]",
+  flame: "bg-flame text-flame-ink font-semibold glow-flame hover:brightness-[1.06]",
+  neutral: "bg-panel-2 text-ink border border-hairline hover:bg-panel-3",
   ghost: "bg-transparent text-ink-dim hover:text-ink",
   outline: "bg-transparent text-ink border border-hairline hover:bg-panel-2",
 };
 
 const sizes: Record<Size, string> = {
   sm: "h-9 px-4 text-[13px] rounded-full gap-1.5",
-  md: "h-11 px-5 text-sm rounded-full gap-2",
-  lg: "h-13 px-7 text-[15px] rounded-full gap-2",
+  md: "h-12 px-6 text-sm rounded-full gap-2",
+  lg: "h-14 px-8 text-[15.5px] rounded-full gap-2.5",
 };
 
 type NativeButtonProps = Omit<
