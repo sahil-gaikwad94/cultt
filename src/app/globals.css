@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────
+   CULTURED — design tokens (warm near-black world,
+   single coral accent, one accent color only)
+   ─────────────────────────────────────────────── */
+:root {
+  --c-bg: #14120e;          /* app background       */
+  --c-surface: #1d1a15;     /* cards                */
+  --c-surface-2: #26221b;   /* nested / chips       */
+  --c-border: rgba(245, 241, 234, 0.09);
+  --c-text: #f5f1ea;
+  --c-text-dim: #a39c8e;
+  --c-text-faint: #6d675b;
+  --c-accent: #ff6b4a;      /* THE accent — used sparingly */
+  --c-accent-ink: #14120e;  /* text on accent fills */
+}
+
+@theme inline {
+  --color-canvas: var(--c-bg);
+  --color-panel: var(--c-surface);
+  --color-panel-2: var(--c-surface-2);
+  --color-hairline: var(--c-border);
+  --color-ink: var(--c-text);
+  --color-ink-dim: var(--c-text-dim);
+  --color-ink-faint: var(--c-text-faint);
+  --color-flame: var(--c-accent);
+  --color-flame-ink: var(--c-accent-ink);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+
+  --radius-chip: 12px;
+  --radius-card: 22px;
+  --radius-sheet: 26px;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    background: var(--c-bg);
+    color: var(--c-text);
+    font-family: var(--font-sans);
+    overscroll-behavior: none;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: rgba(255, 107, 74, 0.32);
+    color: var(--c-text);
+  }
+  button {
+    cursor: pointer;
+  }
+  /* thin, quiet scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(245, 241, 234, 0.12);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* shimmer skeleton — animated gradient sweep, never a bare spinner */
+  .shimmer {
+    background-image: linear-gradient(
+      110deg,
+      var(--c-surface) 8%,
+      rgba(245, 241, 234, 0.055) 18%,
+      var(--c-surface) 33%
+    );
+    background-size: 220% 100%;
+    animation: shimmer-sweep 1.6s linear infinite;
+  }
+
+  /* below-the-fold feed perf guardrail */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 460px;
+  }
+
+  .safe-t {
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  .safe-b {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .text-sheet {
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.4);
+  }
+
+  /* meme caption rendering (placeholder tiles read as real memes) */
+  .meme-text {
+    font-weight: 900;
+    font-size: clamp(14px, 3.6vw, 17px);
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    color: #fff;
+    text-shadow: 0 1px 0 #000, 0 -1px 0 #000, 1px 0 0 #000, -1px 0 0 #000,
+      0 2px 12px rgba(0, 0, 0, 0.5);
+    overflow-wrap: anywhere;
+  }
+
+  /* film-grain warmth over the whole app — subtle, static */
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+}
+
+@keyframes shimmer-sweep {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation-duration: 0s;
+  }
+}
