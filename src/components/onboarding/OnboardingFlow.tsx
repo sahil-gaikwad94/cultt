@@ -119,7 +119,7 @@ export default function OnboardingFlow() {
                 key={s}
                 className={
                   i === idx
-                    ? "h-2.5 w-7 rounded-full bg-flame shadow-[0_0_14px_rgba(255,107,74,0.6)] transition-all"
+                    ? "h-2.5 w-7 rounded-full bg-flame shadow-[0_0_14px_rgba(124,92,255,0.6)] transition-all"
                     : i < idx
                       ? "h-1.5 w-1.5 rounded-full bg-flame/50 transition-all"
                       : "h-1.5 w-1.5 rounded-full bg-panel-2 border border-hairline transition-all"
@@ -233,6 +233,20 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
       {/* ambient “video” — welcome carousel only */}
       <div id="onb-ambient" className="absolute -inset-x-16 inset-y-0">
         <AmbientCanvas palette={slide} />
+        <img
+          src="/art/welcome-hero.png"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-55"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(10,11,18,0.55) 0%, rgba(10,11,18,0.2) 45%, rgba(10,11,18,0.88) 100%)",
+          }}
+        />
       </div>
 
       {/* THE single 3D surface */}
@@ -288,7 +302,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
               onClick={() => goTo(i)}
               className={`h-2.5 rounded-full transition-all ${
                 i === slide
-                  ? "w-8 bg-flame shadow-[0_0_16px_rgba(255,107,74,0.7)]"
+                  ? "w-8 bg-flame shadow-[0_0_16px_rgba(124,92,255,0.7)]"
                   : "w-2.5 bg-white/35 hover:bg-white/60"
               }`}
             />
@@ -298,7 +312,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
           <Button
             variant="flame"
             size="lg"
-            className="w-full shadow-[0_12px_40px_rgba(255,107,74,0.35)]"
+            className="w-full shadow-[0_12px_40px_rgba(124,92,255,0.35)]"
             onClick={() => (slide < SLIDES.length - 1 ? goTo(slide + 1) : onNext())}
           >
             {slide < SLIDES.length - 1 ? "Next" : "Get started — I'm 18+"}

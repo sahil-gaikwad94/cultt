@@ -52,7 +52,7 @@ export function Toaster() {
               "text-[13px] text-ink shadow-[0_14px_44px_rgba(0,0,0,0.6)] flex items-center gap-2"
             )}
           >
-            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-flame shadow-[0_0_8px_rgba(255,107,74,0.9)]" />
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-flame shadow-[0_0_8px_rgba(124,92,255,0.9)]" />
             {t.msg}
           </motion.div>
         ))}

@@ -52,15 +52,29 @@ export default function ProfileView() {
           </a>
         </div>
 
-        {/* identity */}
-        <div className="flex items-center gap-3.5 px-4 pb-4">
+        {/* identity — sits on the profile cover art */}
+        <div className="relative flex items-center gap-3.5 overflow-hidden px-4 pb-4 pt-1">
+          <img
+            src="/art/profile-cover.png"
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(10,11,18,0.88) 0%, rgba(10,11,18,0.55) 70%, rgba(10,11,18,0.35) 100%)",
+            }}
+          />
           <Avatar
             gradient={photoSlots[0] ?? GRADIENTS[8]}
             name={profileName}
             size={64}
-            className="ring-2 ring-flame/40 ring-offset-2 ring-offset-canvas"
+            className="relative ring-2 ring-flame/40 ring-offset-2 ring-offset-canvas"
           />
-          <div className="min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h1 className="font-display text-[27px] font-medium leading-none tracking-[-0.02em] text-ink">
                 {profileName}, {profileAge}

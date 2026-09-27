@@ -8,11 +8,14 @@ import { cn, initials } from "@/lib/utils";
 
 export function GradientTile({
   gradient,
+  src,
   className,
   children,
   square,
 }: {
   gradient: string;
+  /** Optional AI-art image layered over the gradient (gradient = fallback). */
+  src?: string;
   className?: string;
   children?: React.ReactNode;
   square?: boolean;
@@ -22,6 +25,15 @@ export function GradientTile({
       className={cn("relative overflow-hidden", square && "aspect-square", className)}
       style={{ background: gradient }}
     >
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-90"
+        />
+      ) : null}
       {/* texture: soft light + fine dot grid so tiles feel art-directed */}
       <div
         aria-hidden

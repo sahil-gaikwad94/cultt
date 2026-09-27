@@ -45,7 +45,7 @@ export function HumorBars({
                 animate={{ width: `${Math.round(v * 100)}%` }}
                 transition={{ duration: compact ? 0.5 : 0.7, ease: "easeOut", delay: 0.1 }}
                 className={`absolute inset-y-0 left-0 rounded-full ${
-                  isTop ? "bg-flame shadow-[0_0_14px_rgba(255,107,74,0.55)]" : "bg-[#4a4438]"
+                  isTop ? "bg-flame shadow-[0_0_14px_rgba(124,92,255,0.55)]" : "bg-[#2b2c3d]"
                 }`}
               />
             </div>
@@ -148,8 +148,8 @@ export function FingerprintBody({ c }: { c: Candidate }) {
         <div className="pointer-events-none absolute inset-0 select-none blur-[6px]" aria-hidden>
           <div className="flex h-full flex-col justify-center gap-3 px-4">
             <div className="h-3 w-3/4 rounded-full bg-flame/50" />
-            <div className="h-3 w-2/3 rounded-full bg-[#4a4438]" />
-            <div className="h-3 w-1/2 rounded-full bg-[#4a4438]" />
+            <div className="h-3 w-2/3 rounded-full bg-[#2b2c3d]" />
+            <div className="h-3 w-1/2 rounded-full bg-[#2b2c3d]" />
             <p className="font-display text-[15px] italic text-ink-dim">
               “both of you keep replaying the same 3-second bridge…”
             </p>

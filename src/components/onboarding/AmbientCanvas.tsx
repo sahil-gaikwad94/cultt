@@ -16,27 +16,27 @@ export type AmbientPalette = {
 
 export const AMBIENT_PALETTES: AmbientPalette[] = [
   {
-    bg: "#17130f",
+    bg: "#0a0b12",
     blobs: [
-      [255, 107, 74],
-      [122, 46, 142],
-      [232, 71, 109],
+      [124, 92, 255],
+      [88, 80, 180],
+      [48, 42, 96],
     ],
   },
   {
-    bg: "#0f1417",
+    bg: "#0b0d15",
     blobs: [
-      [42, 157, 143],
-      [66, 114, 198],
-      [255, 107, 74],
+      [34, 211, 238],
+      [66, 74, 168],
+      [124, 92, 255],
     ],
   },
   {
-    bg: "#14101c",
+    bg: "#0c0a14",
     blobs: [
-      [151, 51, 238],
-      [67, 203, 255],
-      [255, 107, 74],
+      [167, 139, 250],
+      [124, 92, 255],
+      [56, 64, 140],
     ],
   },
 ];
@@ -90,7 +90,7 @@ export function AmbientCanvas({ palette }: { palette: number }) {
         const r = Math.max(w, h) * (0.42 + 0.1 * Math.sin(phase * 0.7));
         const [cr, cg, cb] = current[i]!;
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        g.addColorStop(0, `rgba(${cr | 0}, ${cg | 0}, ${cb | 0}, 0.55)`);
+        g.addColorStop(0, `rgba(${cr | 0}, ${cg | 0}, ${cb | 0}, 0.40)`);
         g.addColorStop(1, `rgba(${cr | 0}, ${cg | 0}, ${cb | 0}, 0)`);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);

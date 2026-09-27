@@ -56,7 +56,7 @@ export default function NotificationsView() {
                     className={cn(
                       "relative flex items-start gap-3 rounded-[20px] border p-4 pr-10",
                       n.unread
-                        ? "border-flame/35 bg-flame/8 shadow-[0_8px_30px_-14px_rgba(255,107,74,0.45)]"
+                        ? "border-flame/35 bg-flame/8 shadow-[0_8px_30px_-14px_rgba(124,92,255,0.45)]"
                         : "border-hairline bg-panel"
                     )}
                   >
@@ -101,7 +101,7 @@ export default function NotificationsView() {
                         <X size={15} />
                       </button>
                     ) : n.unread ? (
-                      <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-flame shadow-[0_0_10px_rgba(255,107,74,0.9)]" />
+                      <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-flame shadow-[0_0_10px_rgba(124,92,255,0.9)]" />
                     ) : null}
                   </motion.div>
                 ))}

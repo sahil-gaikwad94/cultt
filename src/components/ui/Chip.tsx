@@ -23,7 +23,7 @@ export function Chip({
       className={cn(
         "inline-flex h-8.5 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[12.5px] font-medium transition-all",
         active
-          ? "border-flame/55 bg-flame/14 text-flame shadow-[0_4px_18px_-6px_rgba(255,107,74,0.45)]"
+          ? "border-flame/55 bg-flame/14 text-flame shadow-[0_4px_18px_-6px_rgba(124,92,255,0.45)]"
           : "border-hairline bg-panel-2/70 text-ink-dim hover:text-ink hover:border-hairline-lit",
         onClick && "cursor-pointer",
         className

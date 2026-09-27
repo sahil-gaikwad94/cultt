@@ -189,7 +189,7 @@ export const useAppStore = create<AppState>()(
       profileAge: 26,
       profileCity: "Williamsburg, NY",
       profileBio: "Meme archivist with a vinyl problem. Fluent in three humor styles and four time zones.",
-      photoSlots: ["linear-gradient(135deg, #ff8a5c 0%, #e8476d 48%, #7a2e8e 100%)", "linear-gradient(160deg, #8ec5fc 0%, #6c63c7 55%, #2b1e66 100%)", "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)", null, null, null],
+      photoSlots: ["linear-gradient(135deg, #7c5cff 0%, #a855f7 48%, #1e1b4b 100%)", "linear-gradient(160deg, #8ec5fc 0%, #6c63c7 55%, #2b1e66 100%)", "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)", null, null, null],
       lookingFor: "dating",
 
       likedMemes: [],

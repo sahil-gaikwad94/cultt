@@ -84,6 +84,14 @@ export function MatchCelebration({
     >
       {/* ambient heat behind the stage */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
+        <img
+          src="/art/celebration-art.png"
+          alt=""
+          className="h-full w-full object-cover opacity-55"
+        />
+        <div className="absolute inset-0 bg-canvas/45" />
+      </div>
+      <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="aurora" />
         <div className="absolute left-1/2 top-[38%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-flame/25 blur-[90px]" />
       </div>
@@ -125,7 +133,7 @@ export function MatchCelebration({
                 animate={{ rotate: phase === "slide" ? 0 : -360 }}
                 transition={reduced ? { duration: 0 } : { duration: 1.4, ease: "easeInOut" }}
               >
-                <div className="rounded-full border-[3px] border-flame shadow-[0_0_40px_rgba(255,107,74,0.35)]">
+                <div className="rounded-full border-[3px] border-flame shadow-[0_0_40px_rgba(124,92,255,0.35)]">
                   <Avatar gradient={candidate.photoGradient} name={candidate.name} size={72} />
                 </div>
               </motion.div>
@@ -145,7 +153,7 @@ export function MatchCelebration({
               >
                 <div className="rounded-full border-[3px] border-[#f5f1ea] shadow-[0_0_40px_rgba(245,241,234,0.25)]">
                   <Avatar
-                    gradient="linear-gradient(135deg, #ff8a5c 0%, #e8476d 48%, #7a2e8e 100%)"
+                    gradient="linear-gradient(135deg, #7c5cff 0%, #a855f7 48%, #1e1b4b 100%)"
                     name="Alex"
                     size={72}
                   />
@@ -157,7 +165,7 @@ export function MatchCelebration({
 
         {/* the score — stays upright, dead center, on top */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <div aria-hidden className="absolute h-44 w-44 rounded-full border border-flame/25 shadow-[0_0_60px_rgba(255,107,74,0.22)]" />
+          <div aria-hidden className="absolute h-44 w-44 rounded-full border border-flame/25 shadow-[0_0_60px_rgba(124,92,255,0.22)]" />
           <motion.span
             initial={{ scale: 0.55, opacity: 0 }}
             animate={

@@ -244,7 +244,7 @@ export function DailyDropCard({
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
-        <GradientTile gradient={post.gradient} className="aspect-[4/5] rounded-[16px]">
+        <GradientTile gradient={post.gradient} src="/art/meme-bg-1.png" className="aspect-[4/5] rounded-[16px]">
           <MemeFace top={post.memeTop} bottom={post.memeBottom} />
           <span className="absolute bottom-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
             Meme
@@ -252,7 +252,7 @@ export function DailyDropCard({
         </GradientTile>
 
         <div className="flex flex-col gap-2.5">
-          <GradientTile gradient={GRADIENTS[3]} className="aspect-square rounded-[16px]">
+          <GradientTile gradient={GRADIENTS[3]} src="/art/drop-poster.png" className="aspect-square rounded-[16px]">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-black/25 backdrop-blur-sm">
                 <Music2 size={22} className="text-white" strokeWidth={1.75} />
@@ -310,7 +310,7 @@ export function MemeCard({
   return (
     <CardShell index={index}>
       <AuthorRow post={post} />
-      <GradientTile gradient={post.gradient} className="aspect-[5/4] rounded-[16px]">
+      <GradientTile gradient={post.gradient} src="/art/meme-bg-2.png" className="aspect-[5/4] rounded-[16px]">
         <MemeFace top={post.memeTop} bottom={post.memeBottom} />
       </GradientTile>
       <p className="px-1 pb-1 pt-3 text-[14px] leading-snug text-ink-dim">{post.caption}</p>

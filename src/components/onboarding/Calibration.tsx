@@ -108,7 +108,7 @@ export function MemeCalibration({ onDone }: { onDone: () => void }) {
         <div className="absolute inset-x-0 bottom-2 top-0" key={current.id}>
           <SwipeItem onDecide={decide} zIndex={2} behind={false}>
             <div className="relative h-full overflow-hidden rounded-[22px] border border-hairline bg-panel p-3.5">
-              <GradientTile gradient={current.gradient} className="h-full rounded-[16px]">
+              <GradientTile gradient={current.gradient} src="/art/meme-bg-1.png" className="h-full rounded-[16px]">
                 <MemeFace top={current.top} bottom={current.bottom} />
               </GradientTile>
             </div>
@@ -207,7 +207,7 @@ function CalibProgress({
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-panel-2 border border-hairline">
         <motion.div
-          className="h-full rounded-full bg-flame shadow-[0_0_12px_rgba(255,107,74,0.55)]"
+          className="h-full rounded-full bg-flame shadow-[0_0_12px_rgba(124,92,255,0.55)]"
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />

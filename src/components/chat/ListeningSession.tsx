@@ -15,7 +15,7 @@ import { useAppReduced } from "@/lib/motion";
 const CAP_SECONDS = 900; // 15-minute free-tier cap
 
 const SESSION_TRACKS = [
-  { id: "t1", title: "places to be", artist: "Fred again..", duration: 205, gradient: "linear-gradient(135deg, #ff8a5c 0%, #e8476d 48%, #7a2e8e 100%)" },
+  { id: "t1", title: "places to be", artist: "Fred again..", duration: 205, gradient: "linear-gradient(135deg, #7c5cff 0%, #a855f7 48%, #1e1b4b 100%)" },
   { id: "t2", title: "Valentine", artist: "Laufey", duration: 178, gradient: "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)" },
   { id: "t3", title: "Lite Spots", artist: "KAYTRANADA", duration: 216, gradient: "linear-gradient(145deg, #43cbff 0%, #9733ee 100%)" },
 ];
@@ -97,13 +97,13 @@ export function ListeningSession({
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 34 }}
           className="fixed inset-x-0 bottom-0 z-[260] max-h-[92dvh] overflow-hidden rounded-t-sheet border border-hairline bg-panel shadow-[0_-20px_70px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto mt-3 h-1 w-11 rounded-full bg-flame/50 shadow-[0_0_12px_rgba(255,107,74,0.5)] glow-flame" />
+          <div className="mx-auto mt-3 h-1 w-11 rounded-full bg-flame/50 shadow-[0_0_12px_rgba(124,92,255,0.5)] glow-flame" />
           <div className="no-scrollbar max-h-[88dvh] overflow-y-auto px-5 pb-7 pt-3">
             {/* header */}
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2.5">
                 <Avatar gradient={match.gradient} name={match.name} size={34} className="ring-2 ring-panel" />
-                <Avatar gradient="linear-gradient(135deg, #ff8a5c 0%, #7a2e8e 100%)" name="Alex" size={34} className="ring-2 ring-panel" />
+                <Avatar gradient="linear-gradient(135deg, #7c5cff 0%, #312e81 100%)" name="Alex" size={34} className="ring-2 ring-panel" />
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="font-display text-[20px] font-medium leading-tight tracking-[-0.01em] text-ink">
@@ -216,7 +216,7 @@ export function ListeningSession({
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-full transition-colors",
                     playing
-                      ? "border border-flame/70 bg-flame/18 text-flame shadow-[0_0_28px_rgba(255,107,74,0.55)]"
+                      ? "border border-flame/70 bg-flame/18 text-flame shadow-[0_0_28px_rgba(124,92,255,0.55)]"
                       : "bg-flame text-flame-ink glow-flame",
                     atCap && "opacity-40"
                   )}

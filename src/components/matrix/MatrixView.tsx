@@ -277,8 +277,15 @@ function EmptyState({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="absolute inset-x-4 inset-y-1 flex flex-col items-center justify-center gap-5 overflow-hidden rounded-[26px] border border-hairline card px-7 text-center"
     >
+      <img
+        src="/art/empty-queue.png"
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover opacity-40"
+      />
+      <div aria-hidden className="absolute inset-0 bg-canvas/55" />
       <div aria-hidden className="aurora" />
-      <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-flame/40 bg-flame/10 shadow-[0_0_44px_-6px_rgba(255,107,74,0.4)]">
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-flame/40 bg-flame/10 glow-flame">
         <Flame size={28} className="text-flame" strokeWidth={1.75} />
       </span>
       <div>

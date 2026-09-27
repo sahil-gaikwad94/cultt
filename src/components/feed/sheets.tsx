@@ -50,8 +50,8 @@ export function CommentSheet({
         ))}
         {added.map((t, i) => (
           <div key={`a${i}`} className="flex items-start gap-3">
-            <Avatar gradient="linear-gradient(135deg, #ff8a5c 0%, #7a2e8e 100%)" name="Alex" size={34} />
-            <div className="min-w-0 flex-1 rounded-[18px] rounded-tl-[6px] border border-flame/30 bg-flame/12 px-3.5 py-2.5 shadow-[0_8px_26px_-14px_rgba(255,107,74,0.5)]">
+            <Avatar gradient="linear-gradient(135deg, #7c5cff 0%, #312e81 100%)" name="Alex" size={34} />
+            <div className="min-w-0 flex-1 rounded-[18px] rounded-tl-[6px] border border-flame/30 bg-flame/12 px-3.5 py-2.5 shadow-[0_8px_26px_-14px_rgba(124,92,255,0.5)]">
               <div className="flex items-baseline gap-2">
                 <span className="text-[13px] font-medium text-ink">You</span>
                 <span className="text-[11px] text-ink-faint">now</span>
@@ -204,7 +204,7 @@ export function NearbySheet({
   onOpenMatrix: () => void;
 }) {
   const nearby = [
-    { name: "Maya", dist: "2.4 km", score: 87, gradient: "linear-gradient(135deg, #ff6b4a 0%, #2d1b4e 100%)" },
+    { name: "Maya", dist: "2.4 km", score: 87, gradient: "linear-gradient(135deg, #7c5cff 0%, #1e1b4b 100%)" },
     { name: "Aisha", dist: "3.3 km", score: 84, gradient: "linear-gradient(145deg, #43cbff 0%, #9733ee 100%)" },
     { name: "Theo", dist: "4.9 km", score: 69, gradient: "linear-gradient(150deg, #5f2c82 0%, #49a09d 100%)" },
   ];

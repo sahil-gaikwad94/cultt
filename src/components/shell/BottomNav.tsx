@@ -64,7 +64,7 @@ export default function BottomNav() {
                 <>
                   <motion.span
                     layoutId="nav-pill"
-                    className="absolute inset-0 -z-10 rounded-full bg-flame/12 border border-flame/30 shadow-[0_6px_22px_-8px_rgba(255,107,74,0.55)]"
+                    className="absolute inset-0 -z-10 rounded-full bg-flame/12 border border-flame/30 shadow-[0_6px_22px_-8px_rgba(124,92,255,0.55)]"
                     transition={reduced ? { duration: 0 } : SPRING_SNAPPY}
                   />
                   <motion.span

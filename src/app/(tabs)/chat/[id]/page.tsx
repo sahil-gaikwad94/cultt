@@ -157,7 +157,7 @@ export default function ThreadPage() {
                 ? "you laughed at the same meme"
                 : "you both vibed with this track"}
             </p>
-            <div className="overflow-hidden rounded-[20px] border border-flame/40 bg-panel p-3.5 shadow-[0_10px_36px_-14px_rgba(255,107,74,0.35)]">
+            <div className="overflow-hidden rounded-[20px] border border-flame/40 bg-panel p-3.5 shadow-[0_10px_36px_-14px_rgba(124,92,255,0.35)]">
               <GradientTile gradient={match.matchedOn.gradient} className="aspect-[16/9] rounded-[12px]">
                 <span className="meme-text absolute inset-0 flex items-center justify-center p-3 text-center text-[12px]">
                   {match.matchedOn.title}
