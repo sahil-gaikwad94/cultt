@@ -108,6 +108,9 @@
   .card-lift {
     box-shadow: var(--shadow-float);
   }
+  .card {
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  }
   .glass {
     background: rgba(19, 20, 29, 0.66);
     backdrop-filter: blur(18px) saturate(1.25);
@@ -201,6 +204,29 @@
   .glow-flame {
     box-shadow: var(--glow-accent);
   }
+
+  /* pulsing halo for hero CTAs — opacity-only keyframe (transform-safe) */
+  .pulse-glow::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 24px rgba(124, 92, 255, 0.65);
+    opacity: 0;
+    animation: halo-pulse 2.6s ease-in-out infinite;
+  }
+
+  /* slow rotating dashed ring for "new" avatars — transform-only */
+  .halo::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: 9999px;
+    border: 1px dashed rgba(167, 139, 250, 0.7);
+    pointer-events: none;
+    animation: halo-spin 16s linear infinite;
+  }
   .press-lift {
     transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -265,6 +291,20 @@
   }
 }
 
+@keyframes halo-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes halo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @keyframes shimmer-sweep {
   from {
     background-position: 180% 0;
@@ -296,7 +336,9 @@
   }
   .aurora::before,
   .aurora::after,
-  .marquee > span {
+  .marquee > span,
+  .pulse-glow::after,
+  .halo::before {
     animation: none !important;
   }
 }

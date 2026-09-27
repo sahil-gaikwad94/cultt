@@ -118,11 +118,30 @@ export default function MatrixView() {
       <header className="safe-t shrink-0 px-5 pb-3">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <span className="mono-label !text-[9.5px] text-ink-faint">decide together</span>
-            <h1 className="display-lg mt-1 text-ink">Match Matrix</h1>
-            <p className="mono-label mt-1.5 !text-[9.5px] !tracking-[0.1em] whitespace-nowrap text-ink-faint">
+            <motion.span
+              initial={reduced ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="mono-label !text-[9.5px] text-ink-faint"
+            >
+              decide together
+            </motion.span>
+            <motion.h1
+              initial={reduced ? false : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.07, ease: "easeOut" }}
+              className="display-lg mt-1 text-ink"
+            >
+              Match Matrix
+            </motion.h1>
+            <motion.p
+              initial={reduced ? false : { opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.16, ease: "easeOut" }}
+              className="mono-label mt-1.5 !text-[9.5px] !tracking-[0.1em] whitespace-nowrap text-ink-faint"
+            >
               {queue.length} in queue · <span className="text-flame">{resonatesLeft} res</span> · {rewindsLeft} rewinds
-            </p>
+            </motion.p>
           </div>
           <Segmented
             id="matrix-mode"

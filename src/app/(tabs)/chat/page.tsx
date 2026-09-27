@@ -39,7 +39,7 @@ export default function ChatList() {
         <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1">
           {newMatches.map((m) => (
             <Link key={m.id} href={`/chat/${m.id}`} className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-              <span className="rounded-full p-[2.5px] ring-2 ring-flame/70 ring-offset-2 ring-offset-canvas">
+              <span className="halo relative rounded-full p-[2.5px] ring-2 ring-flame/70 ring-offset-2 ring-offset-canvas">
                 <Avatar gradient={m.gradient} name={m.name} size={56} />
               </span>
               <span className="w-full truncate text-center text-[11.5px] text-ink-dim">

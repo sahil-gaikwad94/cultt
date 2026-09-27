@@ -278,7 +278,7 @@ export function MatrixActions({
         aria-label={`Resonate — ${resonatesLeft} left today`}
         className={cn(
           btn,
-          "relative h-16 w-16 border-flame/70 bg-flame text-flame-ink disabled:opacity-35"
+          "relative h-16 w-16 border-flame/70 bg-flame text-flame-ink disabled:opacity-35 pulse-glow"
         )}
       >
         <Sparkles size={24} strokeWidth={2} />

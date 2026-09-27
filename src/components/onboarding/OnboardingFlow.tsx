@@ -188,12 +188,21 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
   /* GSAP headline stagger on slide change */
   useEffect(() => {
     if (reduced) return;
+    const words = document.querySelectorAll(`[data-slide="${slide}"] .onb-word`);
     const lines = document.querySelectorAll(`[data-slide="${slide}"] .onb-line`);
-    if (!lines.length) return;
+    const target = words.length ? words : lines;
+    if (!target.length) return;
     gsap.fromTo(
-      lines,
-      { y: 34, opacity: 0 },
-      { y: 0, opacity: 1, stagger: 0.09, duration: 0.65, ease: "power3.out", overwrite: true }
+      target,
+      { y: 30, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        stagger: words.length ? 0.045 : 0.09,
+        duration: 0.6,
+        ease: "power3.out",
+        overwrite: true,
+      }
     );
   }, [slide, reduced]);
 
@@ -282,7 +291,16 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
           >
             <div className="relative z-10 max-w-[440px]">
               <h1 className="onb-line whitespace-pre-line font-display text-[clamp(32px,9.4vw,46px)] font-medium leading-[1.06] tracking-[-0.025em] text-white text-sheet">
-                {s.headline}
+                {s.headline.split("\n").map((line, li, arr) => (
+                  <span key={li} className="block overflow-hidden pb-[0.08em]">
+                    {line.split(" ").map((w, wi, ws) => (
+                      <span key={wi} className="onb-word inline-block">
+                        {w}
+                        {wi < ws.length - 1 ? "\u00A0" : ""}
+                      </span>
+                    ))}
+                  </span>
+                ))}
               </h1>
               <p className="onb-line mx-auto mt-5 max-w-[350px] text-[15.5px] leading-relaxed text-white/85 text-sheet">
                 {s.sub}

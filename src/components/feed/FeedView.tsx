@@ -74,12 +74,28 @@ export default function FeedView() {
     }, 550);
   }, [bumpFeed]);
 
-  /* Lenis smooth scroll — wraps this feed only; disabled for reduced motion */
+  /* Lenis smooth scroll + progress hairline — wraps this feed only */
   useEffect(() => {
-    if (reduced) return;
     const content = contentRef.current;
-    const wrapper = content?.parentElement as HTMLElement | null | undefined;
-    if (!content || !wrapper || wrapper.scrollHeight <= wrapper.clientHeight + 40) return;
+    const wrapper =
+      (content?.closest(".overflow-y-auto") as HTMLElement | null) ??
+      (content?.parentElement ?? null);
+    if (!content || !wrapper) return;
+
+    /* progress hairline — tracks the real scroll container natively */
+    const bar = progressRef.current;
+    const update = () => {
+      if (!bar) return;
+      const max = wrapper.scrollHeight - wrapper.clientHeight;
+      const p = max > 0 ? Math.min(1, Math.max(0, wrapper.scrollTop / max)) : 0;
+      bar.style.transform = `scaleX(${p})`;
+    };
+    wrapper.addEventListener("scroll", update, { passive: true });
+    update();
+
+    if (reduced || wrapper.scrollHeight <= wrapper.clientHeight + 40) {
+      return () => wrapper.removeEventListener("scroll", update);
+    }
     const lenis = new Lenis({
       wrapper,
       content,
@@ -97,11 +113,13 @@ export default function FeedView() {
     return () => {
       cancelAnimationFrame(raf);
       lenis.destroy();
+      wrapper.removeEventListener("scroll", update);
     };
   }, [reduced, loading]);
 
   /* infinite scroll sentinel */
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (loading) return;
     const el = sentinelRef.current;
@@ -125,6 +143,12 @@ export default function FeedView() {
 
   return (
     <>
+      <div
+        ref={progressRef}
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[2.5px] origin-left bg-flame shadow-[0_0_12px_rgba(124,92,255,0.85)]"
+        style={{ transform: "scaleX(0)" }}
+      />
       <div ref={contentRef} className="flex flex-col gap-5 px-5 pb-10 pt-3">
         {/* culture ticker — editorial energy, pure transform animation */}
         <div className="marquee -mx-5 px-5" aria-hidden>

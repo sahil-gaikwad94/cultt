@@ -45,14 +45,14 @@ export default function NotificationsView() {
                     All clear here.
                   </div>
                 )}
-                {items.map((n) => (
+                {items.map((n, ni) => (
                   <motion.div
                     key={n.id}
                     layout={!reduced}
                     initial={reduced ? false : { opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: 40 }}
-                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    transition={{ duration: 0.28, ease: "easeOut", delay: reduced ? 0 : ni * 0.045 }}
                     className={cn(
                       "relative flex items-start gap-3 rounded-[20px] border p-4 pr-10",
                       n.unread
