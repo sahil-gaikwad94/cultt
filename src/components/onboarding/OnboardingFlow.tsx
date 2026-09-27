@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion, useMotionValue } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react";
 import gsap from "gsap";
 import { ChevronLeft } from "lucide-react";
 import { AMBIENT_PALETTES, AmbientCanvas } from "./AmbientCanvas";
@@ -151,8 +151,16 @@ export default function OnboardingFlow() {
   );
 }
 
+const SLIDE_ART = [
+  "/art/welcome-hero.png",
+  "/art/scene-mural.png",
+  "/art/scene-rooftop.png",
+];
+
 /* ── welcome carousel: ambient canvas + R3F vinyl + GSAP parallax ── */
 function WelcomeCarousel({ onNext }: { onNext: () => void }) {
+  const mx = useSpring(0, { stiffness: 260, damping: 20 });
+  const my = useSpring(0, { stiffness: 260, damping: 20 });
   const reduced = useAppReduced();
   const toast = useToast();
   const router = useRouter();
@@ -242,12 +250,19 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
       {/* ambient “video” — welcome carousel only */}
       <div id="onb-ambient" className="absolute -inset-x-16 inset-y-0">
         <AmbientCanvas palette={slide} />
-        <img
-          src="/art/welcome-hero.png"
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-55"
-        />
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={SLIDE_ART[slide] ?? SLIDE_ART[0]}
+            src={SLIDE_ART[slide] ?? SLIDE_ART[0]}
+            alt=""
+            aria-hidden
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 0.55, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </AnimatePresence>
         <div
           aria-hidden
           className="absolute inset-0"
@@ -327,14 +342,28 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
           ))}
         </div>
         <div className="w-full max-w-[330px]">
-          <Button
-            variant="flame"
-            size="lg"
-            className="w-full shadow-[0_12px_40px_rgba(124,92,255,0.35)]"
-            onClick={() => (slide < SLIDES.length - 1 ? goTo(slide + 1) : onNext())}
+          <motion.div
+            style={{ x: mx, y: my }}
+            onPointerMove={(e) => {
+              if (reduced || e.pointerType !== "mouse") return;
+              const r = e.currentTarget.getBoundingClientRect();
+              mx.set(Math.max(-9, Math.min(9, (e.clientX - r.left - r.width / 2) * 0.16)));
+              my.set(Math.max(-7, Math.min(7, (e.clientY - r.top - r.height / 2) * 0.22)));
+            }}
+            onPointerLeave={() => {
+              mx.set(0);
+              my.set(0);
+            }}
           >
-            {slide < SLIDES.length - 1 ? "Next" : "Get started — I'm 18+"}
-          </Button>
+            <Button
+              variant="flame"
+              size="lg"
+              className="w-full shadow-[0_12px_40px_rgba(124,92,255,0.35)]"
+              onClick={() => (slide < SLIDES.length - 1 ? goTo(slide + 1) : onNext())}
+            >
+              {slide < SLIDES.length - 1 ? "Next" : "Get started — I'm 18+"}
+            </Button>
+          </motion.div>
           <button
             onClick={() => {
               completeOnboarding();
@@ -344,7 +373,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
             className="mt-3 w-full text-center text-[13.5px] text-white/70 underline-offset-4 hover:text-white hover:underline text-sheet"
           >
             I already have an account
-          </button>
+         </button>
         </div>
         <p className="mono-label !text-[9.5px] text-white/55 text-sheet">swipe to explore →</p>
       </div>

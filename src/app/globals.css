@@ -65,6 +65,14 @@
     font-family: var(--font-sans);
     overscroll-behavior: none;
     text-rendering: optimizeLegibility;
+    /* app-feel: drags never select text (inputs stay selectable) */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
   }
   ::selection {
     background: rgba(124, 92, 255, 0.4);

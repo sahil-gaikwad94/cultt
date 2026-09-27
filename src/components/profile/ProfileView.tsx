@@ -6,6 +6,7 @@ import { BadgeCheck, Camera, Eye, Lock, MapPin, Pencil, Plus, Settings, Sparkles
 import { myFingerprint } from "@/lib/mockData";
 import { useAppStore } from "@/lib/store";
 import { Avatar, GradientTile } from "@/components/ui/GradientTile";
+import TasteOrb from "@/components/profile/TasteOrb";
 import { Switch } from "@/components/ui/Switch";
 import { HumorBars, SectionTitle } from "@/components/matrix/ExpandedFingerprint";
 import { useToast } from "@/components/ui/Toaster";
@@ -190,6 +191,7 @@ export default function ProfileView() {
 
         {tab === "fingerprint" && (
           <div className="flex flex-col gap-6">
+            <TasteOrb />
             <section>
               <div className="mb-3.5 flex items-center justify-between">
                 <SectionTitle>Humor style</SectionTitle>

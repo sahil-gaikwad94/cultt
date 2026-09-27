@@ -10,6 +10,7 @@ import { Avatar, GradientTile } from "@/components/ui/GradientTile";
 import { ListeningSession } from "@/components/chat/ListeningSession";
 import { cn } from "@/lib/utils";
 import { useAppReduced } from "@/lib/motion";
+import { sceneFor } from "@/lib/art";
 
 const EMOJIS = ["❤️", "😂", "🔥", "👏"];
 const CANNED_REPLIES = [
@@ -170,13 +171,19 @@ export default function ThreadPage() {
         )}
 
         <div className="flex flex-col gap-3">
-          {ordered.map((m) => {
+          {ordered.map((m, mi) => {
             const mine = m.senderId === "me";
             if (m.attachment) {
               return (
-                <div key={m.id} className={cn("flex", mine ? "justify-start" : "justify-start")}>
+                <motion.div
+                key={m.id}
+                initial={reduced ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.32, ease: "easeOut", delay: Math.min(mi * 0.06, 0.3) }}
+                className={cn("flex", mine ? "justify-start" : "justify-start")}
+              >
                   <div className="max-w-[78%] overflow-hidden rounded-[18px] border border-hairline bg-panel">
-                    <GradientTile gradient={m.attachment.gradient} className="aspect-[5/4]">
+                    <GradientTile gradient={m.attachment.gradient} src={sceneFor(m.id)} className="aspect-[5/4]">
                       <span className="meme-text absolute inset-0 flex items-center justify-center p-3 text-center text-[13px]">
                         {m.attachment.title}
                       </span>
@@ -186,11 +193,17 @@ export default function ThreadPage() {
                       <p className="mt-1 text-[11px] text-ink-faint">attached to this match</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             }
             return (
-              <div key={m.id} className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
+              <motion.div
+                key={m.id}
+                initial={reduced ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.32, ease: "easeOut", delay: Math.min(mi * 0.06, 0.3) }}
+                className={cn("flex flex-col", mine ? "items-end" : "items-start")}
+              >
                 <button
                   onClick={() => setReactTo(reactTo === m.id ? null : m.id)}
                   className={cn(
@@ -227,7 +240,7 @@ export default function ThreadPage() {
                     ))}
                   </motion.div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
 

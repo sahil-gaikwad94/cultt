@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { FeedPost } from "@/lib/types";
 import { GRADIENTS } from "@/lib/mockData";
+import { sceneFor } from "@/lib/art";
 import { Avatar, GradientTile, MemeFace } from "@/components/ui/GradientTile";
 import { Waveform } from "./Waveform";
 import { Button } from "@/components/ui/Button";
@@ -359,7 +360,7 @@ export function TrackCard({
     <CardShell index={index}>
       <AuthorRow post={post} />
       <div className="flex gap-3.5">
-        <GradientTile gradient={post.gradient} className="h-[88px] w-[88px] shrink-0 rounded-[14px]">
+        <GradientTile gradient={post.gradient} src={sceneFor(post.id)} className="h-[88px] w-[88px] shrink-0 rounded-[14px]">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="h-9 w-9 rounded-full border-2 border-white/60 bg-black/30" />
           </div>
