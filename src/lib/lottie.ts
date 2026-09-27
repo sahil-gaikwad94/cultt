@@ -4,7 +4,7 @@
  * Generated programmatically so colors/density stay in sync with tokens.
  */
 
-const ACCENT: [number, number, number, number] = [1, 0.4196, 0.2902, 1]; // #FF6B4A
+const ACCENT: [number, number, number, number] = [1, 0.4196, 0.2902, 1]; // #7C5CFF
 const PAPER: [number, number, number, number] = [0.9608, 0.9451, 0.9176, 1]; // #F5F1EA
 
 type Keyframe = Record<string, unknown>;

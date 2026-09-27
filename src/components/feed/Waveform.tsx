@@ -59,7 +59,7 @@ export function Waveform({
         const past = progress >= 0 ? i / amps.length <= progress : true;
         ctx.fillStyle = past
           ? playing
-            ? "#FF6B4A"
+            ? "#7C5CFF"
             : "rgba(245,241,234,0.55)"
           : "rgba(245,241,234,0.16)";
         ctx.beginPath();

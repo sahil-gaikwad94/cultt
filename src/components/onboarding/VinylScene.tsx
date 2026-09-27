@@ -28,7 +28,7 @@ function Vinyl() {
     grooves.push(
       <mesh key={r}>
         <ringGeometry args={[r, r + 0.012, 96]} />
-        <meshBasicMaterial color="#2a2620" transparent opacity={0.9} />
+        <meshBasicMaterial color="#1a1b27" transparent opacity={0.9} />
       </mesh>
     );
   }
@@ -38,18 +38,18 @@ function Vinyl() {
       {/* disc */}
       <mesh>
         <circleGeometry args={[1.7, 96]} />
-        <meshStandardMaterial color="#0e0d0b" roughness={0.35} metalness={0.25} />
+        <meshStandardMaterial color="#0d0e16" roughness={0.35} metalness={0.25} />
       </mesh>
       {grooves}
       {/* label */}
       <mesh position={[0, 0, 0.01]}>
         <circleGeometry args={[0.58, 64]} />
-        <meshStandardMaterial color="#FF6B4A" roughness={0.55} />
+        <meshStandardMaterial color="#7C5CFF" roughness={0.55} />
       </mesh>
       {/* spindle hole */}
       <mesh position={[0, 0, 0.02]}>
         <circleGeometry args={[0.05, 32]} />
-        <meshBasicMaterial color="#14120E" />
+        <meshBasicMaterial color="#0A0B12" />
       </mesh>
       {/* sheen */}
       <mesh position={[0, 0, 0.03]} rotation={[0, 0, 0.4]}>
@@ -74,11 +74,11 @@ function MemeCards() {
   });
 
   const cards: { pos: [number, number, number]; color: string; rot: number }[] = [
-    { pos: [-2.5, 1.35, -0.4], color: "#E8476D", rot: 0.28 },
-    { pos: [2.55, -0.4, -0.6], color: "#7A2E8E", rot: -0.32 },
-    { pos: [-2.2, -1.5, -0.2], color: "#2A9D8F", rot: -0.18 },
-    { pos: [2.1, 1.6, -0.9], color: "#43CBFF", rot: 0.4 },
-    { pos: [-2.9, -1.9, -1.1], color: "#F4A261", rot: 0.1 },
+    { pos: [-2.5, 1.35, -0.4], color: "#7C5CFF", rot: 0.28 },
+    { pos: [2.55, -0.4, -0.6], color: "#A78BFA", rot: -0.32 },
+    { pos: [-2.2, -1.5, -0.2], color: "#22D3EE", rot: -0.18 },
+    { pos: [2.1, 1.6, -0.9], color: "#5B5FE0", rot: 0.4 },
+    { pos: [-2.9, -1.9, -1.1], color: "#8B7BF7", rot: 0.1 },
   ];
 
   return (
@@ -119,7 +119,7 @@ export default function VinylScene() {
     >
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 4, 5]} intensity={1.4} />
-      <directionalLight position={[-4, -2, 3]} intensity={0.5} color="#FF6B4A" />
+      <directionalLight position={[-4, -2, 3]} intensity={0.5} color="#7C5CFF" />
       <group position={[0.1, 0.62, 0]} scale={0.82}>
         <Vinyl />
       </group>
