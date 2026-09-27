@@ -68,8 +68,8 @@ export default function ChatList() {
                 key={m.id}
                 href={`/chat/${m.id}`}
                 className={cn(
-                  "flex items-center gap-3.5 rounded-[18px] px-2 py-3.5 transition-colors hover:bg-panel",
-                  m.unread > 0 && "bg-panel/70"
+                  "flex items-center gap-3.5 rounded-[20px] px-2.5 py-3.5 transition-colors hover:bg-panel/80",
+                  m.unread > 0 && "glass border-flame/25 px-3"
                 )}
               >
                 <div className="relative shrink-0">

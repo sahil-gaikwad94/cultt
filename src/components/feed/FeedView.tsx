@@ -160,6 +160,13 @@ export default function FeedView() {
           onPlayToggle={() => setPlayingId((p) => (p === "drop" ? null : "drop"))}
         />
 
+        {/* section divider — editorial rhythm */}
+        <div className="flex items-center gap-3 pt-1">
+          <span className="mono-label !text-[9.5px] text-ink-faint">fresh in the culture</span>
+          <span className="h-px flex-1 bg-hairline" />
+          <span className="numeral text-[12px] text-ink-faint">{posts.length}</span>
+        </div>
+
         {posts.map((post, i) => {
           const common = {
             post,

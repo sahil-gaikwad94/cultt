@@ -200,16 +200,14 @@ function CalibProgress({
   return (
     <div className="pb-5">
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-dim">
-          {label}
-        </span>
-        <span className="text-[12px] tabular-nums text-ink-faint">
+        <span className="mono-label">{label}</span>
+        <span className="numeral text-[13px] text-ink-dim">
           {Math.min(done + 1, total)}/{total}
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-panel-2 border border-hairline">
         <motion.div
-          className="h-full rounded-full bg-flame"
+          className="h-full rounded-full bg-flame shadow-[0_0_12px_rgba(255,107,74,0.55)]"
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
@@ -235,7 +233,7 @@ function CalibActions({
           whileTap={reduced ? undefined : { scale: 0.9 }}
           onClick={onSkip}
           aria-label="Skip"
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink"
+          className="flex h-14 w-14 items-center justify-center rounded-full glass text-ink hover:bg-panel-3"
         >
           <X size={22} strokeWidth={2.2} />
         </motion.button>
@@ -243,7 +241,7 @@ function CalibActions({
           whileTap={reduced ? undefined : { scale: 0.9 }}
           onClick={onLike}
           aria-label="Like"
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-flame text-flame-ink shadow-[0_10px_30px_rgba(255,107,74,0.3)]"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-flame text-flame-ink glow-flame"
         >
           <Heart size={24} strokeWidth={2} />
         </motion.button>
@@ -251,12 +249,12 @@ function CalibActions({
           whileTap={reduced ? undefined : { scale: 0.9 }}
           onClick={onSkip}
           aria-label="Next"
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-hairline bg-panel-2 text-ink-dim"
+          className="flex h-14 w-14 items-center justify-center rounded-full glass text-ink-dim hover:bg-panel-3"
         >
           <SkipForward size={20} strokeWidth={2} />
         </motion.button>
       </div>
-      <p className="text-center text-[11.5px] text-ink-faint">{hint}</p>
+      <p className="mono-label text-center !text-[9.5px] text-ink-faint">{hint}</p>
     </div>
   );
 }

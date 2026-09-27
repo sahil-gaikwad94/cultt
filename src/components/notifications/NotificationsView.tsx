@@ -64,7 +64,7 @@ export default function NotificationsView() {
                       {n.gradient ? (
                         <Avatar gradient={n.gradient} name={n.title} size={40} />
                       ) : (
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-hairline bg-panel-2 text-flame">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-[13px] border border-hairline bg-panel-2 text-flame shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                           {sec.id === "matches" ? (
                             <Heart size={17} strokeWidth={1.75} />
                           ) : sec.id === "feed" ? (
@@ -101,7 +101,7 @@ export default function NotificationsView() {
                         <X size={15} />
                       </button>
                     ) : n.unread ? (
-                      <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-flame" />
+                      <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-flame shadow-[0_0_10px_rgba(255,107,74,0.9)]" />
                     ) : null}
                   </motion.div>
                 ))}
@@ -110,7 +110,7 @@ export default function NotificationsView() {
           );
         })}
 
-        <div className="rounded-[16px] border border-hairline bg-panel-2 p-4 text-center">
+        <div className="rounded-[20px] glass p-4.5 text-center">
           <p className="text-[12.5px] leading-relaxed text-ink-dim">
             <span className="text-ink">No dark patterns live here.</span> Never
             “3 people are waiting for you!” — notification categories are all

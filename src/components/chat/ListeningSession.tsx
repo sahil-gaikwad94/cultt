@@ -97,7 +97,7 @@ export function ListeningSession({
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 34 }}
           className="fixed inset-x-0 bottom-0 z-[260] max-h-[92dvh] overflow-hidden rounded-t-sheet border border-hairline bg-panel shadow-[0_-20px_70px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto mt-3 h-1 w-11 rounded-full bg-flame/50 shadow-[0_0_12px_rgba(255,107,74,0.5)]" />
+          <div className="mx-auto mt-3 h-1 w-11 rounded-full bg-flame/50 shadow-[0_0_12px_rgba(255,107,74,0.5)] glow-flame" />
           <div className="no-scrollbar max-h-[88dvh] overflow-y-auto px-5 pb-7 pt-3">
             {/* header */}
             <div className="flex items-center gap-3">
@@ -216,8 +216,8 @@ export function ListeningSession({
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-full transition-colors",
                     playing
-                      ? "border border-flame/60 bg-flame/15 text-flame"
-                      : "bg-flame text-flame-ink",
+                      ? "border border-flame/70 bg-flame/18 text-flame shadow-[0_0_28px_rgba(255,107,74,0.55)]"
+                      : "bg-flame text-flame-ink glow-flame",
                     atCap && "opacity-40"
                   )}
                 >

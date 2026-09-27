@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-7">
-      <h2 className="mb-2.5 px-1 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+      <h2 className="mono-label mb-3 px-1.5">
         {title}
       </h2>
       <div className="card overflow-hidden">

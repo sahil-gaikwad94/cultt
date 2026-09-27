@@ -39,7 +39,7 @@ export function CommentSheet({
         {MOCK_COMMENTS.map((c) => (
           <div key={c.id} className="flex items-start gap-3">
             <Avatar gradient={c.gradient} name={c.name} size={34} />
-            <div className="min-w-0 flex-1 rounded-[14px] rounded-tl-[4px] border border-hairline bg-panel-2 px-3.5 py-2.5">
+            <div className="min-w-0 flex-1 rounded-[18px] rounded-tl-[6px] border border-hairline bg-panel-2 px-3.5 py-2.5">
               <div className="flex items-baseline gap-2">
                 <span className="text-[13px] font-medium text-ink">{c.name}</span>
                 <span className="text-[11px] text-ink-faint">{c.time}</span>
@@ -51,7 +51,7 @@ export function CommentSheet({
         {added.map((t, i) => (
           <div key={`a${i}`} className="flex items-start gap-3">
             <Avatar gradient="linear-gradient(135deg, #ff8a5c 0%, #7a2e8e 100%)" name="Alex" size={34} />
-            <div className="min-w-0 flex-1 rounded-[14px] rounded-tl-[4px] border border-flame/30 bg-flame/10 px-3.5 py-2.5">
+            <div className="min-w-0 flex-1 rounded-[18px] rounded-tl-[6px] border border-flame/30 bg-flame/12 px-3.5 py-2.5 shadow-[0_8px_26px_-14px_rgba(255,107,74,0.5)]">
               <div className="flex items-baseline gap-2">
                 <span className="text-[13px] font-medium text-ink">You</span>
                 <span className="text-[11px] text-ink-faint">now</span>
@@ -74,7 +74,7 @@ export function CommentSheet({
               }
             }}
             placeholder="Add to the bit…"
-            className="h-11 flex-1 rounded-full border border-hairline bg-panel-2 px-4 text-[14px] text-ink placeholder:text-ink-faint focus:outline-none focus:border-flame/40"
+            className="glass h-11 flex-1 rounded-full px-4 text-[14px] text-ink placeholder:text-ink-faint focus:outline-none focus:border-flame/45"
           />
           <button
             aria-label="Send comment"
@@ -85,7 +85,7 @@ export function CommentSheet({
               setText("");
               toast("Comment posted");
             }}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-flame text-flame-ink"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-flame text-flame-ink glow-flame"
           >
             <Send size={17} strokeWidth={2} />
           </button>

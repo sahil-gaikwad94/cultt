@@ -179,7 +179,7 @@ export default function ProfileView() {
             <section>
               <div className="mb-3.5 flex items-center justify-between">
                 <SectionTitle>Humor style</SectionTitle>
-                <span className="text-[11px] text-ink-faint">
+                <span className="mono-label !text-[9.5px]">
                   updates on every reaction
                 </span>
               </div>
