@@ -160,6 +160,8 @@ export default function MatrixView() {
         {queue.length === 0 ? (
           <EmptyState onRewind={handleRewind} canRewind={canRewind} />
         ) : (
+          <>
+          <div aria-hidden className="aurora opacity-70" />
           <div className="stage-3d absolute inset-x-4 bottom-1 top-1">
             {/* peeking cards behind */}
             {queue.slice(1, 3).map((c, i) => (
@@ -190,6 +192,7 @@ export default function MatrixView() {
               />
             </div>
           </div>
+          </>
         )}
       </div>
 

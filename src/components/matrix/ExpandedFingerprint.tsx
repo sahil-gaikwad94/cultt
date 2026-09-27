@@ -6,6 +6,7 @@ import type { Candidate, HumorVector } from "@/lib/types";
 import { Chip } from "@/components/ui/Chip";
 import { Avatar, GradientTile } from "@/components/ui/GradientTile";
 import { useAppReduced } from "@/lib/motion";
+import { sceneFor } from "@/lib/art";
 import { Portal } from "@/components/ui/Portal";
 
 /* ── humor style bars (4 dims, one-line Fraunces-italic summary) ── */
@@ -224,6 +225,13 @@ export function ExpandedFingerprint({
           className="absolute inset-0 overflow-hidden rounded-[24px] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.8)]"
           style={{ background: candidate.photoGradient }}
         >
+          <img
+            src={sceneFor(candidate.id)}
+            alt=""
+            draggable={false}
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
           <div
             aria-hidden
             className="absolute inset-0 opacity-[0.16] mix-blend-overlay"

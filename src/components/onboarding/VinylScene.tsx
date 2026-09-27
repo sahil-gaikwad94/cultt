@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
@@ -15,9 +15,16 @@ import { useAppReduced } from "@/lib/motion";
 function Vinyl() {
   const spin = useRef<THREE.Group>(null);
   const reduced = useAppReduced();
+  /* interactive: grab the record and spin it — flick keeps momentum */
+  const dragging = useRef(false);
+  const lastX = useRef(0);
+  const vel = useRef(0);
   useFrame((state, delta) => {
-    if (spin.current && !reduced) spin.current.rotation.z += delta * 0.55;
     if (spin.current && !reduced) {
+      if (!dragging.current) {
+        vel.current *= 0.94;
+        spin.current.rotation.z += delta * 0.55 + vel.current * delta;
+      }
       spin.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.4) * 0.12;
       spin.current.rotation.y = Math.cos(state.clock.elapsedTime * 0.3) * 0.16;
     }
@@ -36,7 +43,33 @@ function Vinyl() {
   return (
     <group ref={spin}>
       {/* disc */}
-      <mesh>
+      <mesh
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          dragging.current = true;
+          lastX.current = e.clientX;
+          vel.current = 0;
+        }}
+        onPointerMove={(e) => {
+          if (!dragging.current || !spin.current) return;
+          e.stopPropagation();
+          const dx = e.clientX - lastX.current;
+          lastX.current = e.clientX;
+          spin.current.rotation.z += dx * 0.014;
+          vel.current = dx * 0.55;
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          dragging.current = false;
+        }}
+        onPointerOut={() => {
+          dragging.current = false;
+          document.body.style.cursor = "";
+        }}
+        onPointerOver={() => {
+          if (!reduced) document.body.style.cursor = "grab";
+        }}
+      >
         <circleGeometry args={[1.7, 96]} />
         <meshStandardMaterial color="#0d0e16" roughness={0.35} metalness={0.25} />
       </mesh>
@@ -109,13 +142,14 @@ function MemeCards() {
 
 export default function VinylScene() {
   const reduced = useAppReduced();
+  useEffect(() => () => { document.body.style.cursor = ""; }, []);
   if (reduced) return null; // 3D disabled under prefers-reduced-motion
   return (
     <Canvas
       dpr={[1, 1.5]}
       camera={{ position: [0, 0, 5.4], fov: 45 }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
-      style={{ pointerEvents: "none" }}
+      style={{ pointerEvents: "auto", touchAction: "none" }}
     >
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 4, 5]} intensity={1.4} />

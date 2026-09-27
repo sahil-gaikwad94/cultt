@@ -260,7 +260,7 @@ function WelcomeCarousel({ onNext }: { onNext: () => void }) {
 
       {/* THE single 3D surface */}
       {!reduced && (
-        <div id="onb-vinyl" className="pointer-events-none absolute inset-0">
+        <div id="onb-vinyl" className="pointer-events-none absolute inset-0 z-[5]">
           <VinylScene />
         </div>
       )}

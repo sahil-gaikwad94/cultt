@@ -19,6 +19,7 @@ import type { Candidate } from "@/lib/types";
 import { Chip } from "@/components/ui/Chip";
 import { cn } from "@/lib/utils";
 import { SPRING, useAppReduced } from "@/lib/motion";
+import { sceneFor } from "@/lib/art";
 
 export type ExitDir = -1 | 0 | 1; // -1 pass · 1 vibe · 0 resonate
 
@@ -49,6 +50,8 @@ export function CandidateCard({
   const passOpacity = useTransform(x, [-150, -45], [1, 0]);
   const vibeOpacity = useTransform(x, [45, 150], [0, 1]);
   const resoOpacity = useTransform(y, [-150, -45], [1, 0]);
+  /* glossy sheen sweeps across the photo while dragging — art-layer transform */
+  const sheenX = useTransform(x, [-260, 260], ["-110%", "230%"]);
   const exiting = useRef(false);
 
   const flyOut = (dir: ExitDir) => {
@@ -97,6 +100,19 @@ export function CandidateCard({
           className="absolute inset-0 overflow-hidden rounded-[18px]"
           style={{ background: candidate.photoGradient }}
         >
+          <img
+            src={sceneFor(candidate.id)}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute -top-[15%] left-0 h-[130%] w-[42%] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+            style={{ x: sheenX, skewX: -16 }}
+          />
           <div
             aria-hidden
             className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
