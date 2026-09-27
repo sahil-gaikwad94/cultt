@@ -48,10 +48,11 @@ export function Toaster() {
             exit={{ opacity: 0, y: 8, scale: 0.97 }}
             transition={reduced ? { duration: 0 } : FADE}
             className={cn(
-              "pointer-events-auto max-w-[86%] rounded-full border border-hairline bg-[#2b271f] px-4 py-2.5",
-              "text-[13px] text-ink shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
+              "pointer-events-auto max-w-[86%] rounded-full glass px-4 py-2.5",
+              "text-[13px] text-ink shadow-[0_14px_44px_rgba(0,0,0,0.6)] flex items-center gap-2"
             )}
           >
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-flame shadow-[0_0_8px_rgba(255,107,74,0.9)]" />
             {t.msg}
           </motion.div>
         ))}
