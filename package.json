@@ -11,7 +11,9 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:seed": "node scripts/build-seed-sql.mjs",
+    "test:db": "sh supabase/tests/run.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

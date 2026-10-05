@@ -164,3 +164,32 @@ idempotent and does not move the vector.
 
 **Flags added.** None at runtime. `flags` stays in `system_config`; mock remains
 the default adapter. `supabase/` is inert until credentials exist.
+
+## 2026-10-06 — generated seed migration
+
+**What.** `scripts/build-seed-sql.mjs` emits `supabase/migrations/0009_seed.sql`:
+122 original memes and 24 original tracks, with real `vector(34)` / `vector(48)`
+values, plus a fortnight of daily drops.
+
+**Why generate rather than hand-write.** The vectors come from the app's own
+`memeStyleVector` / `trackEmbedding`, loaded through esbuild. Re-implementing the
+taxonomy in SQL would be a second source of truth that drifts silently: a tag
+added to `taxonomy.ts` would change the client's vectors and not the database's,
+producing a feed that ranks incorrectly with no error anywhere. Now the seed and
+the client cannot disagree, and the emitted SQL is committed so deploys never
+depend on the script having run.
+
+**Why the assertions check properties, not row counts.** A seed that inserts 122
+rows with null vectors passes a row count and breaks the entire feed. `005_seed`
+checks every row for a non-null, correctly-sized vector, for caption and alt
+text, for a real feed tab, and for the `cultured-original` provenance marker —
+the last one because a licensed row appearing in this corpus would mean shipping
+content without a clearance. It also measures the engine's central premise
+against the seeded data: same-tag cosine 0.68 vs different-tag 0.31.
+
+**Ordering.** The seed test runs *before* the RLS test (`005_` before `010_`)
+because the RLS fixtures insert their own meme and track; running the seed checks
+afterwards measured the fixtures too.
+
+**Added.** `npm run db:seed` (regenerate) and `npm run test:db` (throwaway
+database + all migrations + all SQL tests).
