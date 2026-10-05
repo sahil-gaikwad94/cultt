@@ -659,7 +659,8 @@ ACT['prof-res']=b=>{
 };
 function showMutual(p){
   const o=$('#overlay');
-  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-fp">${pairFP(p)}</div><h2>You and ${esc(p.name)} resonate</h2><p>${p.score}% overlap. You both play ${esc(sharedTitles(p))}.</p><button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button></div>`;
+  const sparks=Array.from({length:28},(_,i)=>`<i style="--i:${i};--a:${(i/28*360).toFixed(1)}deg;--d:${34+(i%5)*12}px">${['✦','•','♪','♡'][i%4]}</i>`).join('');
+  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-sparks" aria-hidden="true">${sparks}</div><div class="mut-fp">${pairFP(p)}</div><span class="eyebrow">A rare overlap</span><h2>You two resonate.</h2><p>${p.score}% overlap. You both play ${esc(sharedTitles(p))}.</p><button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button></div>`;
   o.classList.add('on');haptic([20,60,20,60,30]);track('match_created',{source:'matrix',score:p.score});
 }
 ACT['mut-close']=()=>{const o=$('#overlay');o.classList.remove('on');o.innerHTML=''};
@@ -700,7 +701,7 @@ const TYPING={};
 function renderMsgs(id){
   const pg=$(`.page[data-thread="${id}"]`);if(!pg)return;
   const p=person(id),t=S.threads[id],box=$('#msgs',pg);
-  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><button class="cta sm" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">Listen together for 15 minutes</button></div>`
+  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button><button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">Listen together</button></div></div>`
     +t.msgs.map(m=>m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div><button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button></div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
   box.scrollTop=box.scrollHeight;
   $('#starters',pg).innerHTML=t.msgs.length<=1?`<div class="starters">${STARTERS.map(s=>`<button class="chip" data-act="starter" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:'';
@@ -720,6 +721,14 @@ function sendMsg(id,text){
 const threadId=()=>{const pg=$('.page[data-thread]:not([data-closing])');return pg&&pg.dataset.thread};
 ACT.send=()=>{const id=threadId();if(!id)return;const inp=$('#msg-in');const v=inp.value;inp.value='';sendMsg(id,v)};
 ACT.starter=b=>{const id=threadId();if(id)sendMsg(id,b.dataset.s)};
+ACT.icebreaker=b=>{
+  const p=person(b.dataset.id);if(!p)return;
+  const prompts=[`What makes ${TRACKS[p.shared[0]].title} a five-replay song for you?`,`Be honest: what’s your most defensible bad taste?`,`Which one of your playlists would you hide from the group chat?`,`What should we listen to when the bus is almost empty?`];
+  const prompt=prompts[hash(p.id+S.prof.name)%prompts.length];
+  openSheet(`<span class="chipg">Icebreaker Roulette</span><h3 class="sh-t" style="margin-top:14px">Start with something real.</h3><div class="ice-card"><span>${I.chat}</span><p>${esc(prompt)}</p></div><button class="cta" data-act="ice-send" data-s="${esc(prompt)}">Use this opener</button><button class="cta ghostb" data-act="ice-again" data-id="${p.id}">Try another</button>`);
+};
+ACT['ice-send']=b=>{const id=threadId();if(id){sendMsg(id,b.dataset.s);closeSheet()}};
+ACT['ice-again']=b=>ACT.icebreaker(b);
 ACT['song-pick']=()=>{
   openSheet(`<h3 class="sh-t">Send a song</h3>${Object.values(TRACKS).map(t=>`<button class="trk" data-act="song-send" data-id="${t.id}"><div class="tile">${poster(t,true)}</div><div><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div></button>`).join('')}`);
 };
@@ -960,9 +969,11 @@ ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),
 ACT.unsave=b=>{rs(b.dataset.id).s=0;save();syncPost(b.dataset.id);closeSheet();renderYou()};
 SEG.vis=v=>{S.prof.vis=v;save();toast({all:'Everyone can see your Fingerprint',matches:'Only matches can see it',me:'Your Fingerprint is private'}[v])};
 ACT['share-fp']=()=>{
+  const saved=Object.keys(mmS().s).filter(k=>mmS().s[k]).map(k=>mmOf(k)).filter(Boolean).slice(0,3);
+  const artists=S.prof.artists.slice(0,3);
   openSheet(`<h3 class="sh-t">Share your Fingerprint</h3>
-    <div class="pf-fp"><div class="pair draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:16,w:1.4})}</div><div style="position:absolute;left:20px;bottom:16px;font-size:40px;font-weight:800;font-stretch:75%;letter-spacing:-.045em">${esc(S.prof.name)}</div></div>
-    <p class="hint" style="margin:12px 0 16px">Friends see your shape, humor and artists. Your photos and location stay private.</p>
+    <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
+    <p class="hint" style="margin:12px 0 16px">A live preview built from your current signals. Photos and location stay private.</p>
     <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 };
 

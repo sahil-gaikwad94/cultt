@@ -29,3 +29,9 @@ The Phase 1 screens can be designed and exercised against the mock adapter now. 
 - “Photo checked” is used instead of “verified identity”, following the brief’s liveness caveat.
 - Motion stays code-driven and low-cost. Generated raster media remains scenery behind the interface; reduced-motion and Calm Mode disable background drift and animated calibration treatments.
 - The free-plan video generation attempt was not shipped because the selected model required more credits than available. Matrix retains its poster/fallback slot and can accept a future video asset without a screen redesign.
+
+## 2026-10-06 — signature loop surfaces
+
+- The mutual-match moment is code-driven: a live pair fingerprint, staged coral/yellow particles, haptic success pattern, and a clear “Say hi” decision. No video or baked text is required.
+- Chat now exposes Icebreaker Roulette as an optional opener generator. It uses a shared artist or cultural prompt and sends only after an explicit user action.
+- Fingerprint sharing now previews a live-data Taste Card with the current fingerprint, humor signals, artists, saved meme tiles, and watermark/CTA language. Server-side SVG/PNG rendering remains the production adapter responsibility.
