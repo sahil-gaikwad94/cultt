@@ -70,6 +70,8 @@ const I={
 };
 const SEAT='<svg viewBox="0 0 24 24"><path d="M7 11V8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V11"/><rect x="4.5" y="11" width="15" height="7" rx="2.5"/><path d="M7 18v1.5M17 18v1.5"/></svg>';
 const RING_GLYPH=`<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="2.6"/><circle cx="14" cy="14" r="7.6" stroke-dasharray="36 12"/><circle cx="14" cy="14" r="12.2" stroke-dasharray="54 23" transform="rotate(40 14 14)"/></svg>`;
+const ASSETS=(window as Window & { CulturedAssets?: Record<string,string> }).CulturedAssets||{};
+const mediaLayer=(key,extra='')=>ASSETS[key]?`<div class="media-layer ${extra}" aria-hidden="true" style="--media-url:url('${ASSETS[key]}')"></div>`:'';
 
 /* ================= data ================= */
 const TRACKS={
@@ -364,7 +366,7 @@ function homeBodyHTML(){
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
 function renderFeed(){
-  $('#s-feed').innerHTML=`<div class="tint"></div>
+  $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
@@ -552,7 +554,7 @@ ACT.closesheet=closeSheet;
 function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius).sort((a,b)=>b.score-a.score)}
 const labelFor=s=>s>=90?'Taste twin':s>=80?'Strong overlap':'Worth a listen';
 function renderMatchShell(){
-  $('#s-match').innerHTML=`<div class="tint"></div>
+  $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}Matrix</div><div class="hr"><button class="ibtn" data-act="open-settings" aria-label="Discovery settings">${I.sliders}</button></div></header>
     ${ftabsHTML('lens',[['dating','Dating'],['friends','Friends']],S.lens)}
     <div class="sbody mbody">
@@ -872,7 +874,7 @@ function renderYou(){
   const pr=S.prof,mine=fpParams(mineSeed());
   const saved=Object.keys(S.react).filter(id=>S.react[id].s&&POSTS[id]);
   const laughs=Object.keys(S.react).filter(id=>S.react[id].h).length;
-  $('#s-you').innerHTML=`<div class="tint"><div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,rgba(239,233,218,.28),transparent 70%),radial-gradient(60% 50% at 0 0,rgba(255,146,100,.22),transparent 70%)"></div></div>
+  $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,rgba(239,233,218,.28),transparent 70%),radial-gradient(60% 50% at 0 0,rgba(255,146,100,.22),transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
     <section class="you-hero"><div class="fp-bleed" id="fpb">${fpSVG(mine,'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div>
       <div class="you-id stg"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea></div></section>

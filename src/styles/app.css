@@ -36,6 +36,12 @@ svg{display:block}
 .tint .tl{position:absolute;inset:-70px -70px 0;opacity:0;transition:opacity .9s ease;filter:blur(32px) saturate(1.7) brightness(.95)}
 .tint .tl.on{opacity:1}
 .tint .tl>.art{position:absolute;inset:0}
+.media-layer{position:absolute;inset:-8% -5% 0;background-image:var(--media-url);background-position:center;background-size:cover;opacity:.32;filter:saturate(.82) contrast(1.04) brightness(.62);transform:scale(1.04);animation:media-drift 22s ease-in-out infinite alternate;will-change:transform}
+.media-layer::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,7,6,.08),rgba(7,7,6,.8) 76%,var(--ink) 100%)}
+.feed-media{background-position:center 42%;opacity:.24;filter:saturate(.72) contrast(1.05) brightness(.5)}
+.matrix-media{background-position:center 43%;opacity:.2;filter:saturate(.8) contrast(1.08) brightness(.5)}
+.profile-media{background-position:center 64%;opacity:.3;filter:saturate(.7) contrast(1.02) brightness(.5)}
+@keyframes media-drift{from{transform:scale(1.04) translate3d(-1%,0,0)}to{transform:scale(1.1) translate3d(1%,-1.5%,0)}}
 .topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:calc(14px) 20px 6px;height:62px}
 .wordmark{display:flex;align-items:center;gap:8px;font-size:27px;font-weight:800;font-stretch:76%;letter-spacing:-.04em;color:#fff;text-shadow:0 1px 14px rgba(0,0,0,.25)}
 .wordmark svg{width:26px;height:26px}
@@ -95,7 +101,7 @@ svg{display:block}
 /* ---------- deck ---------- */
 .deck{position:relative;margin:0 20px;height:max(420px,calc(100cqh - 62px - 48px - 112px - 104px));perspective:1300px}
 .dcard{--k:0;position:absolute;inset:36px 0 0 0;border-radius:32px;overflow:hidden;background:var(--coal);touch-action:pan-y;user-select:none;-webkit-user-select:none;will-change:transform;
-  transform:translateY(calc(var(--k)*-17px)) scale(calc(1 - var(--k)*.055));transform-origin:50% 0;opacity:calc(1 - var(--k)*.12);
+  transform:translateY(calc(var(--k)*-17px)) scale(calc(1 - var(--k)*.055));transform-origin:50% 0;transform-style:preserve-3d;opacity:calc(1 - var(--k)*.12);
   transition:transform .65s var(--ease),opacity .5s;box-shadow:0 24px 50px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07)}
 .dcard::before{content:'';position:absolute;inset:0;z-index:3;background:#000;opacity:calc(var(--k)*.42);pointer-events:none;transition:opacity .5s}
 .dcard.far{opacity:0;pointer-events:none}
@@ -296,6 +302,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 .msl b{display:block;font-size:19px;font-weight:800;font-stretch:80%;letter-spacing:-.02em}
 .msl span{display:block;color:var(--mist);font-size:13.5px;margin-top:2px}
 #s-match .deck{flex:1;height:auto;min-height:0;margin:0 20px}
+#s-match .sbody{background:linear-gradient(180deg,rgba(7,7,6,.76),var(--ink) 42%)}
 .pcard .stamp{position:absolute;top:60px;padding:5px 15px;border:3px solid;border-radius:14px;font-weight:800;font-size:25px;letter-spacing:-.01em;opacity:0;pointer-events:none;background:rgba(8,8,7,.4);z-index:6}
 .stamp.res{left:18px;color:var(--ok);transform:rotate(-9deg)}
 .stamp.pas{right:18px;color:var(--bad);transform:rotate(9deg)}
@@ -527,6 +534,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 
 /* ---------- you ---------- */
 .you-hero{position:relative;height:350px;overflow:visible;z-index:2}
+.you-tint{height:430px}
 .fp-bleed{position:absolute;right:-100px;top:-60px;width:440px;height:440px;pointer-events:none;animation:slow 120s linear infinite}
 @keyframes slow{to{transform:rotate(360deg)}}
 .fp-bleed svg{width:100%;height:100%;overflow:visible}
@@ -641,6 +649,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 /* ---------- motion preferences ---------- */
 .calm *,.calm *::before,.calm *::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+.calm .media-layer{animation:none!important}
 
 /* v3 motion + memes */
 #phone::before{content:'';position:absolute;inset:-20%;z-index:0;pointer-events:none;opacity:.5;background:radial-gradient(40% 30% at 20% 20%,rgba(255,93,122,.22),transparent 70%),radial-gradient(35% 30% at 80% 60%,rgba(255,209,102,.16),transparent 70%),radial-gradient(40% 35% at 30% 90%,rgba(155,232,191,.14),transparent 70%);animation:aur 18s ease-in-out infinite alternate}
