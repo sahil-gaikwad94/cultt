@@ -111,3 +111,56 @@ the sentence promising there is not one; the Matrix renders `q.slice(0, 3)` and
 there is no face-grid class in the stylesheet.
 
 **Flags.** Unchanged. `mock` is still the default adapter.
+
+## 2026-10-06 — real Supabase schema, RLS, and the atomic react RPC
+
+**What.** Wrote the ordered migration set (`supabase/migrations/0001`–`0007`)
+that the architecture PDF §5 specifies, plus a runnable SQL test harness
+(`supabase/tests/run.sh` + `010_rls.test.sql`) and a local `auth`/`storage` shim.
+
+**Why an executable proof, not a schema dump.** A schema that has never been
+applied is a drawing. Every migration now runs against a real PostgreSQL 14 with
+real pgvector 0.7.4, and 59 assertions prove the security properties the product
+promises. Building pgvector from source was worth it: `vector(34)`/`vector(48)`
+columns, and every `<=>`-style comparison, are the genuine article rather than a
+`float8[]` stand-in.
+
+**Key decisions.**
+
+1. **The incremental vector update lives in Postgres.** `react()` is one plpgsql
+   function, so the events insert and the fingerprint update are one transaction
+   and cannot half-apply. Brief §2.6 explicitly wants this instead of an Edge
+   Function per reaction — it removes a per-reaction invocation cost and the
+   lost-update race between two concurrent taps.
+2. **Weights live in `system_config`, never in code.** `event_weights`,
+   `weights`, `update`, `confidence`, `candidates`, `entitlements` and `flags`
+   are rows. `react()` reads them at call time. Retuning the algorithm is an
+   `update`, not an app release.
+3. **`x = any (subquery)` does not unwrap an array column.** Postgres compares
+   `x` to each returned row, which fails on a `text[]` column. Two places in
+   `decide()` had to use `IN (subquery)` instead. Caught by running it.
+4. **`users` has no `updated_at`.** The deck's freshness signal reads the latest
+   `events` row, falling back to `created_at`. That is the honest definition of
+   "last active" anyway.
+5. **RLS on a filtered UPDATE does not raise.** Postgres matches zero rows and
+   reports success, so the security test asserts *rows affected = 0* via
+   `t_affected()` rather than expecting an exception. This is a stronger claim:
+   it proves the write is impossible, not merely that one statement failed.
+6. **`events` is revoked, not filtered.** `authenticated` has no `SELECT`
+   privilege at all, so reading raises `permission denied`. If events were
+   readable the vectors could be reverse-engineered from the API.
+7. **Postgres validates SQL function bodies at CREATE time**, so a helper cannot
+   reference a table defined later in the same migration. `is_thread_participant`
+   moved below `threads`.
+
+**Proven properties** (see `010_rls.test.sql`): a signed-in user cannot read
+another user's profile, raw humor/music vectors, incoming likes, events, or
+messages from a thread they are not in; cannot insert or update another
+account's rows; `anon` sees no private table; a 17-year-old cannot be created and
+DOB is immutable after signup; the mutual-match reveal happens only when *both*
+sides have acted (an incoming like is never disclosed); the anti-genre penalty
+measurably lowers a blocked-genre listener's score; a repeated reaction is
+idempotent and does not move the vector.
+
+**Flags added.** None at runtime. `flags` stays in `system_config`; mock remains
+the default adapter. `supabase/` is inert until credentials exist.
