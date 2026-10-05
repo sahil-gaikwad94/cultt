@@ -1,4 +1,5 @@
 {
+  "appIcon": { "file": "/assets/app-icon.svg", "fallback": "svg:wave-heart" },
   "heroImage": { "file": null, "fallback": "procedural:hero" },
   "feedAmbience": { "file": "/assets/feed-ambience.webp", "fallback": "procedural:bokeh-rain" },
   "matrixBg": { "file": "/assets/matrix-ribbons.webp", "fallback": "procedural:ribbons" },

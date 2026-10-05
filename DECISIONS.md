@@ -21,3 +21,11 @@
 ## 2026-10-05 — safety/legal UI before provider wiring
 
 The Phase 1 screens can be designed and exercised against the mock adapter now. Legal copy is marked for lawyer review; destructive deletion is modeled as a 14-day cooling-off request, not an irreversible client-side wipe.
+
+## 2026-10-06 — architecture-aligned experience pass
+
+- v3 remains the visual reference, not a frozen product boundary. The front-end now adds an architecture-aligned 9-step onboarding funnel, a persistent preview player, stronger Daily Drop hierarchy, tactile ripples, pointer-aware card glare, and generated-media slot layers.
+- Onboarding provider actions are adapter-ready: email/Apple/Google auth, photo check, Last.fm/Apple Music/Spotify selection, audio calibration, permissions, and server-side age enforcement are represented in UI state but must be connected to Supabase/native providers before release.
+- “Photo checked” is used instead of “verified identity”, following the brief’s liveness caveat.
+- Motion stays code-driven and low-cost. Generated raster media remains scenery behind the interface; reduced-motion and Calm Mode disable background drift and animated calibration treatments.
+- The free-plan video generation attempt was not shipped because the selected model required more credits than available. Matrix retains its poster/fallback slot and can accept a future video asset without a screen redesign.

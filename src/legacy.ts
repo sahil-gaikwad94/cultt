@@ -362,7 +362,7 @@ function tomorrowHTML(){
 function homeBodyHTML(){
   if(DK.day===1){DK.items=[];DK.order=[];return tomorrowHTML()}
   DK.items=deckItems();DK.order=DK.items.map(p=>p.id);
-  return `<div class="drow stg">${bigDateHTML(DK.day)}<button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
+  return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
 function renderFeed(){
@@ -466,14 +466,21 @@ let PL={id:null,t:0,iv:null};
 function stopPlay(){
   clearInterval(PL.iv);
   if(PL.id){$$(`[data-id="${PL.id}"]`).forEach(p=>{p.classList.remove('playing');const bar=$('.prog i',p);if(bar)bar.style.width='0'})}
-  PL.id=null;
+  PL.id=null;const mp=$('#mini-player');if(mp){mp.classList.remove('on');mp.innerHTML=''}
+}
+function renderMiniPlayer(id){
+  const mp=$('#mini-player'),r=id&&TRACKS[id];if(!mp||!r)return;
+  mp.innerHTML=`<div class="mini-art">${poster(r,true)}</div><div class="mini-copy"><b>${esc(r.title)}</b><span>${esc(r.artist)}</span><i><em></em></i></div><button class="mini-toggle" data-act="mini-stop" aria-label="Stop preview">${I.x}</button>`;
+  mp.classList.add('on');
 }
 ACT.play=b=>{
   const host=b.closest('[data-id]'),id=host.dataset.id;
   if(PL.id===id){stopPlay();return}
   stopPlay();PL.id=id;PL.t=0;$$(`[data-id="${id}"]`).forEach(p=>p.classList.add('playing'));haptic(8);
+  const p=POSTS[id],r=p&&refOf(p);if(p&&p.kind==='music')renderMiniPlayer(r.id);
   PL.iv=setInterval(()=>{PL.t+=.25;$$(`[data-id="${id}"] .prog i`).forEach(bar=>bar.style.width=(PL.t/30*100)+'%');if(PL.t>=30)stopPlay()},250);
 };
+ACT['mini-stop']=()=>stopPlay();
 
 /* ================= detail page (shared element) ================= */
 const relRect=el=>{const a=el.getBoundingClientRect(),b=$('#phone').getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height}};
@@ -1044,28 +1051,34 @@ ACT['reset-go']=()=>{
 const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.calm);
 
 /* ================= onboarding ================= */
-const OB={step:0,adult:false,intent:'',picks:[]};
-function showOnboarding(){OB.step=0;OB.adult=false;OB.intent='';OB.picks=[];$('#onboard').classList.add('on');drawOb()}
+const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false};
+function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false});$('#onboard').classList.add('on');drawOb()}
 function drawOb(){
   const o=$('#onboard');let body='';
-  const prog=`<div class="ob-prog">${[0,1,2].map(i=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
-  if(OB.step===0){
-    const fan=[[TRACKS.cherry,-86,-9],[TRACKS.moons,86,8],[TRACKS.route9,0,0]];
-    body=`<div class="step"><div class="ob-hero">${STK}<div class="fan">${fan.map((f,i)=>`<div class="oc" style="--x:${f[1]}px;--r:${f[2]}deg;--d:${i};z-index:${i===2?3:1}">${poster(f[0])}</div>`).join('')}</div><h1 class="ob-h">culture first.<br>Chemistry always.</h1><p class="ob-p">Skip the profile scroll. cultured starts with the music, humor and small references you already share.</p></div>
-      <div class="ob-foot"><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><button class="cta" data-act="ob-next" ${OB.adult?'':'disabled'}>Continue</button></div></div>`;
-  }else if(OB.step===1){
-    const opts=[['dating','Dating','Taste twins who might become something.',TRACKS.cherry],['friends','Friends','People who’d get your references.',TRACKS.soft],['both','Both','Open to either. Decide as you go.',TRACKS.moons]];
-    body=`<div class="step"><div class="ob-body"><h1 class="ob-q">What brings you here?</h1><p class="ob-s">You can switch any time from the Matrix.</p><div class="opts">${opts.map(t=>`<button class="opt ${OB.intent===t[0]?'on':''}" data-act="ob-intent" data-v="${t[0]}" aria-pressed="${OB.intent===t[0]}">${poster(t[3],true)}<div class="shade"></div><span class="ck">${I.check}</span><div class="ot"><b>${t[1]}</b><span>${t[2]}</span></div></button>`).join('')}</div></div>
-      <div class="ob-foot"><button class="cta" data-act="ob-next" ${OB.intent?'':'disabled'}>Continue</button></div></div>`;
-  }else{
-    body=`<div class="step"><div class="ob-body"><h1 class="ob-q">Pick a few starting tastes</h1><p class="ob-s">Choose at least three. You can change them later.</p>${Object.keys(TASTES).map(g=>`<div class="tg"><h3>${g==='Everything'?'Everything else':g}</h3><div class="chips">${TASTES[g].map(x=>`<button class="chip ${OB.picks.indexOf(x)>-1?'on':''}" data-act="ob-pick" data-v="${esc(x)}" aria-pressed="${OB.picks.indexOf(x)>-1}">${esc(x)}</button>`).join('')}</div></div>`).join('')}</div>
-      <div class="ob-foot"><button class="cta" id="ob-go" data-act="ob-done" ${OB.picks.length>=3?'':'disabled'}>${OB.picks.length>=3?'Build my Fingerprint':'Pick '+(3-OB.picks.length)+' more'}</button></div></div>`;
-  }
+  const prog=`<div class="ob-prog">${Array.from({length:9},(_,i)=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
+  const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;
+  if(OB.step===0){const fan=[[TRACKS.cherry,-86,-9],[TRACKS.moons,86,8],[TRACKS.route9,0,0]];body=`<div class="step"><div class="ob-hero">${STK}<div class="fan">${fan.map((f,i)=>`<div class="oc" style="--x:${f[1]}px;--r:${f[2]}deg;--d:${i};z-index:${i===2?3:1}">${poster(f[0])}</div>`).join('')}</div><h1 class="ob-h">Match on your humor.<br>Not your headshot.</h1><p class="ob-p">A warmer way to meet: shared songs, niche references and the people who actually get them.</p></div>${foot('Start with the good stuff')}</div>`}
+  else if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
+  else if(OB.step===2){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Photo check</span><h1 class="ob-q">Show there’s a real person here.</h1><p class="ob-s">A quick on-device check keeps the Matrix human. This badge says <b>photo checked</b>, not verified identity.</p><div class="verify-orb ${OB.photoChecked?'done':''}">${OB.photoChecked?I.check:RING_GLYPH}</div><button class="cta ghostb" data-act="ob-photo">${OB.photoChecked?'Photo checked':'Run photo check'}</button></div>${foot('Continue')}</div>`}
+  else if(OB.step===3){const providers=[['manual','Manual taste chips','Start without connecting anything.'],['lastfm','Last.fm username','Bring in public scrobbles later.'],['apple','Apple Music','Connect when MusicKit is configured.'],['spotify','Spotify · alpha only','Allowlisted testers only.']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Music signal</span><h1 class="ob-q">Where should your taste come from?</h1><p class="ob-s">Manual is the default. You can reconnect or rebuild this vector later.</p><div class="provider-list">${providers.map(p=>`<button class="provider ${OB.music===p[0]?'on':''}" data-act="ob-music" data-v="${p[0]}"><span>${p[0]==='manual'?I.note:I.link}</span><div><b>${p[1]}</b><small>${p[2]}</small></div>${OB.music===p[0]?I.check:''}</button>`).join('')}</div></div>${foot('Use this source')}</div>`}
+  else if(OB.step===4){const m=MM[OB.memeIndex%MM.length];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Meme calibration · ${OB.memeIndex+1}/5</span><h1 class="ob-q">What kind of funny are you?</h1><p class="ob-s">React quickly. There’s no wrong answer and nothing is shared.</p><div class="cal-card" style="--bg:${m.bg};--fg:${m.fg}"><span>${m.e}</span><p>${mmTxt(m.t)}</p></div><div class="cal-actions"><button class="dbtn" data-act="ob-meme" data-v="meh">${I.minus}<small>Meh</small></button><button class="rbtn" data-act="ob-meme" data-v="laugh">${I.laugh}<span>That’s me</span></button><button class="dbtn" data-act="ob-meme" data-v="skip">${I.chevr}<small>Skip</small></button></div></div></div>`}
+  else if(OB.step===5){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Sound calibration · 10 clips</span><h1 class="ob-q">Let the music do some talking.</h1><p class="ob-s">Seven-second previews tune the edges of your fingerprint. Audio is off in this prototype; the adapter is ready.</p><div class="audio-cal">${['Night Bus Choir','Cherry Static','Soft Machine Summer','Paper Moons'].map((x,i)=>`<button class="provider ${OB.audioSignals[i]?'on':''}" data-act="ob-audio" data-i="${i}"><span class="wave-mini">${[1,3,5,2,4].map(n=>`<i style="--h:${n*4}px"></i>`).join('')}</span><div><b>${x}</b><small>${OB.audioSignals[i]?'Signal saved':'Tap to rate this clip'}</small></div>${OB.audioSignals[i]?I.check:I.play}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
+  else if(OB.step===6){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your context</span><h1 class="ob-q">A little more than a face.</h1><p class="ob-s">Photos and prompts have equal weight with your Fingerprint. Add them now or later.</p><div class="onboarding-grid"><button class="gt add" data-act="add-photo"><span>${I.plus}</span><b>Add photos</b></button><button class="prompt-tile"><span>Prompt 1</span><b>A song I’ll defend forever…</b></button><button class="prompt-tile"><span>Prompt 2</span><b>My most niche reference…</b></button></div></div>${foot('Continue')}</div>`}
+  else if(OB.step===7){const opts=[['dating','Dating'],['friends','Friends'],['both','Both']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Basics</span><h1 class="ob-q">What should we call you?</h1><label class="field"><span>Name</span><input id="ob-name" maxlength="24" placeholder="Your first name" value="${esc(OB.name)}"></label><h3 class="tg">Looking for</h3><div class="chips">${opts.map(x=>`<button class="chip ${OB.intent===x[0]?'on':''}" data-act="ob-intent" data-v="${x[0]}">${x[1]}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
+  else {body=`<div class="step"><div class="ob-body"><span class="eyebrow">Last step</span><h1 class="ob-q">Keep the ritual close.</h1><p class="ob-s">Choose what you want to hear about. You can change this anytime in Settings.</p><div class="permission-card"><button class="row" data-act="ob-permission"><div class="tx"><b>Daily Drop at 9:00 AM</b><span>One track, one meme, no guilt trips.</span></div><span class="sw" data-on="${OB.permissions}"></span></button><button class="row"><div class="tx"><b>Location</b><span>Used to tune your discovery radius.</span></div><span class="chipg">Later</span></button></div></div><div class="ob-foot"><button class="cta" data-act="ob-done">Build my Fingerprint</button></div></div>`}
   o.innerHTML=prog+body;
+  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;drawOb()};
+  const name=$('#ob-name');if(name)name.oninput=()=>{OB.name=name.value};
 }
-ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;$('#onboard .cta').disabled=!OB.adult;haptic(6)};
-ACT['ob-next']=()=>{OB.step++;drawOb();haptic(8)};
-ACT['ob-intent']=b=>{OB.intent=b.dataset.v;$$('#onboard .opt').forEach(t=>{const on=t===b;t.classList.toggle('on',on);t.setAttribute('aria-pressed',on)});$('#onboard .cta').disabled=false;haptic(6)};
+ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;haptic(6)};
+ACT['ob-next']=()=>{OB.step=Math.min(8,OB.step+1);drawOb();haptic(8)};
+ACT['ob-auth']=b=>{$$('.auth-rail .chip').forEach(x=>x.classList.toggle('on',x===b));toast('Auth adapter ready for '+b.dataset.v);haptic(5)};
+ACT['ob-photo']=()=>{OB.photoChecked=true;drawOb();toast('Photo checked on this device');haptic([10,30,10])};
+ACT['ob-music']=b=>{OB.music=b.dataset.v;drawOb();haptic(6)};
+ACT['ob-meme']=b=>{OB.memeSignals.push(b.dataset.v);OB.memeIndex++;if(OB.memeIndex>=5)OB.step=5;drawOb();haptic(6)};
+ACT['ob-audio']=b=>{OB.audioSignals[+b.dataset.i]=1;b.classList.add('on');b.querySelector('small').textContent='Signal saved';haptic(6)};
+ACT['ob-permission']=()=>{OB.permissions=!OB.permissions;drawOb();haptic(6)};
+ACT['ob-intent']=b=>{OB.intent=b.dataset.v;$$('#onboard [data-act="ob-intent"]').forEach(t=>{const on=t===b;t.classList.toggle('on',on);t.setAttribute('aria-pressed',on)});$('#onboard .cta').disabled=false;haptic(6)};
 ACT['ob-pick']=b=>{
   const v=b.dataset.v,i=OB.picks.indexOf(v);if(i>-1)OB.picks.splice(i,1);else OB.picks.push(v);
   b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);
@@ -1073,6 +1086,7 @@ ACT['ob-pick']=b=>{
 };
 ACT['ob-done']=()=>{
   S.onboarded=true;S.intent=OB.intent||'both';S.lens=S.intent==='friends'?'friends':'dating';S.tastes=OB.picks.slice();
+  if(OB.name.trim())S.prof.name=OB.name.trim();
   const hs=OB.picks.filter(x=>HUMOR.indexOf(x)>-1);if(hs.length)S.prof.humor=hs;
   S.decided={};S.history=[];save();renderAll();
   const o=$('#onboard');
@@ -1117,6 +1131,17 @@ ACT['meme-pick']=()=>openSheet(`<h3 class="sh-t">Send a meme</h3><div class="mm-
 ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();renderMsgs(id);haptic(8);reply(id)};
 function mmShelf(){const st=mmS(),ids=MM.filter(m=>st.s[m.id]);return `<div class="blk stg" style="--d:5"><h2>Meme shelf</h2><div class="mm-shelf">${ids.length?ids.map(m=>`<div class="mm-mini sh" style="--bg:${m.bg};--fg:${m.fg}"><span>${m.e}</span><i>${esc(m.t.split('\n')[0])}</i></div>`).join(''):'<p class="hint">Save memes from Today’s memes and they pin here.</p>'}</div></div>`}
 /* ================= boot ================= */
+function initMicroInteractions(){
+  document.addEventListener('pointermove',e=>{
+    const el=e.target.closest?.('.dcard,.mm-card,.pf-fp');if(!el)return;
+    const r=el.getBoundingClientRect();el.style.setProperty('--mx',`${((e.clientX-r.left)/r.width)*100}%`);el.style.setProperty('--my',`${((e.clientY-r.top)/r.height)*100}%`);el.classList.add('tracking');
+  },{passive:true});
+  document.addEventListener('pointerout',e=>{const el=e.target.closest?.('.dcard,.mm-card,.pf-fp');if(el&&!el.contains(e.relatedTarget))el.classList.remove('tracking')},{passive:true});
+  document.addEventListener('pointerdown',e=>{
+    const b=e.target.closest?.('button');if(!b||b.disabled||b.closest('.dcard')&&!b.matches('.glassb'))return;
+    const r=b.getBoundingClientRect(),i=document.createElement('i');i.className='ripple';i.style.left=`${e.clientX-r.left}px`;i.style.top=`${e.clientY-r.top}px`;b.appendChild(i);setTimeout(()=>i.remove(),600);
+  },{passive:true});
+}
 function renderAll(){renderFeed();renderMatchShell();renderPeople();renderYou();updateBadge()}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;const f=ACT[a.dataset.act];if(f)f(a,e)});
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.cc-art')){e.preventDefault();ACT['open-d'](e.target)}});
@@ -1126,7 +1151,7 @@ function splashInit(){
   setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
 }
 function init(){
-  grainInit();applyCalm();buildNav();splashInit();
+  grainInit();applyCalm();buildNav();splashInit();initMicroInteractions();
   initPTR();renderAll();go('feed');
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layoutTabs(document));
   window.addEventListener('resize',()=>layoutTabs(document));
