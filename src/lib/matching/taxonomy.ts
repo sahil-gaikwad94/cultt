@@ -233,6 +233,7 @@ export const GENRE_LABELS: Readonly<Record<Genre, string>> = Object.freeze({
 
 const GENRE_ALIASES: Readonly<Record<string, Genre>> = Object.freeze({
   rnb: 'r_and_b',
+  randb: 'r_and_b',
   r_and_b: 'r_and_b',
   hiphop: 'hip_hop',
   hip_hop: 'hip_hop',
@@ -269,6 +270,19 @@ export const humorContentStart = HUMOR_STYLES.length;
 export const humorFormatStart = humorContentStart + HUMOR_CONTENT.length;
 export const artistBlockStart = GENRES.length;
 export const behaviorBlockStart = artistBlockStart + ARTIST_BUCKETS;
+
+/** The four Humor Styles Questionnaire axes that open every humor vector. */
+export const HUMOR_STYLE_AXES = HUMOR_STYLES.length;
+
+/**
+ * How much of the unit humor vector the style-axis block is allowed to occupy.
+ *
+ * The axes are a probability distribution (they sum to 1), so they cannot be
+ * mixed into a unit-length cosine vector at full scale or the vector stops
+ * being unit length. Giving the block a fixed share keeps the axes stable and
+ * bounded while leaving the 30 taxonomy dims to do the differentiating work.
+ */
+export const AXIS_BLOCK_WEIGHT = 0.4;
 
 /** 4 style axes + 30 categories. Asserted so a taxonomy edit cannot drift. */
 export const HUMOR_CATEGORY_COUNT = HUMOR_CONTENT.length + HUMOR_FORMATS.length;

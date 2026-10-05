@@ -26,7 +26,7 @@
  *     accumulated dislikes can never invert a user's genuine taste.
  */
 
-import { GENRES, GENRE_COUNT, normalizeGenre } from './taxonomy';
+import { AXIS_BLOCK_WEIGHT, GENRES, GENRE_COUNT, HUMOR_STYLE_AXES, normalizeGenre } from './taxonomy';
 import type { Genre } from './taxonomy';
 import { type HumorVector, type MusicVector, normalize, projectSimplex, roundVector, zeroHumor, zeroMusic } from './vector';
 
@@ -70,10 +70,14 @@ export const MUSIC_DECAY = 0.997;
 /** Weights outside this band are clamped: one event must not flip a profile. */
 export const MIN_WEIGHT = -1;
 export const MAX_WEIGHT = 2;
-/** Anti-genres move the genre block by at most this much per event. */
-export const MAX_ANTI_GENRE_SHIFT = 0.08;
-/** Anti-genre subtraction stops here so dislikes can never invert real taste. */
-export const ANTI_GENRE_FLOOR = 0.08;
+/** Anti-genres shrink a genre dim by at most this fraction per event. */
+export const MAX_ANTI_GENRE_SHIFT = 0.12;
+/**
+ * Anti-genre subtraction stops here. The floor is absolute (dims are 0-1 on a
+ * unit vector), so a long history of dislikes can push a genre to nearly zero
+ * but can never drive it negative or invert genuine taste.
+ */
+export const ANTI_GENRE_FLOOR = 0.02;
 
 export const eventFor = (kind: EventKind, domain: EventDomain, dailyDrop = false): ContentEvent => ({
   kind,
@@ -115,6 +119,8 @@ export interface ApplyEventInput {
   antiGenres?: readonly string[];
 }
 
+/** Everything an event needs except the fingerprint it will be applied to. */
+export type EventDraft = Omit<ApplyEventInput, 'fingerprint'>;
 export interface ApplyEventResult {
   fingerprint: FingerprintVectors;
   applied: boolean;
@@ -162,16 +168,24 @@ const roundFingerprint = (fingerprint: FingerprintVectors): FingerprintVectors =
   vectorVersion: fingerprint.vectorVersion,
 });
 
-/** Humor update: decay, blend, then force the style axes back onto the simplex. */
+/** Humor update: decay and blend the taxonomy block, move the axes as a simplex. */
 export const updateHumor = (current: HumorVector, target: HumorVector, weight: number): HumorVector => {
-  const blended = current.map((value, i) => HUMOR_DECAY * value + weight * (target[i] ?? 0));
-  const out = normalize(blended, target);
-  const axes = projectSimplex(out.slice(0, STYLE_AXIS_COUNT), target.slice(0, STYLE_AXIS_COUNT));
-  for (let i = 0; i < STYLE_AXIS_COUNT; i++) out[i] = axes[i];
-  return out;
-};
+  const blended = current.map(
+    (value, i) => (i < HUMOR_STYLE_AXES ? 0 : HUMOR_DECAY * value + weight * (target[i] ?? 0)),
+  );
 
-const STYLE_AXIS_COUNT = 4;
+  // The axes are a distribution, not magnitudes: they slide toward the target's
+  // axes on the simplex, so they can never decay negative or run away. Negative
+  // events pull back at half strength — a meh should soften a read, not invert it.
+  const alpha = Math.min(1, Math.abs(weight)) * (weight < 0 ? 0.5 : 1);
+  const axes = projectSimplex(
+    current.slice(0, HUMOR_STYLE_AXES).map((value, i) => (1 - alpha) * value + alpha * (target[i] ?? 0)),
+    target.slice(0, HUMOR_STYLE_AXES),
+  );
+  for (let i = 0; i < HUMOR_STYLE_AXES; i++) blended[i] = (axes[i] ?? 0) * AXIS_BLOCK_WEIGHT;
+
+  return normalize(blended, target);
+};
 
 /** Music update: decay and blend, then a full renormalise. */
 export const updateMusic = (current: MusicVector, target: MusicVector, weight: number): MusicVector =>
@@ -184,8 +198,9 @@ export const updateMusic = (current: MusicVector, target: MusicVector, weight: n
  * Anti-genre subtraction.
  *
  * Dislikes are first-class: a blocked genre leaves the music vector instead of
- * only costing points at scoring time. The shift is bounded per call and floored
- * so a long history of dislikes can push a dim down but never through zero.
+ * only costing points at scoring time. The shrink is multiplicative so it
+ * survives the renormalise as a *relative* loss, and floored so accumulated
+ * dislikes can never drive a dim negative.
  */
 export const applyAntiGenres = (
   current: MusicVector,
@@ -202,8 +217,8 @@ export const applyAntiGenres = (
   const scale = Math.min(1, Math.max(0, magnitudeScale));
   const out = current.slice();
   for (const index of indices) {
-    const target = out[index] - MAX_ANTI_GENRE_SHIFT * scale;
-    out[index] = Math.max(ANTI_GENRE_FLOOR * out[index], target);
+    const shrunk = out[index] * (1 - MAX_ANTI_GENRE_SHIFT * scale);
+    out[index] = Math.max(ANTI_GENRE_FLOOR, shrunk);
   }
   for (let i = GENRE_COUNT; i < out.length; i++) out[i] = Math.max(0, out[i]);
   return normalize(out, current);
@@ -212,13 +227,16 @@ export const applyAntiGenres = (
 /**
  * Replays a whole event log onto a fresh fingerprint. Onboarding and
  * re-calibration use this so a wipe-and-rebuild is reproducible.
+ *
+ * Drafts carry no fingerprint: each one is applied to the running result, which
+ * is what makes the replay deterministic and order-significant.
  */
 export const replayEvents = (
-  events: readonly ApplyEventInput[],
+  drafts: readonly EventDraft[],
   seed: FingerprintVectors = emptyFingerprint(),
 ): FingerprintVectors =>
-  events.reduce<FingerprintVectors>(
-    (fingerprint, event) => applyEvent({ ...event, fingerprint }).fingerprint,
+  drafts.reduce<FingerprintVectors>(
+    (fingerprint, draft) => applyEvent({ ...draft, fingerprint }).fingerprint,
     seed,
   );
 

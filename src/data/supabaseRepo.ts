@@ -305,11 +305,10 @@ export class SupabaseRepo implements Repo {
     return this.getFingerprint();
   }
 
-  async getCandidates(
-    request: Partial<CandidateRequest> & Pick<CandidateRequest, 'taste'>,
-  ): Promise<CandidateCard[]> {
-    // The score is computed in SQL so it cannot be tampered with client-side.
-    // `taste` is the offline fallback only.
+  async getCandidates(request: Partial<CandidateRequest> & { taste?: TasteProfile } = {}): Promise<CandidateCard[]> {
+    // The score is computed in SQL against the caller's stored vectors, so it
+    // cannot be tampered with client-side. A `taste` override is ignored here on
+    // purpose: only the mock adapter honours it.
     const rows = asRows<Record<string, unknown>>(
       await this.client.rpc('candidates', {
         p_mode: request.mode ?? 'dating',

@@ -58,3 +58,56 @@ identity", and low-confidence captures route to a human review queue.
 
 **Baselines.** No screen was touched in this step, so no Playwright baseline was
 moved.
+
+## 2026-10-06 — engine test suite, four engine bugs found, guardrail tests
+
+**What.** Added 128 unit tests across five suites: the engine fixtures, safety,
+entitlements, adapter contract, and the four binding non-features. The tests
+found four real defects, all fixed in source rather than worked around:
+
+1. **The humor vector was not unit length after an update.** Projecting the four
+   style axes back onto the simplex (sum = 1) and then normalising the whole
+   vector are contradictory requirements, so the vector drifted to ~1.25 and the
+   cosine was measured against a moving scale. **Fix:** the axis block now
+   occupies a fixed share of the vector (`AXIS_BLOCK_WEIGHT = 0.4`), so the axes
+   stay a valid distribution *and* the vector stays unit length. `humorAxes()`
+   exposes the distribution itself, which is what `humor_style` stores.
+
+2. **An untagged profile fabricated a taste signal.** With no styles and no
+   categories, `tasteHumorVector` used to invent `[0.4, 0.25, 0.1, 0.25]`, so two
+   brand-new users looked identical and matched each other on nothing. **Fix:**
+   no input means a zero vector. The fallback distribution only applies when
+   there is taxonomy signal but no explicit axes.
+
+3. **Anti-genre subtraction was mathematically erased.** A targeted subtraction
+   followed by `normalize` is invisible to cosine, so the blocked genre went
+   straight back up. This is the exact case the brief calls out — dislikes must be
+   first-class. **Fix:** the shrink is now multiplicative (so it survives the
+   renormalise as a relative loss) with an absolute floor, and a blocked genre
+   test asserts the blocked dim ends up smaller than the unblocked one and still
+   above zero.
+
+4. **Diversity re-clustered at the tail.** Deferred cards were appended in order,
+   which re-formed the very run the rule exists to prevent (a run of 3 with
+   `maxRun = 2`). **Fix:** the hold-back buffer is retried after every accepted
+   card, so deferred cards interleave instead of bunching. The test asserts the
+   run limit and that nothing is ever dropped.
+
+**Contract fixes found by typechecking the tests.** `getCandidates` no longer
+requires the caller to supply the viewer's taste — the adapter resolves it from
+the signed-in profile, because a caller that could pass in someone else's
+vectors could read a score they should not see. `taste` survives only as an
+explicitly offline-only override the mock adapter honours. `replayEvents` now
+takes fingerprint-less drafts and threads the running vector through them.
+`startListeningSession` refuses a capped session outright instead of creating a
+row, so usage can never be inflated by a client retrying against the cap.
+
+**Guardrail tests.** The four non-features from §1.3 are now asserted against the
+shipped source: the Culture Feed never reaches `queue()`, `.pcard`, `PEOPLE` or
+`decide()`, and its cards carry no pass/resonate action; no "who liked you" copy
+exists anywhere and `likesYou` is read exactly once, inside `decide()`; a list of
+guilt phrasings is absent, and the legal copy's only mention of a waiting count is
+the sentence promising there is not one; the Matrix renders `q.slice(0, 3)` and
+there is no face-grid class in the stylesheet.
+
+**Flags.** Unchanged. `mock` is still the default adapter.

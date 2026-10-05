@@ -158,31 +158,64 @@ export const freshnessBoost = (candidate: Candidate, now: number): number => {
  * No more than MAX_SAME_GENRE_RUN cards in a row may lead with the same genre.
  * Rank order is otherwise preserved, so diversity never outranks relevance.
  */
-export const diversify = <T extends CandidateResult>(
+export const diversify = <T extends { profile: Candidate }>(
   ranked: readonly T[],
   topGenreOf: (candidate: Candidate) => string | null,
   maxRun = MAX_SAME_GENRE_RUN,
 ): T[] => {
   const out: T[] = [];
+  /** Items held back because emitting them would extend the current run. */
   const deferred: T[] = [];
   let runGenre: string | null = null;
   let runLength = 0;
 
-  for (const item of ranked) {
+  const canEmit = (genre: string | null): boolean =>
+    !(genre !== null && genre === runGenre && runLength >= maxRun);
+
+  const emit = (item: T): void => {
     const genre = topGenreOf(item.profile);
-    if (genre !== null && genre === runGenre && runLength >= maxRun) {
-      deferred.push(item);
-      continue;
-    }
     if (genre !== null && genre === runGenre) runLength += 1;
     else {
       runGenre = genre;
       runLength = genre === null ? 0 : 1;
     }
     out.push(item);
+  };
+
+  /**
+   * After every accepted card, retry the hold-back buffer. Without this the
+   * deferred cards would all land at the tail and re-form the exact run the
+   * rule was supposed to prevent.
+   */
+  const flush = (): void => {
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let i = 0; i < deferred.length; i++) {
+        const candidate = deferred[i] as T;
+        if (canEmit(topGenreOf(candidate.profile))) {
+          deferred.splice(i, 1);
+          emit(candidate);
+          moved = true;
+          break;
+        }
+      }
+    }
+  };
+
+  for (const item of ranked) {
+    if (canEmit(topGenreOf(item.profile))) {
+      emit(item);
+      flush();
+    } else {
+      deferred.push(item);
+    }
   }
-  // Anything held back for diversity still gets shown once the runs break.
-  return [...out, ...deferred];
+
+  // A degenerate pool (more same-genre cards than can ever be separated) still
+  // gets shown in full. Diversity defers cards, it never drops them.
+  out.push(...deferred);
+  return out;
 };
 
 export const rankCandidates = (

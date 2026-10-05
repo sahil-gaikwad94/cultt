@@ -107,10 +107,11 @@ export const blockSum = (v: number[], start: number, length: number): number => 
 
 const zeroOfLength = (length: number): number[] => new Array<number>(length).fill(0);
 
-/** Rounds for display/serialisation without changing the stored value's sign. */
+/** Rounds for display/serialisation. Normalises -0 to 0 so it never leaks. */
 export const round = (value: number, digits = 4): number => {
   const factor = 10 ** digits;
-  return Math.round(value * factor) / factor;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded === 0 ? 0 : rounded;
 };
 
 export const roundVector = (v: number[], digits = 4): number[] => v.map((value) => round(value, digits));

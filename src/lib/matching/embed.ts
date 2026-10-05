@@ -9,9 +9,11 @@
 
 import {
   ARTIST_BUCKETS,
+  AXIS_BLOCK_WEIGHT,
   GENRES,
   HUMOR_CONTENT,
   HUMOR_DIMS,
+  HUMOR_STYLE_AXES,
   HUMOR_STYLES,
   HUMOR_TAG_INDEX,
   MUSIC_BEHAVIOR,
@@ -60,6 +62,25 @@ const CONTENT_START = STYLE_COUNT;
 const FORMAT_START = CONTENT_START + CONTENT_COUNT;
 
 /**
+ * The profile's humor style, as a distribution over the four HSQ axes. This is
+ * what the Fingerprint shows and what `humor_style` stores, and it is always a
+ * valid distribution regardless of what the events did to the vector.
+ */
+export const humorAxes = (vector: readonly number[]): number[] =>
+  projectSimplex(vector.slice(0, HUMOR_STYLE_AXES) as number[]);
+
+/**
+ * Writes the weighted axis block back into a humor vector. Applying this before
+ * the final normalise is what keeps the vector unit length *and* the axes a
+ * proper distribution at the same time.
+ */
+const applyAxisBlock = (vector: number[]): number[] => {
+  const axes = projectSimplex(vector.slice(0, HUMOR_STYLE_AXES));
+  for (let i = 0; i < HUMOR_STYLE_AXES; i++) vector[i] = (axes[i] ?? 0) * AXIS_BLOCK_WEIGHT;
+  return vector;
+};
+
+/**
  * A meme's style vector: 1.0 on every tag it carries, then a gentle lift on the
  * non-style block so a one-tag meme still carries real weight in a 32-d cosine.
  */
@@ -82,15 +103,14 @@ export const memeStyleVector = (meme: {
   if (!tagged) return vector;
 
   const axes = meme.styles?.length
-    ? projectSimplex(
-        meme.styles.map((style) => (normalizeHumorTag(style) ? 1 : 0)),
-        undefined,
-      )
+    ? projectSimplex(meme.styles.map((style) => (normalizeHumorTag(style) ? 1 : 0)))
     : inferAxesFromContent(vector);
-  for (let i = 0; i < STYLE_COUNT; i++) vector[i] = axes[i];
+  for (let i = 0; i < STYLE_COUNT; i++) vector[i] = axes[i] ?? 0;
 
+  // A meme is tagged sparsely; lift the taxonomy block so one tag still carries
+  // real weight against a profile that has thirty dims populated.
   for (let i = STYLE_COUNT; i < HUMOR_DIMS; i++) vector[i] *= 1.15;
-  return roundVector(normalize(vector));
+  return roundVector(normalize(applyAxisBlock(vector)));
 };
 
 /** Content families imply a humor style; used when a meme lists no explicit axis. */
@@ -183,9 +203,8 @@ export const tasteHumorVector = (taste: TasteTags): HumorVector => {
     const value = taste.styles?.[HUMOR_STYLES[i]];
     rawAxes[i] = typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
   }
-  const axes = magnitude(rawAxes) < 1e-9 ? [0.4, 0.25, 0.1, 0.25] : rawAxes;
-  const settled = projectSimplex(axes);
-  for (let i = 0; i < STYLE_COUNT; i++) vector[i] = settled[i];
+  const hasStyles = magnitude(rawAxes) > 1e-9;
+  for (let i = 0; i < STYLE_COUNT; i++) vector[i] = hasStyles ? (rawAxes[i] ?? 0) : 0;
 
   for (const raw of taste.content ?? []) {
     const index = contentIndex(raw);
@@ -196,11 +215,17 @@ export const tasteHumorVector = (taste: TasteTags): HumorVector => {
     if (index >= 0) vector[index] += 1;
   }
 
-  if (magnitude(vector) < 1e-9) return roundVector(vector);
-  const out = normalize(vector);
-  const axesAfter = projectSimplex(out.slice(0, STYLE_COUNT), settled);
-  for (let i = 0; i < STYLE_COUNT; i++) out[i] = axesAfter[i];
-  return roundVector(out);
+  const hasTaxonomy = magnitude(vector) > 1e-9;
+  // No taste given at all means no signal. Fabricating a default axis
+  // distribution here would make two brand-new profiles look identical and
+  // match each other on nothing.
+  if (!hasTaxonomy) return roundVector(vector);
+
+  // With taxonomy signal but no explicit axes, infer a readable distribution
+  // from the content families rather than inventing one.
+  if (!hasStyles) for (let i = 0; i < STYLE_COUNT; i++) vector[i] = inferAxesFromContent(vector)[i] ?? 0;
+
+  return roundVector(normalize(applyAxisBlock(vector)));
 };
 
 export const tasteMusicVector = (taste: MusicTags): MusicVector => {
@@ -243,4 +268,4 @@ const formatIndex = (raw: string): number => {
   return index;
 };
 
-export { STYLE_COUNT, CONTENT_COUNT, GENRE_COUNT };
+export { STYLE_COUNT, CONTENT_COUNT, GENRE_COUNT, applyAxisBlock };

@@ -657,9 +657,8 @@ export class MockRepo implements Repo {
     };
   }
 
-  async getCandidates(
-    request: Partial<CandidateRequest> & Pick<CandidateRequest, 'taste'>,
-  ): Promise<CandidateCard[]> {
+  async getCandidates(request: Partial<CandidateRequest> & { taste?: TasteProfile } = {}): Promise<CandidateCard[]> {
+    // Default to the viewer's own vectors; `taste` is an offline-only override.
     const taste = request.taste ?? this.myProfile();
     const decided = new Set(Object.keys(this.state.decisions));
     const matched = new Set(Object.values(this.state.threads).map((thread) => thread.candidateId));
@@ -966,6 +965,13 @@ export class MockRepo implements Repo {
       .reduce((total, session) => total + session.seconds, 0);
     const allowance = sessionAllowance(entitlements, usedToday);
 
+    // A capped session is refused outright; no session row is created, so usage
+    // can never be inflated by a client retrying against the cap.
+    if (!allowance.allowed) {
+      this.trace({ type: 'session_start', matchId: input.matchId, capped: true });
+      return { id: '', startedAt: this.now, remainingSeconds: 0, allowed: false, reason: allowance.reason };
+    }
+
     const session: StoredSession = {
       id: idFor('ls', `${input.matchId}:${this.state.sessions.length}`),
       matchId: input.matchId,
@@ -976,16 +982,14 @@ export class MockRepo implements Repo {
     };
     this.state.sessions.push(session);
     this.persist();
-    this.trace({ type: 'session_start', matchId: input.matchId, capped: !allowance.allowed });
+    this.trace({ type: 'session_start', matchId: input.matchId, capped: false });
 
     return {
       id: session.id,
       startedAt: session.startedAt,
-      remainingSeconds: allowance.allowed
-        ? (allowance.remainingSeconds ?? FREE_SESSION_CAP_SECONDS)
-        : 0,
-      allowed: allowance.allowed,
-      reason: allowance.reason,
+      remainingSeconds: allowance.remainingSeconds ?? FREE_SESSION_CAP_SECONDS,
+      allowed: true,
+      reason: null,
     };
   }
 

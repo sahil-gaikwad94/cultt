@@ -288,7 +288,15 @@ export interface Repo {
   getFingerprint(): Promise<Fingerprint>;
   /** Wipe-and-rebuild: replays stored calibration events onto a fresh vector. */
   rebuildHumorVector(): Promise<Fingerprint>;
-  getCandidates(request: Partial<CandidateRequest> & Pick<CandidateRequest, 'taste'>): Promise<CandidateCard[]>;
+  /**
+   * The deck for the signed-in user. The adapter resolves the viewer's own
+   * taste from their profile, so a caller can never pass in someone else's
+   * vectors and read a score they should not see.
+   *
+   * `taste` is an explicitly offline-only override: the mock adapter uses it so
+   * tests and the local build can score before onboarding has run.
+   */
+  getCandidates(request?: CandidateRequestOverride): Promise<CandidateCard[]>;
 
   /* ---- decisions + chat --------------------------------------------- */
   decide(candidateId: string, decision: Decision): Promise<DecideResult>;
@@ -341,5 +349,7 @@ export interface RepoConfig {
     sound: boolean;
   };
 }
+
+export type CandidateRequestOverride = Partial<CandidateRequest> & { taste?: TasteProfile };
 
 export type { Candidate, CandidateRequest, TasteProfile };
