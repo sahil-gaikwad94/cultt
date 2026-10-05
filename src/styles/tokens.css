@@ -1,0 +1,6 @@
+/* Cultured design tokens: unchanged from the v3 seam. */
+:root{
+  --ink:#0A0A09;--coal:#121211;--ash:#1b1b19;--ash2:#262522;--line:rgba(255,255,255,.11);
+  --stone:#8e8b83;--mist:#b9b5aa;--bone:#EFE9DA;--paper:#FBF7EC;
+  --heart:#ff5d7a;--sun:#ffd166;--ok:#9be8bf;--bad:#ff7a7a;
+}

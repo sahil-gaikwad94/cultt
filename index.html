@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#0A0A09" />
+<meta name="description" content="cultured — match on your humor, not your headshot." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet" />
+<title>cultured</title>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EFE9DA"/><stop offset="1" stop-color="#ff9466"/></linearGradient></defs></svg>
+<div id="stage">
+  <div id="phone">
+    <section class="screen" id="s-feed" aria-label="Culture feed"></section>
+    <section class="screen" id="s-match" aria-label="Match Matrix"></section>
+    <section class="screen" id="s-people" aria-label="People and chat"></section>
+    <section class="screen" id="s-you" aria-label="Your Cultural Fingerprint"></section>
+    <nav id="nav" aria-label="Main"></nav>
+    <div id="pages"></div>
+    <div id="sheetwrap"></div>
+    <div id="overlay"></div>
+    <div id="onboard"></div>
+    <div id="splash"><div class="sp-in"><div class="sp-fp draw" id="spfp"></div><div class="sp-w" aria-label="cultured" id="spw"></div></div></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <input type="file" id="photoIn" accept="image/*" multiple hidden>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

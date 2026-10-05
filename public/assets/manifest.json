@@ -1,0 +1,8 @@
+{
+  "heroImage": { "file": null, "fallback": "procedural:hero" },
+  "feedAmbience": { "file": null, "fallback": "procedural:bokeh-rain" },
+  "matrixBg": { "file": null, "fallback": "procedural:ribbons" },
+  "profileHeader": { "file": null, "fallback": "procedural:shelf" },
+  "matchMoment": { "file": null, "fallback": "procedural:confetti-rings" },
+  "heroVideo": { "file": null, "fallback": null }
+}
