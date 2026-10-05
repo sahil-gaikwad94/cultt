@@ -1,0 +1,25 @@
+{
+  "note": "Locally bundled image references collected from public web image search on 2026-10-06. The app renders these from /public/memes and does not redirect users.",
+  "items": [
+    {"file":"meme-01.webp","source":"Bored Panda","title":"Relatable memes that make you laugh through the pain"},
+    {"file":"meme-02.webp","source":"Bored Panda","title":"Classic memes that defined internet culture"},
+    {"file":"meme-03.webp","source":"Bored Panda","title":"Funny work memes"},
+    {"file":"meme-04.webp","source":"Memebase / Cheezburger","title":"Internet memes collection"},
+    {"file":"meme-05.webp","source":"Bored Panda","title":"Information technology memes of 2026"},
+    {"file":"meme-06.webp","source":"Bored Panda","title":"Classic internet culture memes"},
+    {"file":"meme-07.webp","source":"Memebase / Cheezburger","title":"2026 meme roundup"},
+    {"file":"meme-08.webp","source":"Bored Panda","title":"The funniest memes of 2026"},
+    {"file":"meme-09.webp","source":"Memebase / Cheezburger","title":"Office life memes"},
+    {"file":"meme-10.webp","source":"Memebase / Cheezburger","title":"Relatable work memes"},
+    {"file":"meme-11.webp","source":"CheezCake / Cheezburger","title":"Office life and relationships"},
+    {"file":"meme-12.webp","source":"Memebase / Cheezburger","title":"2026 meme roundup"},
+    {"file":"meme-13.webp","source":"Pinterest / music meme collection","title":"Music memes ideas in 2026"},
+    {"file":"meme-14.webp","source":"Locker Room Access forum","title":"Gaming technology memes"},
+    {"file":"meme-15.webp","source":"Memebase / Cheezburger","title":"System and tech memes"},
+    {"file":"meme-16.webp","source":"Bored Panda","title":"Weekend memes of 2026"},
+    {"file":"meme-17.webp","source":"Bored Panda","title":"Evolution of meme songs"},
+    {"file":"meme-18.webp","source":"Bored Panda","title":"The funniest memes of 2026"},
+    {"file":"meme-19.webp","source":"Bored Panda","title":"Best memes of 2026"},
+    {"file":"meme-20.webp","source":"Reddit / r/coolguides","title":"How memes evolved over the years"}
+  ]
+}

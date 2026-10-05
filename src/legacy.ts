@@ -71,7 +71,8 @@ const I={
 const SEAT='<svg viewBox="0 0 24 24"><path d="M7 11V8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V11"/><rect x="4.5" y="11" width="15" height="7" rx="2.5"/><path d="M7 18v1.5M17 18v1.5"/></svg>';
 const RING_GLYPH=`<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="2.6"/><circle cx="14" cy="14" r="7.6" stroke-dasharray="36 12"/><circle cx="14" cy="14" r="12.2" stroke-dasharray="54 23" transform="rotate(40 14 14)"/></svg>`;
 const ASSETS=(window as Window & { CulturedAssets?: Record<string,string> }).CulturedAssets||{};
-const mediaLayer=(key,extra='')=>ASSETS[key]?`<div class="media-layer ${extra}" aria-hidden="true" style="--media-url:url('${ASSETS[key]}')"></div>`:'';
+function mediaKick(){$$('.media-layer.is-video video').forEach(v=>{if(v.paused)v.play().catch(()=>{})})}
+const mediaLayer=(key,extra='')=>{const u=ASSETS[key];if(!u)return '';return u.endsWith('.mp4')?`<div class="media-layer ${extra} is-video" aria-hidden="true"><video src="${u}" autoplay muted loop playsinline preload="auto" tabindex="-1"></video></div>`:`<div class="media-layer ${extra}" aria-hidden="true" style="--media-url:url('${u}')"></div>`};
 
 /* ================= data ================= */
 const TRACKS={
@@ -82,6 +83,7 @@ const TRACKS={
   soft:{id:'soft',title:'Soft Machine Summer',artist:'Dov and the Echoes',len:229,style:'bloom',genre:'Balearic folk',rating:'4.4',pal:['#0b1a14','#7de3b5','#ffd166','#1f8f78'],desc:'A warm, slightly sad song about a summer that’s already over. Dov and the Echoes recorded it live in one take, and the crowd noise at the end is real.'},
   glass:{id:'glass',title:'Glasshouse',artist:'Imre Tanaka',len:201,style:'dusk',genre:'Ambient',rating:'4.6',pal:['#0e1220','#8fb4ff','#ff9466','#3a2a6e'],desc:'Imre Tanaka layers glass harmonica and field recordings from a greenhouse. Perfect for the last hour before sleep, or the first hour of a hard morning.'}
 };
+const GENRE_TAGS={'Road rock':'golden hour distortion','Dream pop':'rain on a bus window','Indie anthem':'key-change arguments','Synth pop':'dramatic commute fuel','Balearic folk':'the summer that already ended','Ambient':'last hour before sleep'};
 const BURST=n=>{const r=rng(n),pts=[];for(let i=0;i<32;i++){const a=i/32*6.2832,rad=i%2?36:49;pts.push((50+Math.cos(a)*rad).toFixed(1)+','+(50+Math.sin(a)*rad).toFixed(1))}return pts.join(' ')};
 const MEMES={
   m1:{id:'m1',text:'me: i don’t get emotional about music\n\nalso me: replaying a 14-second outro until 3am',bg:'#EFE9DA',fg:'#141413',ac:'#F26B4E',tag:'Relatable, 3am, emotional damage'},
@@ -127,9 +129,9 @@ const LIVE=[{id:'dev',track:'glass',since:'2m',n:6},{id:'ines',track:'choir',sin
 const STARTERS=['What song did you replay five times this week?','Defend your worst-rated favorite album','Send one meme that explains you','Pick a song for waiting on a late bus'];
 const REPLIES=['ha. okay. send the track','this is exactly the kind of taste crime i like','you get it. play it loud','be honest, did you cry at the bridge','i have so many opinions about this','adding it to my night bus playlist'];
 const EMO=['🔥','😭','💀','✨','👀'];
-const ANTI=['Smooth jazz','EDM','Drill','Country','Metal','Reggaeton'];
+const ANTI=['Smooth jazz','EDM','Drill','Country','Metal','Reggaeton','Opera','Muzak','Corporate ambient'];
 const ARTIST_SUGG=['Marlowe Fen','Sunday Radio','Pale Aviator','Juno Kask','Velvet Harbor','Orla Finch','The Quiet Parade','Nico Brandt'];
-const TASTES={Sound:['90s R&B','Bedroom pop','Film scores','Indie folk','Hyperpop','Shoegaze','Anime openings','Jazz standards'],Humor:['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'],Everything:['Podcast brain','Letterboxd diary','Thrifted band tees','Late-night radio','Zines','Cult sitcoms']};
+const TASTES={Sound:['90s R&B','Bedroom pop','Film scores','Indie folk','Hyperpop','Shoegaze','Anime openings','Jazz standards','Amapiano','Jungle','Neo-soul'],Humor:['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'],Everything:['Podcast brain','Letterboxd diary','Thrifted band tees','Late-night radio','Zines','Cult sitcoms']};
 const ROOMS=['Night bus lounge','Golden hour room','Late shift listening'];
 const ACTIVITY=[
   {id:'a1',type:'match',t:'Someone nearby resonated with your Fingerprint',ago:'12m'},
@@ -145,7 +147,8 @@ const DEF=()=>({
   react:{},comments:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
     prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[]},
-  set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,activity:'all',remind:false}
+  set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,activity:'all',remind:false},
+  pulse:{duel:false,seen:0},duel:{picks:{},done:false,score:null,ts:0}
 });
 const BASE_THREADS=()=>{const n=Date.now();return{
   ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]},
@@ -154,6 +157,7 @@ const BASE_THREADS=()=>{const n=Date.now();return{
 }};
 let S=merge(DEF(),store.get('state',{}));
 if(!S.threads)S.threads=BASE_THREADS();
+if(!S.pulse)S.pulse=DEF().pulse;
 const save=()=>store.set('state',S);
 let cur='feed',busy=false,refreshing=false,fpDirty=false,SES=null,ROOM=null,UID=0;
 const ACT={},SEG={},FT={};
@@ -296,19 +300,21 @@ function layoutTabs(root){
 ACT.ftab=b=>{const el=b.closest('.ftabs');$$('.ft',el).forEach(x=>x.classList.toggle('on',x===b));layoutTabs(el.parentNode);haptic(5);if(FT[el.dataset.k])FT[el.dataset.k](b.dataset.v)};
 
 /* ================= nav ================= */
-const NAVI=[['feed','Home',I.home],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
+const NAVI=[['feed','Home',I.home],['pulse','Pulse',I.star],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
 const TABS=NAVI.map(n=>n[0]);
 function buildNav(){$('#nav').innerHTML=NAVI.map(n=>`<button class="nv ${n[0]===cur?'on':''}" data-act="tab" data-t="${n[0]}" aria-label="${n[1]}">${n[2]}<span class="l">${n[1]}</span></button>`).join('')}
 function go(t){
   if(t!==cur)stopPlay();
+  if(t!=='pulse')stopPulseFX();
   cur=t;
   TABS.forEach(x=>$('#s-'+x).classList.toggle('on',x===t));
   $$('.nv').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')});
+  if(t==='pulse')renderPulse();
   if(t==='people')renderPeople();
   if(t==='you')renderYou();
   if(t==='match'&&fpDirty){renderDeck();fpDirty=false}
   const el=$('#s-'+t);el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');setTimeout(()=>el.classList.remove('enter'),1800);
-  layoutTabs(el);
+  layoutTabs(el);mediaKick();
 }
 ACT.tab=b=>{haptic(5);go(b.dataset.t)};
 function updateBadge(){
@@ -366,7 +372,7 @@ function homeBodyHTML(){
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
 function renderFeed(){
-  $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}</div>
+  $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
@@ -488,7 +494,7 @@ const CREW_ROLES=['Saved it','Laughed hardest','Replayed it 5 times','Sent it fi
 function crewFor(p){return PEOPLE.slice().sort((a,b)=>hash(p.id+a.id)-hash(p.id+b.id)).slice(0,4)}
 function detailHTML(p){
   const r=refOf(p),isM=p.kind==='music',cs=[],crew=crewFor(p);
-  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span><span class="chipg">${p.likes+p.laughs} reactions</span>`;
+  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span><span class="chipg">${p.likes+p.laughs} reactions</span>`;
   return `<div class="d-scroll" data-id="${p.id}">
     <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips">${chips}</div></div>
     <div class="d-hero" id="dHero">${artOf(p)}${isM?'<div class="shade" style="height:40%"></div><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div>':''}${isM?`<button class="glassb" data-act="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button>`:''}<div class="prog"><i></i></div></div>
@@ -561,7 +567,7 @@ ACT.closesheet=closeSheet;
 function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius).sort((a,b)=>b.score-a.score)}
 const labelFor=s=>s>=90?'Taste twin':s>=80?'Strong overlap':'Worth a listen';
 function renderMatchShell(){
-  $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}</div>
+  $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}${mediaLayer('matrixVideo','matrix-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}Matrix</div><div class="hr"><button class="ibtn" data-act="open-settings" aria-label="Discovery settings">${I.sliders}</button></div></header>
     ${ftabsHTML('lens',[['dating','Dating'],['friends','Friends']],S.lens)}
     <div class="sbody mbody">
@@ -666,26 +672,90 @@ function showMutual(p){
 ACT['mut-close']=()=>{const o=$('#overlay');o.classList.remove('on');o.innerHTML=''};
 ACT['mut-hi']=b=>{ACT['mut-close']();go('people');setTimeout(()=>openThread(b.dataset.id),250)};
 
+/* ================= culture pulse ================= */
+let PFX=null;
+function stopPulseFX(){if(PFX){clearInterval(PFX.r);PFX=null}}
+function startPulseFX(){
+  const c=$('#pulsefx');if(!c||S.set.calm)return;
+  stopPulseFX();const ctx=c.getContext('2d');const st={r:null,d:[]};
+  const fit=()=>{const r=c.getBoundingClientRect();const w=r.width>10?r.width:390,h=r.height>10?r.height:430;const dp=Math.min(2,window.devicePixelRatio||1);if(c.width!==Math.round(w*dp)||c.height!==Math.round(h*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);st.d.length=0;for(let i=0;i<26;i++)st.d.push({x:Math.random()*c.width,y:Math.random()*c.height,r:1+Math.random()*2.6,v:.18+Math.random()*.6,a:.06+Math.random()*.26,g:['\u266A','\u2726','\u2661'][i%3]})}};
+  fit();setTimeout(fit,420);
+  st.r=setInterval(()=>{fit();ctx.clearRect(0,0,c.width,c.height);const dp=Math.min(2,window.devicePixelRatio||1);
+    for(const q of st.d){q.y-=q.v*dp;if(q.y<-12){q.y=c.height+12;q.x=Math.random()*c.width}
+      ctx.beginPath();ctx.arc(q.x,q.y,q.r*dp,0,6.2832);ctx.fillStyle=`rgba(239,233,218,${q.a})`;ctx.fill();
+      if(q.g){ctx.font=`${11*dp}px serif`;ctx.fillStyle=`rgba(255,209,102,${q.a+.12})`;ctx.fillText(q.g,q.x+9,q.y)}}},33);
+  PFX=st;
+}
+const ZONES=[['Feral Hours','\uD83D\uDE08','life','23:00\u201302:00'],['Golden Hour','\uD83C\uDF07','music','17:30\u201319:30'],['3AM Brain','\uD83E\uDDE0','screen','02:00\u201304:00'],['Soft Sunday','\uD83E\uDDF8','love','all day'],['Ramen Budget','\uD83C\uDF5C','money','payday \u22121']];
+
+function renderPulse(){
+  const joined=!!S.pulse?.duel;
+  $('#s-pulse').innerHTML=`<div class="tint pulse-tint"><div class="pulse-glow glow-a"></div><div class="pulse-glow glow-b"></div><canvas id="pulsefx" class="pulsefx" aria-hidden="true"></canvas></div>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}Pulse</div><div class="hr"><button class="ibtn" data-act="pulse-refresh" aria-label="Refresh pulse">${I.refresh}</button></div></header>
+    <div class="pulse-wrap">
+      <section class="pulse-hero stg" style="--d:1"><div class="pulse-kicker"><span class="live-dot"></span> CULTURE IS MOVING</div><h1>What the room<br>is feeling <em>now.</em></h1><p>Small signals from the people, sounds and jokes shaping your week.</p><div class="pulse-orbit" aria-hidden="true"><div class="orbit-ring r1"></div><div class="orbit-ring r2"></div><div class="orbit-core">${I.star}</div><i class="orbit-dot d1">♪</i><i class="orbit-dot d2">♡</i><i class="orbit-dot d3">✦</i></div></section>
+      <section class="pulse-stats stg" style="--d:2"><div><b>12</b><span>signals today</span></div><div><b>87%</b><span>taste twins nearby</span></div><div><b>4</b><span>new sparks</span></div></section>
+      <div class="pulse-section-head stg" style="--d:3"><div><span class="eyebrow">Vibe zones</span><h2>Pick your weather</h2></div><span class="pulse-week">LIVE</span></div>
+      <section class="zone-row stg" style="--d:4">${ZONES.map(z=>`<button class="zone" data-act="zone-go" data-k="${z[2]}" data-n="${z[0]}"><span class="z-e">${z[1]}</span><b>${z[0]}</b><span class="z-t">${z[3]}</span><i class="z-live"></i></button>`).join('')}</section>
+      <div class="pulse-section-head stg" style="--d:5"><div><span class="eyebrow">Your weekly ritual</span><h2>Pick a little culture</h2></div><span class="pulse-week">WEEK 41</span></div>
+      <section class="pulse-grid stg" style="--d:6">
+        <article class="pulse-card duel-card"><div class="pulse-card-art duel-art"><span>😂</span><span>📝</span><i>+</i></div><div class="pulse-card-copy"><span class="chipg">MEME DUEL · 3 MIN</span><h3>Same meme.<br>Different damage.</h3><p>Caption five prompts. See who gets your exact flavor of funny.</p><button class="cta sm ${joined?'done':''}" data-act="pulse-duel">${joined?'Duel joined':'Enter the duel'} ${joined?I.check:I.chevr}</button></div></article>
+        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div><span>near you</span></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Everyone is<br>saving the bridge.</h3><p>12 people around you loved the same 14 seconds.</p><button class="cta sm ghostb" data-act="pulse-explore">Explore the signal ${I.chevr}</button></div></article>
+      </section>
+      <section class="pulse-note stg" style="--d:7"><div class="note-icon">${I.note}</div><div><b>Your Fingerprint gets sharper in public.</b><span>React, save, listen. We’ll keep the useful parts.</span></div><button class="ibtn" data-act="tab" data-t="feed" aria-label="Open Culture Feed">${I.chevr}</button></section>
+    </div>`;
+}
+ACT['pulse-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderPulse();toast('Pulse refreshed · new signals found');haptic(8)};
+ACT['zone-go']=b=>{mmTab=b.dataset.k;go('feed');renderFeed();toast('Vibe zone: '+b.dataset.n);haptic(8)};
+const _renderPulse=renderPulse;renderPulse=function(){_renderPulse();requestAnimationFrame(startPulseFX)};
+const DUEL=[
+ {id:'d1',e:'🚪',q:'What the club door says at 1am',a:['“you shall not pass until 2am”','capacity is a suggestion']},
+ {id:'d2',e:'🎧',q:'Your 3am playlist is…',a:['a love letter with no recipient','a war crime against genres']},
+ {id:'d3',e:'🫠',q:'Group chat energy tonight',a:['feral but supportive','dead but still replying']},
+ {id:'d4',e:'💸',q:'The fee that hurts the most',a:['concert ticket service fees','the delivery tip']},
+ {id:'d5',e:'🐈',q:'2026 so far, in one image',a:['a cat sitting calmly in chaos','a cat knocking a glass off the table']}
+];
+const duelPartner=()=>person((S.matchedIds&&S.matchedIds[0])||'ines');
+const duelPartnerPick=qid=>{const p=duelPartner();return hash((p?p.seed:3)+'|'+qid)%2?'b':'a'};
+function duelBody(){
+  const D=S.duel,step=Object.keys(D.picks).length;
+  if(step>=DUEL.length&&!D.done){
+    const score=DUEL.reduce((n,x)=>n+((D.picks[x.id]||'')===duelPartnerPick(x.id)?1:0),0);
+    D.done=true;D.score=score;D.ts=Date.now();save();
+  }
+  if(D.done){
+    const p=duelPartner(),sc=D.score||0;
+    const verdicts=[[5,'Same damage. Suspiciously aligned.'],[4,'Mostly same damage. Concerning.'],[3,'Adjacent chaos. Respectable.'],[2,'Different damage. Send a meme anyway.'],[1,'Different damage. Opposites attract?'],[0,'Different damage. A whole cultural gap to explore.']];
+    const v=(verdicts.find(x=>sc>=x[0])||verdicts[4])[1];
+    return `<span class="chipg">Meme Duel · verdict</span><div class="duel-verdict"><div class="duel-emoji">${['🙈','😅','🙂','😈','🔥','🔥'][sc]||'🔥'}</div><div class="duel-score">${sc}<small>/5</small></div><b>${v}</b><span class="hint">You and ${esc(p?p.name:'your match')} captioned five prompts without peeking.</span></div>${p?`<button class="cta" data-act="duel-send">Send the verdict to ${esc(p.name)}</button>`:''}<button class="cta ghostb" data-act="duel-again">Replay the duel</button>`;
+  }
+  const cur=DUEL[step];
+  return `<span class="chipg">Meme Duel · ${step+1} of ${DUEL.length}</span><div class="duel-prog">${DUEL.map((x,i)=>`<i class="${i<step?'done':i===step?'cur':''}"></i>`).join('')}</div><div class="duel-emoji">${cur.e}</div><h3 class="sh-t" style="text-align:center">${esc(cur.q)}</h3><div class="duel-opts">${cur.a.map((t,i)=>`<button class="duel-opt" data-act="duel-pick" data-v="${i?'b':'a'}"><b>${i?'B':'A'}</b><span>${esc(t)}</span></button>`).join('')}</div>`;
+}
+function duelOpen(){S.pulse.duel=true;save();openSheet(duelBody())}
+function duelRefresh(){const sh=$('#sheetwrap .sheet');if(sh)sh.innerHTML=duelBody()}
+ACT['pulse-duel']=()=>{duelOpen();haptic([8,25,8])};
+ACT['duel-start']=duelOpen;
+ACT['duel-pick']=b=>{const D=S.duel,step=Object.keys(D.picks).length;if(step>=DUEL.length)return;D.picks[DUEL[step].id]=b.dataset.v;save();haptic(6);duelRefresh()};
+ACT['duel-again']=()=>{S.duel={picks:{},done:false,score:null,ts:0};save();duelRefresh();haptic(8)};
+ACT['duel-send']=()=>{const p=duelPartner();if(!p)return;ensureThread(p.id);S.threads[p.id].msgs.push({f:'me',t:`Meme Duel verdict: ${S.duel.score||0}/5 same damage`,ts:Date.now()});save();closeSheet();toast('Verdict sent to '+p.name);haptic(10)};
+ACT['pulse-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Follow the signal into Today’s memes'),260)};
+
 /* ================= people + chat ================= */
 let PV='chats';
 function renderPeople(){
   const items=Object.keys(S.threads).map(id=>({p:person(id),t:S.threads[id]})).filter(x=>x.p);
   const fresh=items.filter(x=>!x.t.msgs.length),chats=items.filter(x=>x.t.msgs.length).sort((a,b)=>b.t.msgs[b.t.msgs.length-1].ts-a.t.msgs[a.t.msgs.length-1].ts);
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
-  $('#s-people').innerHTML=`<div class="tint"></div>
+  $('#s-people').innerHTML=`<div class="tint"><i class="aur a1"></i><i class="aur a2"></i><i class="aur a3"></i></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
-    ${ftabsHTML('pv',[['chats','Chats'],['live','Listening now']],PV)}
+    ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
-    ${PV==='chats'?`
-      ${fresh.length?`<div class="blk tight stg"><h2 style="padding-top:18px">New resonances</h2></div><div class="strip stg" style="--d:1">${fresh.map(x=>`<button class="nr" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,64)}<span>${esc(x.p.name)}</span></button>`).join('')}</div>`:'<div style="height:12px"></div>'}
-      <ul class="inbox">${chats.map((x,i)=>{const m=x.t.msgs[x.t.msgs.length-1];return `<li class="stg" style="--d:${i+1}"><button class="row-chat ${x.t.unread?'un':''}" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,56)}<div class="tx"><div class="nm"><span>${esc(x.p.name)}</span><time>${ago(m.ts)}</time></div><div class="pv">${m.f==='me'?'You: ':''}${esc(msgPreview(m))}</div><div class="ctx">You both play ${esc(sharedTitles(x.p))}</div></div>${x.t.unread?`<span class="unread">${x.t.unread}</span>`:''}</button></li>`}).join('')}</ul>`
-    :`<div style="height:20px"></div>${LIVE.map((l,i)=>{const p=person(l.id),t=TRACKS[l.track];return `<div class="livecard stg" style="--d:${i}"><div class="cv">${poster(t,true)}</div><div class="tx"><b>${esc(t.title)}</b><p>${esc(p.name)} and ${l.n-1} others</p><div class="lv"><i></i>Live for ${l.since}</div></div><button class="joinp" data-act="join-live" data-id="${l.id}" data-t="${l.track}">Join</button></div>`}).join('')}<p class="hint" style="padding:6px 24px 0">Friends listening right now. Take a seat and your session starts when they’re ready.</p>`}
-    </div>`;
+    ${fresh.length?`<div class="blk tight stg"><h2 style="padding-top:18px">New resonances</h2></div><div class="strip stg" style="--d:1">${fresh.map(x=>`<button class="nr" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,64)}<span>${esc(x.p.name)}</span></button>`).join('')}</div>`:'<div style="height:12px"></div>'}<ul class="inbox">${chats.map((x,i)=>{const m=x.t.msgs[x.t.msgs.length-1];return `<li class="stg" style="--d:${i+1}"><button class="row-chat ${x.t.unread?'un':''}" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,56)}<div class="tx"><div class="nm"><span>${esc(x.p.name)}</span><time>${ago(m.ts)}</time></div><div class="pv">${m.f==='me'?'You: ':''}${esc(msgPreview(m))}</div><div class="ctx">You both play ${esc(sharedTitles(x.p))}</div></div>${x.t.unread?`<span class="unread">${x.t.unread}</span>`:''}</button></li>`}).join('')}</ul></div>`;
   layoutTabs($('#s-people'));updateBadge();
-  const t=PV==='chats'&&chats[0]?poster(TRACKS.choir,true):poster(TRACKS.glass,true);setTint($('#s-people'),t);
+  const t=chats[0]?poster(TRACKS.choir,true):poster(TRACKS.glass,true);setTint($('#s-people'),t);
 }
 FT.pv=v=>{PV=v;renderPeople();const el=$('#s-people');el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');setTimeout(()=>el.classList.remove('enter'),1500)};
-ACT['join-live']=b=>openRoom({trackId:b.dataset.t,withId:b.dataset.id});
 ACT['open-thread']=b=>openThread(b.dataset.id);
 function openThread(id){
   const p=person(id),t=S.threads[id];if(!t)return;t.unread=0;save();updateBadge();
@@ -1109,7 +1179,29 @@ ACT['ob-done']=()=>{
 
 /* ================= v3: today's memes ================= */
 const STK='<div class="stks" aria-hidden="true">'+['😂','🎧','🔥','💀','✨','🫠'].map((e,i)=>`<i style="--i:${i};--x:${[6,80,14,74,44,90][i]}%;--y:${[2,8,66,60,90,36][i]}%">${e}</i>`).join('')+'</div>';
-const MM_TABS=[['all','Top 10'],['work','Work & Tech'],['music','Music'],['screen','Screen'],['life','Life']];
+const MM_TABS=[['all','For You'],['work','9–5 Cyber'],['music','Main Character Audio'],['screen','Couch Canon'],['life','Third Space'],['love','Situationship HQ'],['money','Ramen Budget']];
+const WEB_MEMES=[
+ {id:'web01',k:'life',e:'🫠',t:'Hydration, but make it suspicious',img:'/memes/meme-01.webp',alt:'Relatable gym and hydration meme'},
+ {id:'web02',k:'life',e:'🚿',t:'A family group chat classic',img:'/memes/meme-02.webp',alt:'Family and shower waiting meme'},
+ {id:'web03',k:'work',e:'🧽',t:'The workday ends when the workday ends',img:'/memes/meme-03.webp',alt:'SpongeBob work meme'},
+ {id:'web04',k:'work',e:'🧪',t:'The test suite has entered the chat',img:'/memes/meme-04.webp',alt:'Software testing and coding meme collage'},
+ {id:'web05',k:'work',e:'🤖',t:'When the bug report writes itself',img:'/memes/meme-05.webp',alt:'Information technology meme'},
+ {id:'web06',k:'life',e:'🦎',t:'Me, meeting my own expectations',img:'/memes/meme-06.webp',alt:'Self reflection and gym meme'},
+ {id:'web07',k:'life',e:'🐈',t:'Already fumbled the year. Still optimistic.',img:'/memes/meme-07.webp',alt:'Cat meme about 2026 and 2027'},
+ {id:'web08',k:'life',e:'🧼',t:'Good guy Charlie has a system',img:'/memes/meme-08.webp',alt:'Funny 2026 meme'},
+ {id:'web09',k:'work',e:'🫡',t:'Happy Monday, the team chat edition',img:'/memes/meme-09.webp',alt:'Office life meme'},
+ {id:'web10',k:'work',e:'📅',t:'Everything is urgent until it is not',img:'/memes/meme-10.webp',alt:'Relatable work meme'},
+ {id:'web11',k:'love',e:'✨',t:'A tiny bit of main-character energy',img:'/memes/meme-11.webp',alt:'Office and relationship meme'},
+ {id:'web12',k:'life',e:'🐈',t:'2026: a year in one facial expression',img:'/memes/meme-12.webp',alt:'Funny 2026 cat meme'},
+ {id:'web13',k:'music',e:'🎟️',t:'The concert ticket was the easy part',img:'/memes/meme-13.webp',alt:'Concert ticket music meme'},
+ {id:'web14',k:'work',e:'🖥️',t:'The RGB upgrade is a lifestyle choice',img:'/memes/meme-14.webp',alt:'Gaming computer meme'},
+ {id:'web15',k:'work',e:'🧑‍💻',t:'Delete the test case. Become the test case.',img:'/memes/meme-15.webp',alt:'Tech system meme'},
+ {id:'web16',k:'life',e:'🌤️',t:'Weekend plans: aggressively unplanned',img:'/memes/meme-16.webp',alt:'Weekend meme'},
+ {id:'web17',k:'music',e:'🎶',t:'A suspiciously complete history of meme songs',img:'/memes/meme-17.webp',alt:'Meme songs culture collage'},
+ {id:'web18',k:'life',e:'🐈',t:'The year is still recoverable',img:'/memes/meme-18.webp',alt:'Cat meme about 2026 and 2027'},
+ {id:'web19',k:'screen',e:'📺',t:'The internet has a museum wing now',img:'/memes/meme-19.webp',alt:'Meme culture collage'},
+ {id:'web20',k:'screen',e:'🗺️',t:'A field guide to how we got here',img:'/memes/meme-20.webp',alt:'Guide to meme evolution'}
+];
 const MM=[
  {id:'x1',k:'work',e:'🐛',t:'me: i’ll just fix this one bug\n\nthe codebase: 47 new bugs',bg:'#F2D45C',fg:'#141413'},
  {id:'x2',k:'work',e:'📧',t:'“this meeting could’ve been an email”\n\nthe meeting: 3 hours',bg:'#9EC5E8',fg:'#141413'},
@@ -1120,14 +1212,19 @@ const MM=[
  {id:'x7',k:'screen',e:'🍥',t:'every anime fan: “it gets good at episode 12”',bg:'#ff8fa3',fg:'#141413'},
  {id:'x8',k:'life',e:'🏋️',t:'gym: 5 min\nstretching: 3 min\nresting on my phone: 55 min',bg:'#F2D45C',fg:'#141413'},
  {id:'x9',k:'life',e:'☕',t:'me: i’m so low maintenance\n\nalso me: a 4-step coffee order',bg:'#EFE9DA',fg:'#141413'},
- {id:'x10',k:'life',e:'🍳',t:'me: i’m basically a chef\n\nthe smoke alarm: respectfully, no',bg:'#F26B4E',fg:'#141413'}];
+ {id:'x10',k:'life',e:'🍳',t:'me: i’m basically a chef\n\nthe smoke alarm: respectfully, no',bg:'#F26B4E',fg:'#141413'},
+ {id:'x11',k:'love',e:'🎵',t:'flirting style: sending a song at 1:47am\n\ncaption: “no reason”',bg:'#F26B4E',fg:'#141413'},
+ {id:'x12',k:'money',e:'🧾',t:'my budget: rent or matcha\n\nme: matcha, obviously',bg:'#F2D45C',fg:'#141413'},
+ {id:'x13',k:'money',e:'💸',t:'“treat yourself”\n\nthe treat: $9 toast and a slight panic',bg:'#9be8bf',fg:'#141413'}, ...WEB_MEMES];
 let mmTab='all';
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
 const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
 const mmTxt=t=>esc(t).replace(/\n/g,'<br>');
-function mmCard(m,i){const st=mmS();return `<article class="mm-card" data-m="${m.id}" style="--bg:${m.bg};--fg:${m.fg};--i:${i}"><span class="mm-e">${m.e}</span><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">10 fresh</span></div><div class="mm-tabs" role="tablist">${MM_TABS.map(t=>`<button class="chip ${t[0]===mmTab?'on':''}" data-act="mm-tab" data-v="${t[0]}" aria-pressed="${t[0]===mmTab}">${t[1]}</button>`).join('')}</div><div class="mm-row" id="mmrow">${mmList().map(mmCard).join('')}</div></section>`}
+function mmVisual(m){return m.img?`<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy"></div>`:`<span class="mm-e">${m.e}</span>`}
+function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}">${m.img?`<img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy">`:`<span>${m.e}</span>`}<i>${esc(m.t.split('\n')[0])}</i></div>`}
+function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" aria-label="Send to a match">${I.share}</button></div></article>`}
+function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${MM.length} in-house</span></div><div class="mm-tabs" role="tablist">${MM_TABS.map(t=>`<button class="chip ${t[0]===mmTab?'on':''}" data-act="mm-tab" data-v="${t[0]}" aria-pressed="${t[0]===mmTab}">${t[1]}</button>`).join('')}</div><div class="mm-row" id="mmrow">${mmList().map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{mmTab=b.dataset.v;$$('.mm-tabs .chip').forEach(c=>{const on=c===b;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)});const r=$('#mmrow');r.innerHTML=mmList().map(mmCard).join('');r.scrollLeft=0;haptic(5)};
 const mmId=b=>b.closest('[data-m]').dataset.m;
 ACT['mm-like']=b=>{const id=mmId(b),st=mmS();st.l[id]=st.l[id]?0:1;b.classList.toggle('on',!!st.l[id]);b.setAttribute('aria-pressed',!!st.l[id]);save();if(st.l[id]){burst(b,'#ff5d7a');haptic(10)}};
@@ -1137,10 +1234,10 @@ ACT['mm-share']=b=>{
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid)};
-function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg};--fg:${x.fg}"><span>${x.e}</span>${mmTxt(x.t)}</div>`:''}
-ACT['meme-pick']=()=>openSheet(`<h3 class="sh-t">Send a meme</h3><div class="mm-grid">${MM.map(m=>`<button class="mm-mini" data-act="mm-chat" data-id="${m.id}" style="--bg:${m.bg};--fg:${m.fg}"><span>${m.e}</span><i>${esc(m.t.split('\n')[0])}</i></button>`).join('')}</div>`);
+function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
+ACT['meme-pick']=()=>openSheet(`<h3 class="sh-t">Send a meme</h3><div class="mm-grid">${MM.map(m=>`<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`).join('')}</div>`);
 ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();renderMsgs(id);haptic(8);reply(id)};
-function mmShelf(){const st=mmS(),ids=MM.filter(m=>st.s[m.id]);return `<div class="blk stg" style="--d:5"><h2>Meme shelf</h2><div class="mm-shelf">${ids.length?ids.map(m=>`<div class="mm-mini sh" style="--bg:${m.bg};--fg:${m.fg}"><span>${m.e}</span><i>${esc(m.t.split('\n')[0])}</i></div>`).join(''):'<p class="hint">Save memes from Today’s memes and they pin here.</p>'}</div></div>`}
+function mmShelf(){const st=mmS(),ids=MM.filter(m=>st.s[m.id]);return `<div class="blk stg" style="--d:5"><h2>Meme shelf</h2><div class="mm-shelf">${ids.length?ids.map(m=>mmMini(m,'sh')).join(''):'<p class="hint">Save memes from Today’s memes and they pin here.</p>'}</div></div>`}
 /* ================= boot ================= */
 function initMicroInteractions(){
   document.addEventListener('pointermove',e=>{
@@ -1153,7 +1250,7 @@ function initMicroInteractions(){
     const r=b.getBoundingClientRect(),i=document.createElement('i');i.className='ripple';i.style.left=`${e.clientX-r.left}px`;i.style.top=`${e.clientY-r.top}px`;b.appendChild(i);setTimeout(()=>i.remove(),600);
   },{passive:true});
 }
-function renderAll(){renderFeed();renderMatchShell();renderPeople();renderYou();updateBadge()}
+function renderAll(){renderFeed();renderPulse();renderMatchShell();renderPeople();renderYou();updateBadge();mediaKick()}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;const f=ACT[a.dataset.act];if(f)f(a,e)});
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.cc-art')){e.preventDefault();ACT['open-d'](e.target)}});
 function splashInit(){

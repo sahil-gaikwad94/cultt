@@ -1,10 +1,38 @@
 {
-  "appIcon": { "file": "/assets/app-icon.svg", "fallback": "svg:wave-heart" },
-  "heroImage": { "file": null, "fallback": "procedural:hero" },
-  "feedAmbience": { "file": "/assets/feed-ambience.webp", "fallback": "procedural:bokeh-rain" },
-  "matrixBg": { "file": "/assets/matrix-ribbons.webp", "fallback": "procedural:ribbons" },
-  "profileHeader": { "file": "/assets/fingerprint-header.webp", "fallback": "procedural:shelf" },
-  "matchMoment": { "file": null, "fallback": "procedural:confetti-rings" },
-  "heroVideo": { "file": null, "fallback": null },
-  "matrixVideo": { "file": null, "poster": "/assets/matrix-ribbons.webp", "fallback": "css:resonance-ribbons" }
+  "appIcon": {
+    "file": "/assets/app-icon.svg",
+    "fallback": "svg:wave-heart"
+  },
+  "heroImage": {
+    "file": null,
+    "fallback": "procedural:hero"
+  },
+  "feedAmbience": {
+    "file": "/assets/feed-ambience-v2.webp",
+    "fallback": "procedural:bokeh-rain"
+  },
+  "feedVideo": {
+    "file": "/assets/feed-loop.mp4",
+    "poster": "/assets/feed-ambience-v2.webp"
+  },
+  "matrixBg": {
+    "file": "/assets/matrix-ribbons-v2.webp",
+    "fallback": "procedural:ribbons"
+  },
+  "matrixVideo": {
+    "file": "/assets/matrix-loop.mp4",
+    "poster": "/assets/matrix-ribbons-v2.webp"
+  },
+  "profileHeader": {
+    "file": "/assets/profile-header-v2.webp",
+    "fallback": "procedural:shelf"
+  },
+  "matchMoment": {
+    "file": null,
+    "fallback": "procedural:confetti-rings"
+  },
+  "heroVideo": {
+    "file": null,
+    "fallback": null
+  }
 }
