@@ -241,3 +241,85 @@ advance, 360x800 fit, reduced motion, Calm Mode).
 
 **Baselines.** `tests/visual/updated/cold-open-{start,settled}-390x844.png`,
 `cold-open-settled-360x800.png`, `cold-open-reduced-motion-390x844.png`.
+
+## 2026-10-06 — the honesty pass
+
+**What.** Removed the things in this build that were not true, and labelled the
+rest.
+
+1. **The feed ships originals, not scraped images.** `MM` was 13 hand-written
+   cards plus 20 images collected from public web image search (see
+   `public/memes/sources.json` — Bored Panda and friends, no licence). It is now
+   the 13 plus the 122-card generated corpus, all tagged, all with alt text. The
+   searched images survive behind `DEMO_MEMES` for local demos.
+2. **Comments are gone.** Like, save and share only. `SEEDC` — comments
+   attributed to people who do not exist — went with them.
+3. **The invented number is gone.** "12 people around you loved the same 14
+   seconds" and "Everyone is saving the bridge" are replaced by a true empty
+   state that explains when local signal will switch on.
+4. **Rooms are behind `FEATURE_ROOMS=false`.** Because they are off, every room
+   affordance became the honest one: send the song to the match with a
+   30-second clip. `LIVE` — fabricated room occupancy ("Kai, 6 listening") — is
+   now unreachable rather than merely unused.
+5. **`DEMO_DATA` is on in dev, off in production, and dev is labelled.** A
+   visible banner says the people, posts and counts are invented. It appears
+   after onboarding, not over the Cold Open: on top it also swallowed the
+   tap-to-skip, because a z-index 70 banner sat above the overlay it labelled.
+6. **`DEMO_MEMES` cannot be enabled in production.** Not by config, not by
+   `window.CULTURED_CONFIG`.
+
+**Two things measurement caught that reasoning did not.**
+
+- **The flag did not actually remove the images.** `grep` on the production
+  bundle found `meme-01.webp` still present: writing the guard as
+  `!!(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD)`
+  defeats the bundler's constant folding. Using `import.meta.env.DEV` directly
+  makes it fold, and the web-image strings are gone from `dist` (verified: 0
+  references, 0 meme `.webp` files).
+- **A flag cannot un-copy a file.** Vite copies `public/` verbatim, so all 20
+  images landed in `dist/` even with the code path removed.
+  `scripts/prune-demo-assets.mjs` now deletes them from the output after the
+  build. It runs as part of `npm run build`.
+
+**Added.** `DEMO_DATA`, `DEMO_MEMES`, `FEATURE_ROOMS` flags; the prototype
+banner; `scripts/prune-demo-assets.mjs`; `tests/visual/honesty.spec.ts` (5
+tests).
+
+**Flagged off.** Rooms, UGC, demo memes in production, and the seeded people and
+posts in production.
+
+## 2026-10-06 — the intro video export
+
+**What.** `scripts/export-intro-video.mjs` records the Cold Open with Playwright
+and transcodes it to `public/assets/intro.mp4`: 10.600s, 540x960 (9:16), H.264
+`yuv420p`, muted, `+faststart` (verified — `moov` at byte 36, before `mdat`),
+84 KB against a 1 MB budget. A WebM and a poster frame come with it.
+`marketing/intro-video-prompts.md` holds the four-shot prompt set for an
+external video model.
+
+Capture mode (`?introCapture=1`) renders the visual beats with no words in
+frame, so the clip can sit under the live text overlay rather than baking the
+copy into the pixels.
+
+**Two real defects the export exposed, both fixed.**
+
+1. **The splash was hiding the whole opening image.** `#splash` is z-index 90
+   and `#onboard` is 50, so the ring drawing itself and the vinyl were playing
+   under an opaque overlay — viewers joined at the split. `drawColdOpen` now
+   waits for the splash to leave before starting the clock. This was live in the
+   shipping path and no test had caught it.
+2. **The clip double-rendered with the DOM beats.** Supplying `heroVideo` added
+   footage but did not suppress the DOM ring, split, ribbons and heart, so both
+   drew at once, slightly out of step. Keyframes targeting visual-only nodes are
+   now dropped when a clip is playing, the canvas layer stays off, and under
+   reduced motion the clip is paused to its poster instead of playing.
+
+**The trim is computed, not detected.** A luma scan cannot find the start of the
+intro: the splash and the intro are both dark, so the floor is identical on both
+sides. The intro's length and the tail are known by construction, so the clip is
+the last `TIMELINE_MS + TAIL_MS` of the take. Deterministic, and it cannot drift
+— the earlier luma detector reported 0.00s on a take with 2.76s of boot in it.
+
+**Enabled.** `manifest.heroVideo.file` now points at `/assets/intro.mp4`, so the
+slot is live. `tests/visual/hero-video.spec.ts` skips itself when the manifest
+leaves the slot empty, so it cannot pass against a configuration nobody runs.

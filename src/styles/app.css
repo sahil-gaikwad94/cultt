@@ -853,3 +853,21 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
    API calls are additionally skipped in JS (see src/motion/reduce.ts). */
 .calm .co,.calm .co *{animation:none!important}
 @media (prefers-reduced-motion:reduce){.co,.co *{animation:none!important}}
+
+/* ------------------------------ prototype banner ------------------------------ */
+
+.demo-banner{position:absolute;top:0;left:0;right:0;z-index:70;display:flex;align-items:center;gap:8px;
+  padding:7px 10px;padding-top:calc(7px + env(safe-area-inset-top,0px));
+  background:var(--sun);color:var(--ink);font-size:11px;line-height:1.25;font-weight:600}
+.demo-banner b{font-weight:800;letter-spacing:.04em;text-transform:uppercase;flex:none}
+.demo-banner span{flex:1;min-width:0}
+.demo-banner button{flex:none;width:20px;height:20px;border:0;background:none;color:var(--ink);
+  display:grid;place-items:center;cursor:pointer;padding:0}
+
+/* Capture mode: the visual beats only, so the exported video has no text in
+   frame and the live-text overlay can sit on top of it. */
+.co-capture .co-type,
+.co-capture .co-lockup,
+.co-capture .co-cta,
+.co-capture .co-skip,
+.co-capture .co-scan{display:none!important}

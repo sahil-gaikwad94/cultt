@@ -4,6 +4,9 @@
 /* The Cold Open lives in src/motion/timeline.ts, outside this file, so the
    seam does not grow. It is the only new dependency onboarding takes. */
 import { playColdOpen } from './motion/timeline';
+/* The 122 original in-house meme cards. Production content is generated, not
+   scraped; see scripts/generate-meme-corpus.mjs. */
+import { SEED_MEMES } from './data/seed/memes';
 
 (()=>{
 'use strict';
@@ -20,7 +23,28 @@ const store={
   clear(){try{Object.keys(localStorage).filter(k=>k.indexOf('cultured2:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 };
 /* ===== v4 production seam: the ONLY places the real backend/analytics plug in ===== */
-const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true},assets:{}},window.CULTURED_CONFIG||{});
+const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,demoMemes:false,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
+/* ------------------------------------------------------------------ honesty
+   Three flags decide how much of this build is a demonstration rather than a
+   product, and a production build refuses to be a demonstration at all.
+
+   DEMO_MEMES  the 20 images under public/memes came from web image search and
+               have no licence (see public/memes/sources.json). They are for
+               local demos only and can never appear in a production build,
+               whatever `window.CULTURED_CONFIG` says.
+   DEMO_DATA   seeded people, circle posts and chat transcripts. On in dev so
+               the prototype is explorable, off in production.
+   ROOMS       the 15-minute synced listening rooms. Off everywhere for now.
+   ------------------------------------------------------------------------- */
+/* `import.meta.env.DEV` / `.PROD` are substituted with the literal `true` or
+   `false` by the bundler, so these three constants fold to constants at build
+   time and the branches they guard are removed. Writing this as
+   `!!(typeof import.meta !== 'undefined' && …)` instead left web-image URLs in
+   the production bundle, because the `typeof` guard defeated the folding. */
+const DEV=import.meta.env.DEV===true;
+const DEMO_MEMES=DEV&&CFG.flags.demoMemes===true;
+const DEMO_DATA=DEV&&CFG.flags.demoData!==false;
+const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
 window.Cultured={config:CFG,track,store};
 const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
@@ -112,11 +136,7 @@ const YEST=[
   {id:'y3',kind:'music',ref:'soft',likes:166,laughs:5,why:'A slow riser. It crept up the charts overnight.'}
 ];
 const POSTS={};[...DROPS.flatMap(d=>[d.music,d.meme]),...CIRCLE,...YEST].forEach(p=>POSTS[p.id]=p);
-const SEEDC={
-  d1a:[{by:'Kai',t:'the bridge at 2:10 should be illegal'},{by:'Dev',t:'added to the 5:40pm bus playlist immediately'}],
-  d1b:[{by:'Ines',t:'this is a call out post'}],
-  c1:[{by:'Dev',t:'second opinion: you’re right'}]
-};
+/* Comments are gone: like, save and share only. The seeded ones went with them. */
 const HUMOR=['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'];
 const PEOPLE=[
   {id:'ines',name:'Ines',km:.9,intent:['friends','dating'],matched:true,score:88,pal:['#ff6fa5','#ffb86b','#7b3aa8','#180c1c'],seed:3,shared:['choir','cherry'],humor:[.6,.4,.9,.3,.6,.9],bio:'Keeps a spreadsheet of songs that make her want to leave the party.',age:26},
@@ -148,7 +168,7 @@ const ACTIVITY=[
 /* ================= state ================= */
 const DEF=()=>({
   onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,
-  react:{},comments:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
+  react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
     prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[]},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
@@ -331,12 +351,15 @@ function updateBadge(){
 const refOf=p=>p.kind==='music'?TRACKS[p.ref]:MEMES[p.ref];
 const labelOf=p=>p.kind==='music'?TRACKS[p.ref].title:MEMES[p.ref].text.split('\n')[0];
 const rs=id=>S.react[id]||(S.react[id]={l:0,h:0,s:0});
-const commentsOf=id=>(SEEDC[id]||[]).concat(S.comments[id]||[]);
 const curDrop=()=>DROPS[S.dropIdx%DROPS.length];
-function circleList(){const n=CIRCLE.length,k=S.shift%n;return CIRCLE.slice(k).concat(CIRCLE.slice(0,k))}
+/* Seeded circle posts are demonstration content, not real people's posts. */
+const CIRCLE_SOURCE=DEMO_DATA?CIRCLE:[];
+function circleList(){const n=CIRCLE_SOURCE.length;if(!n)return[];const k=S.shift%n;return CIRCLE_SOURCE.slice(k).concat(CIRCLE_SOURCE.slice(0,k))}
 function dateParts(off){const d=new Date();d.setDate(d.getDate()+off);return{d:String(d.getDate()).padStart(2,'0'),m:d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}}
 function bigDateHTML(off){const x=dateParts(off),s=x.d+' '+x.m;return `<div class="bigdate" aria-label="${x.d} ${x.m}">${[...s].map((c,i)=>c===' '?'<span class="sp2"></span>':`<span class="ch"><i style="--d:${i}">${c}</i></span>`).join('')}</div>`}
-function deckItems(){return DK.day===-1?YEST:[curDrop().music,curDrop().meme].concat(circleList().slice(0,2))}
+/* With circles empty (production), the last two cards come from yesterday so
+   the drop is still a deck of four rather than a deck of two. */
+function deckItems(){if(DK.day===-1)return YEST;const extra=circleList().slice(0,2);return [curDrop().music,curDrop().meme].concat(extra.length?extra:YEST.slice(0,2))}
 const rb=(act,cls,icon,n,on,label)=>`<button class="rb ${cls} ${on?'on':''}" data-act="${act}" aria-label="${label}" aria-pressed="${!!on}"><span class="ri">${icon}</span>${n!==undefined?`<span class="n">${n}</span>`:''}</button>`;
 function reactions(p,col){
   const st=rs(p.id);
@@ -382,7 +405,7 @@ function renderFeed(){
     <div id="feedBody">
       ${ftabsHTML('day',[['-1','Yesterday'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
-      <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')}</section>
+      <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div>'}</section>
     </div>`;
   layoutTabs($('#s-feed'));afterHome();
 }
@@ -469,7 +492,6 @@ ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCa
 ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');if(st.h){burst(b,'#ffd166');haptic([8,30,8])}};
 ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');toast(st.s?'Saved to your Fingerprint':'Removed from saved');haptic(8)};
 ACT.share=b=>openShare(idOf(b));
-ACT.comments=b=>openComments(idOf(b));
 ACT['open-d']=b=>openDetail(b.dataset.id,b);
 /* previews */
 let PL={id:null,t:0,iv:null};
@@ -512,7 +534,7 @@ function detailHTML(p){
     <h3 class="d-h stg" style="--d:7">Comments<small>${cs.length}</small></h3>
     <div class="cm-list stg" style="--d:7">${cs.slice(0,2).map(c=>`<div class="cm">${avatar(c.by,32)}<div><b>${esc(c.by)}</b><p>${esc(c.t)}</p></div></div>`).join('')||'<p class="hint">Nobody’s said anything yet.</p>'}</div>
   </div>
-  <div class="cta-dock">${isM?`<button class="split" data-act="to-room" data-id="${r.id}"><b>Listen together</b><span>15 min</span></button>`:`<button class="split" data-act="share" data-id="${p.id}"><b>Send to a friend</b><span>Share</span></button>`}</div>`;
+  <div class="cta-dock">${isM&&FEATURE_ROOMS?`<button class="split" data-act="to-room" data-id="${r.id}"><b>${ROOM_OFFER_LABEL}</b><span>15 min</span></button>`:`<button class="split" data-act="share" data-id="${p.id}"><b>Send to a friend</b><span>Share</span></button>`}</div>`;
 }
 function openDetail(id,fromEl){
   const p=POSTS[id];if(!p)return;stopPlay();
@@ -533,22 +555,18 @@ function openDetail(id,fromEl){
 }
 ACT.readmore=b=>{const d=$('#dDesc');const o=d.classList.toggle('open');b.textContent=o?'Show less':'Read more'};
 ACT.back=closePage;
-ACT['to-room']=b=>{const th=$('.page[data-thread]:not([data-closing])');openRoom({trackId:b.dataset.id,withId:b.dataset.with||(th?th.dataset.thread:null)})};
-/* comments + share */
-function drawComments(id){
-  const list=$('#cm-list');if(!list)return;const cs=commentsOf(id);
-  list.innerHTML=cs.length?cs.map(c=>`<div class="cm">${avatar(c.by,32)}<div><b>${esc(c.by)}</b><p>${esc(c.t)}</p></div></div>`).join(''):'<p class="hint">Nobody’s said anything yet. Be the first.</p>';
-  list.scrollTop=list.scrollHeight;
-}
-function openComments(id){
-  openSheet(`<h3 class="sh-t">Comments</h3><p class="hint" style="margin:-6px 0 14px">${esc(labelOf(POSTS[id]))}</p><div class="cm-list" id="cm-list" style="max-height:42cqh;overflow-y:auto"></div>
-    <div class="composer in-sheet"><input id="cm-in" placeholder="Add a comment" maxlength="140" autocomplete="off" aria-label="Add a comment"><button class="send" data-act="cm-send" aria-label="Post comment">${I.send}</button></div>`,sh=>{
-    sh.dataset.post=id;drawComments(id);$('#cm-in',sh).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ACT['cm-send']()}});
-  });
-}
-ACT['cm-send']=()=>{
-  const sh=$('.sheet');if(!sh||!sh.dataset.post)return;const id=sh.dataset.post,inp=$('#cm-in'),t=inp.value.trim();if(!t)return;
-  (S.comments[id]=S.comments[id]||[]).push({by:'You',t});inp.value='';save();drawComments(id);syncPost(id);haptic(8);
+/* Rooms are off (FEATURE_ROOMS). Until they ship, the affordance is the honest
+   one: send the song to the match as a message with a 30-second clip. */
+const ROOM_OFFER_LABEL=FEATURE_ROOMS?'Listen together':'Send this song';
+ACT['to-room']=b=>{
+  const th=$('.page[data-thread]:not([data-closing])');
+  const withId=b.dataset.with||(th?th.dataset.thread:null);
+  if(FEATURE_ROOMS){openRoom({trackId:b.dataset.id,withId});return}
+  if(!withId){toast('Open a match before sending a song');return}
+  const ref=b.dataset.id;if(!TRACKS[ref]){toast('Open a match before sending a song');return}
+  ensureThread(withId);
+  S.threads[withId].msgs.push({f:'me',kind:'track',ref,ts:Date.now()});
+  save();closeSheet();toast('Sent with a 30-second clip');haptic(8);reply(withId);track('song_sent',{via:'rooms_off'});
 };
 function openShare(id){
   const p=POSTS[id],r=refOf(p);
@@ -704,7 +722,7 @@ function renderPulse(){
       <div class="pulse-section-head stg" style="--d:5"><div><span class="eyebrow">Your weekly ritual</span><h2>Pick a little culture</h2></div><span class="pulse-week">WEEK 41</span></div>
       <section class="pulse-grid stg" style="--d:6">
         <article class="pulse-card duel-card"><div class="pulse-card-art duel-art"><span>😂</span><span>📝</span><i>+</i></div><div class="pulse-card-copy"><span class="chipg">MEME DUEL · 3 MIN</span><h3>Same meme.<br>Different damage.</h3><p>Caption five prompts. See who gets your exact flavor of funny.</p><button class="cta sm ${joined?'done':''}" data-act="pulse-duel">${joined?'Duel joined':'Enter the duel'} ${joined?I.check:I.chevr}</button></div></article>
-        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div><span>near you</span></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Everyone is<br>saving the bridge.</h3><p>12 people around you loved the same 14 seconds.</p><button class="cta sm ghostb" data-act="pulse-explore">Explore the signal ${I.chevr}</button></div></article>
+        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Your city<br>is still quiet.</h3><p>Local signal switches on once enough people in one area are here. We would rather show you nothing than invent a number.</p><button class="cta sm ghostb" data-act="pulse-explore">How this works ${I.chevr}</button></div></article>
       </section>
       <section class="pulse-note stg" style="--d:7"><div class="note-icon">${I.note}</div><div><b>Your Fingerprint gets sharper in public.</b><span>React, save, listen. We’ll keep the useful parts.</span></div><button class="ibtn" data-act="tab" data-t="feed" aria-label="Open Culture Feed">${I.chevr}</button></section>
     </div>`;
@@ -743,7 +761,7 @@ ACT['duel-start']=duelOpen;
 ACT['duel-pick']=b=>{const D=S.duel,step=Object.keys(D.picks).length;if(step>=DUEL.length)return;D.picks[DUEL[step].id]=b.dataset.v;save();haptic(6);duelRefresh()};
 ACT['duel-again']=()=>{S.duel={picks:{},done:false,score:null,ts:0};save();duelRefresh();haptic(8)};
 ACT['duel-send']=()=>{const p=duelPartner();if(!p)return;ensureThread(p.id);S.threads[p.id].msgs.push({f:'me',t:`Meme Duel verdict: ${S.duel.score||0}/5 same damage`,ts:Date.now()});save();closeSheet();toast('Verdict sent to '+p.name);haptic(10)};
-ACT['pulse-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Follow the signal into Today’s memes'),260)};
+ACT['pulse-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
 
 /* ================= people + chat ================= */
 let PV='chats';
@@ -763,7 +781,7 @@ FT.pv=v=>{PV=v;renderPeople();const el=$('#s-people');el.classList.remove('enter
 ACT['open-thread']=b=>openThread(b.dataset.id);
 function openThread(id){
   const p=person(id),t=S.threads[id];if(!t)return;t.unread=0;save();updateBadge();
-  const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${p.score}% resonance, ${p.km} km away</span></div><button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="Listen together">${I.headphones}</button></div>
+  const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${p.score}% resonance, ${p.km} km away</span></div>${FEATURE_ROOMS?`<button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="${ROOM_OFFER_LABEL}">${I.headphones}</button>`:'<span style="width:42px"></span>'}</div>
     <div class="msgs" id="msgs"></div><div id="starters"></div>
     <div class="composer"><button class="send alt" data-act="song-pick" aria-label="Send a song">${I.note}</button><button class="send alt" data-act="meme-pick" aria-label="Send a meme">😂</button><input id="msg-in" placeholder="Say something about a song" maxlength="280" autocomplete="off" aria-label="Message"><button class="send" data-act="send" aria-label="Send">${I.send}</button></div>`);
   pg.dataset.thread=id;pg.onclose=()=>{renderPeople()};
@@ -775,8 +793,8 @@ const TYPING={};
 function renderMsgs(id){
   const pg=$(`.page[data-thread="${id}"]`);if(!pg)return;
   const p=person(id),t=S.threads[id],box=$('#msgs',pg);
-  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button><button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">Listen together</button></div></div>`
-    +t.msgs.map(m=>m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div><button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button></div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
+  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button>${FEATURE_ROOMS?`<button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">${ROOM_OFFER_LABEL}</button>`:''}</div></div>`
+    +t.msgs.map(m=>m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div>${FEATURE_ROOMS?`<button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button>`:''}</div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
   box.scrollTop=box.scrollHeight;
   $('#starters',pg).innerHTML=t.msgs.length<=1?`<div class="starters">${STARTERS.map(s=>`<button class="chip" data-act="starter" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:'';
 }
@@ -1142,16 +1160,27 @@ function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',
 /* ---------------- the Cold Open: onboarding scene 0 ----------------
    Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
    intro from src/motion/timeline.ts, which ends by advancing to step 1. */
-let COLD=null;
+let COLD=null,CO_WAIT=0;
 function drawColdOpen(){
   if(COLD){try{COLD.destroy()}catch(e){}COLD=null}
+  /* `?introCapture=1` renders the visual beats with no words in frame, for
+     scripts/export-intro-video.mjs. It is inert in production builds. */
+  const capture=DEV&&/[?&]introCapture/.test(location.search);
+  if(capture){const sp=$('#splash');if(sp)sp.remove()}
+  /* #splash sits at z-index 90, above #onboard at 50. Mounting the intro under
+     it would play the whole opening image — the ring drawing itself, the vinyl
+     and its grooves — where nobody can see it, and the viewer would join at the
+     split. Wait for the splash to leave, then start the clock. Capture mode has
+     already removed it, so a recorded plate is intro-only from its first frame. */
+  if($('#splash')){clearTimeout(CO_WAIT);CO_WAIT=setTimeout(drawColdOpen,100);return}
   const host=$('#onboard');host.classList.add('on');
   track('intro_start',{v:4});
   COLD=playColdOpen({
     host,
-    sound:S.set.sound!==false&&CFG.flags.sound!==false,
-    haptics:S.set.haptics!==false,
-    heroVideo:(window.CulturedAssets&&window.CulturedAssets.heroVideo)||null,
+    capture,
+    sound:!capture&&S.set.sound!==false&&CFG.flags.sound!==false,
+    haptics:!capture&&S.set.haptics!==false,
+    heroVideo:capture?null:((window.CulturedAssets&&window.CulturedAssets.heroVideo)||null),
     haptic,
     onDone:()=>{COLD=null;OB.step=1;drawOb();track('intro_complete',{v:4})}
   });
@@ -1193,7 +1222,7 @@ ACT['ob-done']=()=>{
   S.onboarded=true;S.intent=OB.intent||'both';S.lens=S.intent==='friends'?'friends':'dating';S.tastes=OB.picks.slice();
   if(OB.name.trim())S.prof.name=OB.name.trim();
   const hs=OB.picks.filter(x=>HUMOR.indexOf(x)>-1);if(hs.length)S.prof.humor=hs;
-  S.decided={};S.history=[];save();renderAll();
+  S.decided={};S.history=[];save();renderAll();demoBanner();
   const o=$('#onboard');
   o.innerHTML=`<div class="gen"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:19,w:1.4})}</div><h2>Reading your taste</h2><p>Your Fingerprint is forming.</p></div>`;
   haptic([10,40,10,40,20]);
@@ -1226,6 +1255,8 @@ const WEB_MEMES=[
  {id:'web19',k:'screen',e:'📺',t:'The internet has a museum wing now',img:'/memes/meme-19.webp',alt:'Meme culture collage'},
  {id:'web20',k:'screen',e:'🗺️',t:'A field guide to how we got here',img:'/memes/meme-20.webp',alt:'Guide to meme evolution'}
 ];
+/* Topic -> sticker. Declared before MM because MM.map runs immediately. */
+const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵',money:'🧾'};
 const MM=[
  {id:'x1',k:'work',e:'🐛',t:'me: i’ll just fix this one bug\n\nthe codebase: 47 new bugs',bg:'#F2D45C',fg:'#141413'},
  {id:'x2',k:'work',e:'📧',t:'“this meeting could’ve been an email”\n\nthe meeting: 3 hours',bg:'#9EC5E8',fg:'#141413'},
@@ -1239,7 +1270,13 @@ const MM=[
  {id:'x10',k:'life',e:'🍳',t:'me: i’m basically a chef\n\nthe smoke alarm: respectfully, no',bg:'#F26B4E',fg:'#141413'},
  {id:'x11',k:'love',e:'🎵',t:'flirting style: sending a song at 1:47am\n\ncaption: “no reason”',bg:'#F26B4E',fg:'#141413'},
  {id:'x12',k:'money',e:'🧾',t:'my budget: rent or matcha\n\nme: matcha, obviously',bg:'#F2D45C',fg:'#141413'},
- {id:'x13',k:'money',e:'💸',t:'“treat yourself”\n\nthe treat: $9 toast and a slight panic',bg:'#9be8bf',fg:'#141413'}, ...WEB_MEMES];
+ {id:'x13',k:'money',e:'💸',t:'“treat yourself”\n\nthe treat: $9 toast and a slight panic',bg:'#9be8bf',fg:'#141413'}
+].concat(
+  /* The default feed is 122 original typographic cards, generated for cultured
+     and tagged with the Resonance taxonomy. Every one carries alt text. */
+  SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,bg:m.bg,fg:m.fg,alt:m.alt})),
+  /* The 20 searched images, for local demos only. Never in a production build. */
+  DEMO_MEMES?WEB_MEMES:[]);
 let mmTab='all';
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
@@ -1282,14 +1319,31 @@ function splashInit(){
   $('#spw').innerHTML=[...'cultured'].map((c,i)=>`<span><i style="--d:${i}">${c}</i></span>`).join('');
   setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
 }
+/* A prototype that contains invented people has to say so on screen, not in a
+   README. The banner is the difference between a demo and a deception. */
+let bannerShown=false;
+function demoBanner(){
+  if(!DEMO_DATA||bannerShown)return;
+  bannerShown=true;
+  const b=document.createElement('div');
+  b.className='demo-banner';b.setAttribute('role','note');
+  b.innerHTML=`<b>Prototype</b><span>Demo content. The people, posts and counts in this build are invented for local demonstration.</span><button aria-label="Dismiss">${I.x}</button>`;
+  b.querySelector('button').onclick=()=>b.remove();
+  $('#phone').appendChild(b);
+}
 function init(){
   grainInit();applyCalm();buildNav();splashInit();initMicroInteractions();
   initPTR();renderAll();go('feed');
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layoutTabs(document));
   window.addEventListener('resize',()=>layoutTabs(document));
-  track('app_open',{v:4});if(!S.onboarded)showOnboarding();
+  track('app_open',{v:4});
+  /* The demo label is product chrome, not part of the story, so it appears once
+     onboarding is done. Putting it over the Cold Open also swallowed the
+     tap-to-skip, because the banner sits above the overlay it labelled. */
+  if(S.onboarded)demoBanner();else showOnboarding();
 }
 init();
 })();
 
 export {};
+

@@ -29,6 +29,13 @@ export interface ColdOpenOptions {
   haptics: boolean;
   /** From `manifest.heroVideo.file`, when the asset pipeline provided one. */
   heroVideo?: string | null;
+  /**
+   * Capture mode, used by scripts/export-intro-video.mjs. Renders the visual
+   * beats only — no type, lockup, CTA or skip hint — so the exported video can
+   * sit underneath the live text overlay without any words baked into the
+   * frame. The slot is specified as text-free for exactly this reason.
+   */
+  capture?: boolean;
   /** Called when the viewer presses the CTA. */
   onDone: () => void;
   /** The seam's own haptic() so this module cannot bypass the setting. */
@@ -406,6 +413,13 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
   const haptic = options.haptic ?? (() => undefined);
   const animate = shouldAnimate();
 
+  /**
+   * When the slot supplied a clip, the clip carries the visual beats and this
+   * timeline supplies only the words. Running both would draw the ring, the
+   * split and the ribbons on top of footage that is already drawing them.
+   */
+  const useVideo = Boolean(heroVideo);
+
   const root = el('div', 'co');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', 'cultured introduction. Tap to skip.');
@@ -527,6 +541,8 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
   root.appendChild(skipHint);
   root.insertAdjacentHTML('beforeend', FINE_GRAIN);
 
+  if (options.capture) root.classList.add('co-capture');
+
   host.innerHTML = '';
   host.appendChild(root);
   host.classList.add('on');
@@ -553,6 +569,22 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
 
   /* ---------------------------- animations ---------------------------- */
 
+  /**
+   * Nodes that exist only to draw the beats the clip also draws. Keyframes that
+   * target one of these are dropped when a clip is playing.
+   */
+  const visualOnly = new Set<Element>([
+    canvas,
+    stage,
+    ring,
+    grooveGroup,
+    fpGroup,
+    ...fpPaths,
+    halves,
+    ...halfNodes,
+    heart,
+  ]);
+
   const animations: Animation[] = [];
   /**
    * Animations autoplay (a paused animation would never progress). `settle()`
@@ -571,6 +603,7 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
     duration: number,
     easing: string = EASE.ease,
   ): void => {
+    if (useVideo && visualOnly.has(node)) return;
     push(
       node.animate(frames, {
         delay: start,
@@ -719,6 +752,12 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
     // Reduced motion / Calm Mode: the static final frame, immediately. No
     // rAF loop, no audio, no particles — just the state the intro settles into.
     root.classList.add('co-static');
+    // A moving clip is motion. Reduced motion gets the poster frame instead.
+    if (videoNode) {
+      videoNode.autoplay = false;
+      videoNode.removeAttribute('autoplay');
+      videoNode.pause();
+    }
     canvas.style.opacity = '0';
     stage.style.opacity = '0.25';
     silhouettes.forEach((node) => (node.style.opacity = '0'));
@@ -735,9 +774,19 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
 
   /* ---------------------------- the timeline clock ---------------------------- */
 
-  const particles = animate
-    ? new ParticleLayer(canvas, canvas.getContext('2d') as CanvasRenderingContext2D, 4242)
-    : null;
+  // The clip carries its own grain and ribbons, so the canvas layer stays off
+  // rather than compositing a second, slightly different, one over it.
+  const particles =
+    animate && !useVideo
+      ? new ParticleLayer(canvas, canvas.getContext('2d') as CanvasRenderingContext2D, 4242)
+      : null;
+
+  if (useVideo) {
+    // Layered under the clip, not over it.
+    for (const node of visualOnly) {
+      (node as HTMLElement).style.opacity = '0';
+    }
+  }
 
   const audio = animate && sound ? new IntroAudio() : null;
 

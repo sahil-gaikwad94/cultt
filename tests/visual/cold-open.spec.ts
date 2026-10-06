@@ -27,8 +27,9 @@ test.describe('Cold Open', () => {
 
     await page.screenshot({ path: `${SHOTS}/cold-open-start-390x844.png` });
 
-    // Tap to skip.
-    await root.click({ position: { x: 24, y: 24 } });
+    // Tap to skip. Well below the top edge, which is where the prototype
+    // banner sits once onboarding is over.
+    await root.click({ position: { x: 24, y: 420 } });
     await expect(cta).toHaveCSS('opacity', '1');
     await page.screenshot({ path: `${SHOTS}/cold-open-settled-390x844.png` });
 
@@ -43,7 +44,7 @@ test.describe('Cold Open', () => {
     await page.goto('/');
     const root = page.locator('#onboard .co');
     await expect(root).toBeVisible();
-    await root.click({ position: { x: 20, y: 20 } });
+    await root.click({ position: { x: 20, y: 400 } });
 
     const cta = page.locator('.co-cta');
     await expect(cta).toHaveCSS('opacity', '1');

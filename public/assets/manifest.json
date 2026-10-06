@@ -32,7 +32,7 @@
     "fallback": "procedural:confetti-rings"
   },
   "heroVideo": {
-    "file": null,
+    "file": "/assets/intro.mp4",
     "fallback": null
   }
 }
