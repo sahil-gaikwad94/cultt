@@ -1471,3 +1471,34 @@ button.fp-bleed{border:0;padding:0;font:inherit;color:inherit;text-align:left;cu
 .you-id .you-av{margin-top:6px}
 #s-arena .g-copy .cta.sm{white-space:nowrap;justify-content:center}
 #s-arena .g-copy .cta.sm svg{flex:none}
+
+/* ---- 22. Tomorrow is now the page, not a card: dusk plate full-bleed, card goes glass */
+.tm{position:relative;isolation:isolate}
+.tm-bg{position:absolute;inset:-150px -22px -30px;z-index:0;pointer-events:none;overflow:hidden}
+.tm-bg-art{position:absolute;inset:0}
+.tm-bg-art svg{width:100%;height:100%;display:block;filter:saturate(1.08) brightness(1.06)}
+.tm-bg-photo{position:absolute;inset:0;background-image:var(--media-url);background-size:cover;background-position:center;opacity:.3;mix-blend-mode:soft-light}
+.tm-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,9,.58) 0%,rgba(10,10,9,.05) 26%,rgba(10,10,9,.1) 55%,rgba(10,10,9,.8) 92%,var(--ink) 100%)}
+.tm>.drow,.tm-art{position:relative;z-index:1}
+.tm-art{background:linear-gradient(165deg,rgba(26,24,30,.55),rgba(13,13,16,.62) 55%,rgba(20,16,25,.6));backdrop-filter:blur(13px) saturate(1.12);border-color:rgba(255,255,255,.13);box-shadow:0 26px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}
+.tm-art::after{background:linear-gradient(180deg,rgba(7,7,6,0) 0%,rgba(7,7,6,.22) 58%,rgba(10,10,9,.66) 100%)}
+.tm-bg-art{animation:tm-drift 30s ease-in-out infinite alternate}
+.calm .tm-bg-art,.calm .tm-bg-art svg{animation:none}
+@media (prefers-reduced-motion:reduce){.tm-bg-art{animation:none}}
+
+/* arena CTA: base .cta is display:block — the chevron was wrapping onto a line of its own */
+#s-arena .g-copy .cta.sm{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+#s-arena .g-copy .cta.sm svg{width:15px;height:15px}
+
+/* profile: wall art styles + accent threading */
+.you-artbg{position:absolute;inset:0;border-radius:34px;overflow:hidden;z-index:0;pointer-events:none}
+.you-artbg svg{width:100%;height:100%;display:block}
+.you-artbg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,9,0) 8%,rgba(10,10,9,.5) 62%,rgba(10,10,9,.94) 96%)}
+.you-hero{isolation:auto}
+.you-hero.has-art .fp-bleed svg,.you-hero.no-bleed .fp-bleed svg{opacity:.14}
+#s-you .stats div{border-color:color-mix(in srgb,var(--acc,#ff8a5b) 30%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--acc,#ff8a5b) 7%,var(--ash)),var(--ash) 62%)}
+.look-row{display:flex;gap:6px}
+.look-o{padding:7px 13px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;font-weight:700;color:var(--mist);transition:border-color .25s,color .25s,background .25s,transform .25s var(--spring)}
+.look-o.on{color:var(--bone);border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.08)}
+.look-o:active{transform:scale(.94)}
+.drow{position:relative;z-index:1}

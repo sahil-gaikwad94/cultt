@@ -195,7 +195,7 @@ const DEF=()=>({
   onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,cal:0,city:'Lisbon',wait:false,
   react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
-    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons'},
+    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings'},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
   pulse:{duel:false,seen:0},duelLink:null
 });
@@ -423,7 +423,7 @@ function tomorrowHTML(){
      and the countdown reads left-aligned like the rest of the drop. If the
      manifest leaves the slot empty the procedural gradient still carries it. */
   return `<div class="drow stg">${bigDateHTML(1)}<span class="cnt">Locked</span></div>
-  <div class="tm stg" style="--d:1"><div class="tm-art"><div class="tm-media tm-media-art" aria-hidden="true">${posterSVG('dusk',palFrom('late-night drive'),1307)}</div>${ASSETS.tomorrowBg?`<div class="tm-media tm-media-photo" style="--media-url:url(${ASSETS.tomorrowBg})" aria-hidden="true"></div>`:''}<div class="tm-inner">
+  <div class="tm stg" style="--d:1"><div class="tm-bg" aria-hidden="true"><div class="tm-bg-art">${posterSVG('dusk',palFrom('late-night drive'),1307)}</div>${ASSETS.tomorrowBg?`<i class="tm-bg-photo" style="--media-url:url(${ASSETS.tomorrowBg})"></i>`:''}</div><div class="tm-art"><div class="tm-inner">
     <span class="tm-kicker">Tomorrow’s drop</span>
     <div class="tm-cards" aria-hidden="true"><div class="tmc" style="--r:-8deg;--x:-34px;--dl:-1s">?</div><div class="tmc" style="--r:7deg;--x:34px;--dl:-2.5s">?</div><div class="tmc" style="--r:0deg;--x:0px;--dl:-4s">?</div></div>
     <h2>Drops at 9:00 AM</h2><p class="hint">Tomorrow’s song and meme unlock together. Tonight’s hint: <b>late-night drive</b>.</p>
@@ -1216,7 +1216,7 @@ ACT.send=()=>{const id=threadId();if(!id)return;const inp=$('#msg-in');const v=i
 ACT.starter=b=>{const id=threadId();if(id)sendMsg(id,b.dataset.s)};
 ACT.icebreaker=b=>{
   const p=person(b.dataset.id);if(!p)return;
-  const prompts=[`What makes ${TRACKS[p.shared[0]].title} a five-replay song for you?`,`Be honest: what’s your most defensible bad taste?`,`Which one of your playlists would you hide from the group chat?`,`What should we listen to when the bus is almost empty?`];
+  const prompts=[`What makes ${TRACKS[p.shared[0]]?TRACKS[p.shared[0]].title:'the song you two share'} worth five replays for you?`,`What is the most unhinged thing in your “one more listen” queue?`,`Be honest: what’s your most defensible bad taste?`,`What song are you only into because someone you liked said it was cool?`,`Which of your playlists would genuinely embarrass you in the group chat?`,`What’s the pettiest reason you’ve ever liked a song?`,`Rank your top three ceiling-staring songs, go.`,`What concert behavior do you refuse to apologize for?`,`What meme honestly sums up your taste, no context?`,`Which artist would you leave the fandom for, just out of spite?`,`What’s the correct snack to pair with a full-album listen?`];
   const prompt=prompts[hash(p.id+S.prof.name)%prompts.length];
   openSheet(`<span class="chipg">Icebreaker Roulette</span><h3 class="sh-t" style="margin-top:14px">Start with something real.</h3><div class="ice-card"><span>${I.chat}</span><p>${esc(prompt)}</p></div><button class="cta" data-act="ice-send" data-s="${esc(prompt)}">Use this opener</button><button class="cta ghostb" data-act="ice-again" data-id="${p.id}">Try another</button>`);
 };
@@ -1381,12 +1381,12 @@ ACT['s-recap']=()=>{
 /* ================= you (Cultural Fingerprint) ================= */
 function renderYou(){
   const pr=S.prof,mine=fpParams(mineSeed());
-  const P=youPal();
+  const P=youPal(),bgS=pr.bg||'rings';
   const saved=Object.keys(S.react).filter(id=>S.react[id].s&&POSTS[id]);
   const laughs=Object.keys(S.react).filter(id=>S.react[id].h).length;
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
-    <section class="you-hero"><button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
+    <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
       <div class="you-id stg"><div class="you-av">${pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:orb({name:pr.name,pal:P.slice(1)},64)}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
         <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
         <div class="you-chips">${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
@@ -1395,6 +1395,7 @@ function renderYou(){
     <div class="blk stg" style="--d:2"><h2>Look and feel<small>Changes your wash, not your worth</small></h2>
       <div class="tint-row" role="radiogroup" aria-label="Profile tint">${PROF_TINTS.map(t=>{const TP=(TRACKS[t[0]]||{}).pal||TRACKS.moons.pal;return `<button class="tint-o ${pr.tint===t[0]?'on':''}" role="radio" aria-checked="${pr.tint===t[0]}" data-act="prof-tint" data-fx="chip" data-k="${t[0]}"><i style="background:linear-gradient(150deg,${TP[0]},${TP[1]} 46%,${TP[2]})"></i><span>${t[1]}</span></button>`}).join('')}</div>
       <div class="row"><div class="tx"><b>Profile photo</b><span>Stays on this device. Square crops best.</span></div><span style="display:flex;gap:8px">${pr.pfp?`<button class="chip" data-act="pfp-remove">Remove</button>`:''}<button class="chip on" data-act="pfp-pick">${pr.pfp?'Replace':'Choose'}</button></span></div>
+      <div class="row"><div class="tx"><b>On the wall</b><span>The art behind your name. Pick a mood.</span></div><span class="look-row">${[['rings','Rings'],['poster','Poster'],['quiet','Quiet']].map(o=>`<button class="look-o ${bgS===o[0]?'on':''}" data-act="prof-bg" data-fx="chip" data-k="${o[0]}" aria-pressed="${bgS===o[0]}">${o[1]}</button>`).join('')}</span></div>
     </div>
     <div class="blk stg" style="--d:2"><h2>Who sees your Fingerprint</h2><div style="margin-top:12px">${segHTML('vis',[['all','Everyone'],['matches','Matches'],['me','Only me']],pr.vis)}</div></div>
     <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
@@ -1405,7 +1406,7 @@ function renderYou(){
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
   drawPhotos();shelfWire();
-  const sc=$('#s-you');sc.onscroll=()=>{const f=$('#fpb');if(f)f.style.translate=`0 ${sc.scrollTop*.25}px`};
+  const sc=$('#s-you');sc.style.setProperty('--acc',P[1]||'#ff8a5b');sc.onscroll=()=>{const f=$('#fpb');if(f)f.style.translate=`0 ${sc.scrollTop*.25}px`};
 }
 function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',(youPal()||[])[1]||'#ff8a5b',{n:18,w:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
 function drawPhotos(){
@@ -1433,6 +1434,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if($('#sheetwrap').classList.contains('open'))closeSheet();else closePage()}
 });
 ACT['prof-tint']=b=>{S.prof.tint=b.dataset.k;save();renderYou();haptic(6)};
+ACT['prof-bg']=b=>{S.prof.bg=b.dataset.k;save();renderYou();haptic(6)};
 ACT['pfp-remove']=()=>{S.prof.pfp='';save();renderYou();toast('Profile photo removed from this device');haptic(6)};
 ACT['pfp-pick']=()=>{
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';

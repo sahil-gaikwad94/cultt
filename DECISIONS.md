@@ -439,6 +439,35 @@ resolved no-op offline, a real `auth.signOut()` on the Supabase adapter — so
 when the backend arrives the UI doesn't change. The emoji/tofu caveat above
 applies to all Phase B screenshots; card glyphs are emoji by design.
 
+## Phase B2 — the page, not the card
+
+Follow-up pass on the same four surfaces after a live look at the prototype.
+
+**Tomorrow's background is now the page.** The first cut put the dusk plate
+inside `.tm-art`, which still wore the bitmap treatment (opacity .42,
+brightness .62, scrim) designed for a photo, so the art read as dead black.
+The plate moved out to a page-level layer (bleeding under the date row, slow
+drift, fades to ink), the card became frosted glass, and `.drow` got a stacking
+fix — an absolutely-positioned later sibling was painting over the date.
+Lesson recorded: a "background image" that lives inside a card is a card
+decoration, not a background.
+
+**The games' questions are the product.** The duel's five prompts were
+generic-A/B; they are now jokes with two honest answers each ("The song
+everyone mocks. You still… replay it in the dark / skip it twice a day,
+ritualistically"), tags remapped to the real taxonomy so calibration signals
+stay valid. The icebreaker spun from a pool of four safe questions; the wheel
+now carries eleven openers with a point of view, seeded on the shared song
+first so a spin still feels like it knows you.
+
+**Profile gets a third knob and it pulls the other two together.**
+"Look and feel" gained On the wall (Rings / Poster / Quiet) — the hero art is a
+procedural bloom in the chosen tint or nothing at all — and the tint now
+threads through stats borders via a `--acc` var on the page, so picking a mood
+visibly changes the whole profile, not one gradient. The CTA chevron in the
+arena cards no longer wraps to its own line (`.cta` is display:block; flex was
+declared where it needed to be).
+
 **Sandbox note.** The environment blocks Playwright's browser CDN, so the
 suites run against a locally extracted Chromium when `CULTURED_CHROME` is set
 (both configs read it). Emoji render as tofu under that headless shell because

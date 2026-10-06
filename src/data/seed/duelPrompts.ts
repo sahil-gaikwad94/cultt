@@ -26,47 +26,47 @@ export interface DuelPromptSeed {
 export const DUEL_PROMPTS: readonly DuelPromptSeed[] = [
   {
     id: 'd1',
-    emoji: '🚪',
-    q: 'What the club door says at 1am',
+    emoji: '',
+    q: 'The song everyone mocks. You still…',
     options: {
-      a: { text: '“you shall not pass until 2am”', tags: ['wordplay', 'hyperbole'] },
-      b: { text: 'capacity is a suggestion', tags: ['relatable', 'anti_humor'] },
+      a: { text: 'replay it in the dark, no witnesses', tags: ['relatable', 'self_defeating'] },
+      b: { text: 'skip it twice a day, ritualistically', tags: ['observational', 'anti_humor'] },
     },
   },
   {
     id: 'd2',
-    emoji: '🎧',
-    q: 'Your 3am playlist is…',
+    emoji: '🫥',
+    q: 'A read receipt with no reply means…',
     options: {
-      a: { text: 'a love letter with no recipient', tags: ['romance_disaster', 'meta', 'wholesome'] },
-      b: { text: 'a war crime against genres', tags: ['absurd', 'hyperbole', 'aggressive'] },
+      a: { text: 'a silence I curated on purpose', tags: ['meta', 'dark'] },
+      b: { text: 'they fell asleep, the audacity of being well-adjusted', tags: ['wholesome', 'wordplay'] },
     },
   },
   {
     id: 'd3',
-    emoji: '🫠',
-    q: 'Group chat energy tonight',
+    emoji: '💸',
+    q: 'The $11 service fee on a $40 ticket is…',
     options: {
-      a: { text: 'feral but supportive', tags: ['pet_energy', 'wholesome', 'affiliative'] },
-      b: { text: 'dead but still replying', tags: ['observational', 'relatable', 'self_defeating'] },
+      a: { text: 'emotionally, a second ticket', tags: ['hyperbole', 'money_pain'] },
+      b: { text: 'paid without complaint, every single time', tags: ['self_defeating', 'relatable'] },
     },
   },
   {
     id: 'd4',
-    emoji: '💸',
-    q: 'The fee that hurts the most',
+    emoji: '🌃',
+    q: 'The group chat at 2am is…',
     options: {
-      a: { text: 'concert ticket service fees', tags: ['money_pain', 'dark', 'observational'] },
-      b: { text: 'the delivery tip', tags: ['money_pain', 'relatable', 'wholesome'] },
+      a: { text: 'feral but supportive', tags: ['pet_energy', 'wholesome', 'affiliative'] },
+      b: { text: 'dead but still replying', tags: ['observational', 'relatable'] },
     },
   },
   {
     id: 'd5',
-    emoji: '🐈',
-    q: '2026 so far, in one image',
+    emoji: '💿',
+    q: 'The playlist for the person you will never send it to…',
     options: {
-      a: { text: 'a cat sitting calmly in chaos', tags: ['pet_energy', 'wholesome', 'relatable'] },
-      b: { text: 'a cat knocking a glass off the table', tags: ['absurd', 'pet_energy', 'dark'] },
+      a: { text: 'sequenced like a museum exhibit', tags: ['romance_disaster', 'meta'] },
+      b: { text: 'deleted 48 hours later, out of spite', tags: ['absurd', 'dark'] },
     },
   },
 ];
