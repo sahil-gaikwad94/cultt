@@ -947,7 +947,10 @@ pcard.notop{opacity:calc(1 - var(--k)*.12)}
 .pcard:not(.top){transform:translateY(calc(var(--k)*-17px)) scale(calc(1 - var(--k)*.055));transform-origin:50% 0;opacity:calc(1 - var(--k)*.12)}
 .pcard.top{transform:translateY(0) scale(1);opacity:1;z-index:4}
 .pcard .ft-skip{flex:1;text-align:left;padding:0 4px}
-@media (max-height:720px){.pcard .dc-bot h3{font-size:30px}.pcard .dc-bot p{font-size:13.5px}.pcard .dc-top{padding-top:14px}.pcard{margin-top:24px}.pcard{top:0}
+/* FIX: this media query was left unclosed on the previous HEAD — every rule
+   below it was being parsed as part of a `(max-height:720px)` block, i.e.
+   silently dropped on tall viewports (Pixel-class screens). */
+@media (max-height:720px){.pcard .dc-bot h3{font-size:30px}.pcard .dc-bot p{font-size:13.5px}.pcard .dc-top{padding-top:14px}.pcard{margin-top:24px}.pcard{top:0}}
 
 /* Arena renamed from Pulse; the Pulse-tint rule is a dark-only alias that keeps
    the Arena surface visually identical. The old Pulse shell, the duplicate vibe-zone
@@ -1140,3 +1143,362 @@ pcard.notop{opacity:calc(1 - var(--k)*.12)}
 .game-sheet-title .hint{font-size:12px}
 .sheet .game-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .sheet .game-cta-row .cta{height:48px;font-size:14px}
+
+/* ---- 10. Motion tokens + shared-element transitions (next phase) --------- */
+:root{
+  --dur-instant:90ms;--dur-quick:160ms;--dur-base:240ms;--dur-slow:380ms;--dur-page:550ms;
+}
+::view-transition-old(onboard-step),::view-transition-new(onboard-step){animation-duration:var(--dur-base)}
+#onboard .step,#onboard .ob-prog{view-transition-name:onboard-step}
+#onboard.vt-fallback .step{animation:fadein var(--dur-base) var(--ease)}
+
+/* ---- 11. Micro-interaction effects (src/motion/micro.ts) ------------------
+   Every block here is transform/opacity only, 120-400 ms, self-removing.
+   None of it carries function: aria state and numbers are set in JS first. */
+.bp.fx-particle{z-index:60;box-shadow:0 0 12px rgba(255,209,102,.45)}
+.fx-ring{position:absolute;inset:0;border:2px solid var(--bone);border-radius:50%;pointer-events:none;z-index:5}
+.fx-check{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;color:var(--ok);z-index:6}
+.fx-check svg{width:20px;height:20px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.fx-fan{position:absolute;z-index:70;display:flex;gap:4px;transform:translate(-50%,-100%);padding:6px;border-radius:22px;background:rgba(22,22,20,.92);backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:0 16px 40px rgba(0,0,0,.5)}
+.fx-fan button{width:40px;height:40px;border-radius:50%;font-size:22px;display:grid;place-items:center;animation:fanpop var(--dur-base) var(--spring) both;animation-delay:calc(var(--i)*30ms)}
+.fx-fan button:hover{background:rgba(255,255,255,.09)}
+@keyframes fanpop{from{transform:translateY(10px) scale(.5);opacity:0}}
+.odo{display:inline-flex;font-variant-numeric:tabular-nums}
+.odo-c{font-style:normal;display:inline-block;position:relative;overflow:hidden;min-width:.62em;text-align:center;vertical-align:bottom}
+.odo-c.roll{height:1em;line-height:1em}
+.odo-c.roll u{position:absolute;inset:0;text-decoration:none;color:var(--stone);animation:odorollo var(--dur-slow) var(--ease) forwards}
+.odo-c.roll b{display:block;font-weight:inherit;animation:odorollin var(--dur-slow) var(--ease) forwards}
+@keyframes odorollo{to{transform:translateY(-110%)}}
+@keyframes odorollin{from{transform:translateY(110%)}}
+.fx-nudge{animation:nudge var(--dur-base) var(--spring)}
+@keyframes nudge{30%{transform:translateX(3px)}70%{transform:translateX(-2px)}}
+.fx-pulse{animation:fxpulse .8s var(--ease)}
+@keyframes fxpulse{35%{filter:drop-shadow(0 0 18px rgba(255,93,122,.5)) brightness(1.25)}}
+.row.fx-flash{background:rgba(239,233,218,.07)}
+.duel2-opt.fx-locked{border-color:rgba(255,209,102,.55);background:rgba(255,209,102,.08)}
+.dcard.leak::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(115deg,transparent 30%,rgba(255,209,102,.16) 46%,rgba(255,93,122,.1) 54%,transparent 70%);transform:translateX(-120%);animation:leak var(--dur-slow) var(--ease) 1 forwards;pointer-events:none;z-index:5;mix-blend-mode:screen}
+@keyframes leak{to{transform:translateX(120%)}}
+/* Ken-Burns: only the top music card's poster breathes, slowly, once per surfacing */
+.dcard.top .art>svg{transform-origin:50% 42%}
+.dcard.playing .art>svg,.playing .art>svg{animation:recordspin 14s linear infinite}
+@keyframes recordspin{to{transform:rotate(360deg)}}
+.playp,.glassb{overflow:visible}
+.playp::before,.glassb::before{content:'';position:absolute;inset:-4px;border-radius:inherit;background:conic-gradient(from -90deg,var(--sun) var(--p,0%),transparent 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:3px;opacity:.85;pointer-events:none;border-radius:24px}
+.mini-art{border-radius:14px;overflow:hidden}
+#s-you .playing .mini-art{animation:kb 20s var(--ease) infinite alternate}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.12) translate3d(2%,-3%,0)}}
+/* toast: slide-in with a thin progress line (one shot, never a loop) */
+#toast{overflow:hidden}
+#toast .toast-line{position:absolute;left:0;bottom:4px;height:2px;width:100%;background:rgba(20,20,19,.28);transform-origin:left;transform:scaleX(0);border-radius:2px}
+#toast.fx-in{animation:toastin var(--dur-base) var(--spring)}
+#toast .toast-line.run{animation:toastline 2.3s linear forwards}
+@keyframes toastin{from{transform:translate(-50%,20px) scale(.96);opacity:0}}
+@keyframes toastline{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* skeletons + sticker empty states */
+.sk-card{min-height:300px;border-radius:30px;background:linear-gradient(100deg,var(--ash) 40%,var(--ash2) 50%,var(--ash) 60%);background-size:220% 100%;animation:skshine 1.4s linear infinite}
+.sk-deck{padding:14px 20px 4px}
+.sk{opacity:0;animation:fadein .4s var(--ease) both}
+.sk-deck .sk:nth-child(2){animation-delay:90ms}.sk-deck .sk:nth-child(3){animation-delay:180ms}
+@keyframes skshine{to{background-position:-120% 0}}
+.empty-stk{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 8px 10px;text-align:center}
+.empty-stk>span{font-size:42px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.4));animation:emptbob 5.5s var(--ease) infinite alternate}
+@keyframes emptbob{to{transform:translateY(-6px)}}
+
+/* ---- 12. Photos develop; shelf pinning ---------------------------------- */
+.gt img{border-radius:inherit}
+.gt .develop,.gt img.develop{animation:develop .4s var(--ease) both}
+@keyframes develop{from{filter:blur(14px) saturate(0);transform:scale(1.06)}to{filter:blur(0) saturate(1);transform:scale(1)}}
+.gt.just-added::after{content:'';position:absolute;inset:0;border-radius:inherit;border:2px solid var(--sun);-webkit-mask:linear-gradient(#000 0 0);animation:slotdraw .4s var(--ease) both;pointer-events:none}
+@keyframes slotdraw{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+.gt.gone,.gt.removing{animation:shrink .26s var(--ease) both}
+@keyframes shrink{to{transform:scale(.4);opacity:0}}
+.g-tile.lift,.mm-mini.lift{filter:drop-shadow(0 14px 22px rgba(0,0,0,.55));z-index:6;position:relative;transition:none}
+.pin-stk{position:absolute;top:-8px;right:10px;font-size:20px;z-index:4;transform:rotate(-8deg);filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));pointer-events:none}
+.mm-shelf .mm-mini.sh{position:relative;cursor:grab;touch-action:pan-y}
+.mm-shelf .mm-mini.sh:active{cursor:grabbing}
+.mm-shelf .pin-x{position:absolute;top:-7px;left:-7px;width:22px;height:22px;border-radius:50%;background:var(--coal);border:1px solid var(--line);color:var(--mist);font-size:11px;display:grid;place-items:center;opacity:0;transition:opacity .2s;z-index:3}
+.mm-shelf:hover .pin-x,.mm-shelf .pin-x:focus-visible{opacity:1}
+.shelf-tray{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+#photos .gt{cursor:grab;touch-action:pan-y}
+
+/* ---- 13. Matrix: live contours, why chips, calibrating ------------------ */
+.pc-ovl{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:.5;mix-blend-mode:screen;z-index:1}
+.pc-ovl .pair{width:78%;aspect-ratio:1}
+.pc-ovl .pair .fp-ring{animation:pairoverlap 2.6s var(--ease) infinite alternate;animation-delay:calc(var(--i)*40ms)}
+.pc-ovl.live{opacity:.65}
+@keyframes pairoverlap{to{filter:drop-shadow(0 0 7px rgba(255,209,102,.55)) brightness(1.18)}}
+.whyrow{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;position:relative;z-index:2}
+.whyrow .chipg.why{height:25px;font-size:11.5px;background:rgba(20,20,18,.55);border-color:rgba(239,233,218,.3)}
+.whyrow .chipg.why svg{width:12px;height:12px}
+.whyrow .chipg.why.cal{color:var(--sun);border-color:rgba(255,209,102,.4)}
+.covrow{position:relative}
+.cov-pct{color:var(--sun);font-weight:800;font-size:12.5px;letter-spacing:.02em;margin-left:2px}
+.endq .wait{margin-top:14px}
+.stamp{transition:opacity .2s var(--spring)}
+
+/* ---- 14. Mutual moment: cards touch, ripples, merge --------------------- */
+.mut-cards{position:relative;height:110px;display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:-14px}
+.mut-cards .mc{width:86px;height:118px;border-radius:16px;display:grid;place-items:center;font-size:34px;color:#141413;box-shadow:0 18px 34px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.25)}
+.mut-cards .mc.a{background:var(--bg,#ff5d7a);animation:mcL .9s var(--spring) both}
+.mut-cards .mc.b{background:var(--bone);animation:mcR .9s var(--spring) both}
+@keyframes mcL{from{transform:translateX(-160px) rotate(-24deg);opacity:0}to{transform:translateX(12px) rotate(-7deg);opacity:1}}
+@keyframes mcR{from{transform:translateX(160px) rotate(24deg);opacity:0}to{transform:translateX(-12px) rotate(7deg);opacity:1}}
+.mut-rip{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center;z-index:0}
+.mut-rip i{position:absolute;width:60px;height:60px;border-radius:50%;border:2px solid rgba(255,93,122,.4);transform:scale(.2);opacity:0;animation:mutrip 2.2s var(--ease) forwards}
+.mut-rip i:nth-child(2){animation-delay:.3s;border-color:rgba(255,209,102,.4)}
+.mut-rip i:nth-child(3){animation-delay:.6s;border-color:rgba(239,233,218,.28)}
+@keyframes mutrip{15%{opacity:1}100%{transform:scale(7);opacity:0}}
+.mut-fp.merge .fp-ring{animation:fpmerge 1.6s var(--ease) both;animation-delay:calc(var(--i)*45ms)}
+@keyframes fpmerge{from{transform:translate(var(--mx,0),var(--my,0)) scale(.9)}to{transform:none}}
+.mut-skip{position:absolute;bottom:18px;font-size:12px;color:var(--stone);letter-spacing:.06em;text-transform:uppercase}
+.duel-chip{height:44px;padding:0 18px;border-radius:22px;display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:14px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.4);color:var(--sun);margin-top:4px;transition:transform .25s var(--spring)}
+.duel-chip svg{width:17px;height:17px}
+.duel-chip:active{transform:scale(.95)}
+
+/* ---- 15. Onboarding scenes ------------------------------------------------ */
+.ob-scene-stack .ob-body,.ob-scene-wave .ob-body{padding-bottom:0}
+.ob-split{display:grid;grid-template-columns:128px 1fr;gap:14px;padding:10px 20px 0;align-items:start}
+.ob-split-wide{grid-template-columns:118px 1fr}
+.ob-cal-side{position:sticky;top:6px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+.ob-fp{width:118px;aspect-ratio:1;color:var(--bone)}
+.ob-fp svg{width:100%;height:100%}
+.ob-fp .ob-fp-ring{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s var(--ease) forwards;animation-delay:calc(var(--i)*40ms)}
+.ob-conf{font-size:12px;color:var(--stone);display:flex;align-items:baseline;gap:4px}
+.ob-conf b{font-size:24px;font-weight:800;font-stretch:78%;color:var(--sun);font-variant-numeric:tabular-nums}
+.ob-cal-side .hint{font-size:10.5px;line-height:1.35}
+.ob-stack{position:relative;min-height:280px;perspective:900px}
+.ob-stack-card{position:absolute;inset:0;border-radius:26px;background:var(--bg);color:var(--fg);padding:18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 24px 50px rgba(0,0,0,.45);touch-action:none;user-select:none;will-change:transform}
+.ob-stack-card.behind{transform:translateY(calc(var(--depth)*10px)) scale(calc(1 - var(--depth)*.045)) rotate(calc(var(--depth)*1.4deg));opacity:.55;pointer-events:none;z-index:1}
+.ob-stack-card.top{z-index:2;cursor:grab;transition:transform .35s var(--spring)}
+.ob-stack-card.grabbed{transition:none;cursor:grabbing}
+.ob-stack-in{display:flex;flex-direction:column;height:100%;justify-content:space-between}
+.ob-emoji{font-size:44px}
+.ob-stack-card p{font-size:20px;font-weight:800;line-height:1.06;letter-spacing:-.025em}
+.ob-hint{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.5}
+.ob-stack-card::after{content:'♥ same';position:absolute;left:14px;top:14px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--heart);opacity:var(--hint,0);transition:opacity .15s;z-index:3}
+.ob-stack-card::before{content:'✕ nah';position:absolute;right:14px;top:14px;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--stone);opacity:var(--nah,0);transition:opacity .15s;z-index:3}
+.ob-right{min-width:0}
+.audio-cal .ob-wave{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-radius:20px;border:1px solid var(--line);background:rgba(255,255,255,.04);margin-bottom:8px;transition:border-color .25s,background .25s}
+.audio-cal .ob-wave.playing{border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.06)}
+.audio-cal .ob-wave.rated{border-color:rgba(155,232,191,.35)}
+.ob-wave-play{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--bone);color:#141413;flex:none;transition:transform .25s var(--spring)}
+.ob-wave-play svg{width:18px;height:18px;fill:currentColor}
+.ob-wave.playing .ob-wave-play svg path{d:path('M8 5.5h3.4v13H8zM12.8 5.5H16v13h-3.2z')}
+.ob-wave-body{min-width:0}
+.ob-wave-body b{display:block;font-size:15px;font-weight:800;letter-spacing:-.01em}
+.ob-wave-status{display:block;font-size:11.5px;color:var(--stone);margin:2px 0 7px;line-height:1.4}
+.ob-wave-cv{width:100%;height:36px;display:block}
+.ob-wave-rate{display:flex;flex-direction:column;gap:6px}
+.ob-wave-rate .chip{height:32px;padding:0 12px;font-size:12px}
+.reveal{flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;padding:20px 24px 40px;overflow-y:auto}
+.reveal .rv{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.reveal .rv h2{font-size:34px;font-weight:800;font-stretch:76%;letter-spacing:-.035em}
+.reveal .rv p{color:var(--mist);font-size:14.5px;max-width:30ch}
+.reveal .gen-fp{width:210px;aspect-ratio:1;margin:0 auto}
+.reveal .taste-card{width:min(300px,86%)}
+.rv-duel .cta{width:min(300px,86%)}
+.rv-duel .cta.ghostb{margin-top:2px}
+
+/* ---- 16. Chat threads: replies, reactions, read ticks -------------------- */
+.bub,.bub-m,.bub-t{position:relative}
+.bub-tools{position:absolute;top:-10px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.bub:hover .bub-tools,.bub:focus-within .bub-tools,.bub-t:hover .bub-tools{opacity:1}
+@media (hover:none){.bub-tools{opacity:1;top:auto;bottom:-8px;right:8px}.bub{margin-bottom:8px}}
+.bub-tools button{width:22px;height:22px;border-radius:50%;background:var(--coal);border:1px solid var(--line);font-size:11px;display:grid;place-items:center;color:var(--mist)}
+.bub-rep{display:block;font-size:12px;opacity:.72;border-left:2.5px solid rgba(20,20,18,.3);padding-left:8px;margin:-2px 0 6px;line-height:1.25}
+.bub .bub-rep{color:#3d3a33}
+.bub-me .bub-rep{color:#4c483f}
+.bub-rxs{display:flex;gap:5px;margin:5px 0 0 auto;justify-content:flex-end}
+.bub-rxs .bub-rx{height:24px;padding:0 8px;border-radius:12px;background:var(--coal);border:1px solid var(--line);font-size:12px;display:inline-flex;gap:4px;align-items:center;animation:rxin .3s var(--spring)}
+.bub-rxs .bub-rx b{font-size:10.5px;color:var(--mist)}
+@keyframes rxin{from{transform:scale(.4)}}
+.bub-read{display:inline-block;margin-left:6px;font-size:11px;color:var(--ok);opacity:.85}
+.bub-read{animation:tickdraw .3s var(--ease) both}
+@keyframes tickdraw{from{opacity:0;transform:translateX(-3px) scale(.7)}}
+#repochip{display:none}
+#repochip.on{display:block;position:absolute;left:14px;right:14px;bottom:calc(100% + 8px)}
+.repo-view{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:16px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);font-size:12.5px;color:var(--mist);max-width:100%}
+.repo-view button{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--stone)}
+.repo-view svg{width:12px;height:12px}
+.typing i{transform-origin:center;animation:typedot 1s var(--ease) infinite}
+.typing i:nth-child(2){animation-delay:.16s}.typing i:nth-child(3){animation-delay:.32s}
+@keyframes typedot{40%{transform:translateY(-4px)}}
+
+/* ---- 17. Duel link: sheet bits + the /d/:id page ------------------------- */
+.duel-link{display:flex;align-items:center;gap:8px;margin:14px 0 8px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px dashed rgba(239,233,218,.28);min-width:0}
+.duel-link code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--mist);font-family:ui-monospace,Menlo,monospace}
+.duel-link .chip{height:34px;font-size:12.5px;flex:none}
+.duel-link .chip svg{width:14px;height:14px}
+.duel-status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mist);margin:2px 0 8px}
+.duel-status.ok{color:var(--ok)}
+.duel-status.you{color:var(--sun)}
+.duel-status .live-dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulsedot 2s ease-in-out infinite}
+@keyframes pulsedot{50%{opacity:.35}}
+.linkb{display:block;margin:12px auto 0;font-size:13px;font-weight:700;color:var(--stone);text-decoration:underline;padding:8px 12px}
+.duel-cardwrap{margin:14px 0 6px;position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line)}
+.duel-cardwrap .duel2-card{display:block;width:100%;height:auto;aspect-ratio:9/16;object-fit:cover;background:#0A0A09}
+.duel-cardwrap .chipg{position:absolute;right:10px;top:10px;background:rgba(10,10,9,.7)}
+#duel-page{position:absolute;inset:0;z-index:75;background:var(--ink);display:flex;flex-direction:column;overflow-y:auto;color:var(--bone)}
+#duel-page[hidden]{display:none}
+#phone.duel-route #nav,#phone.duel-route #mini-player,#phone.duel-route #splash{display:none!important}
+.dp-top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 4px}
+.dp-mark{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:800;font-stretch:76%;letter-spacing:-.03em}
+.dp-mark svg{width:20px;height:20px}
+.dp-body{flex:1;padding:16px 20px 40px;display:flex;flex-direction:column;gap:14px;max-width:460px;margin:0 auto;width:100%}
+.dp-center{justify-content:center;text-align:center;align-items:center;gap:10px;min-height:70vh}
+.dp-body h1{font-size:38px;font-weight:800;font-stretch:75%;letter-spacing:-.04em;line-height:.95}
+.dp-sub{color:var(--mist);font-size:15px;line-height:1.45}
+.dp-sticker{font-size:54px;filter:drop-shadow(0 12px 20px rgba(0,0,0,.5))}
+.dp-rules{display:flex;flex-direction:column;gap:10px;margin:6px 0 10px}
+.dp-rules li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--mist);line-height:1.4}
+.dp-rules span{color:var(--sun);font-size:16px;flex:none}
+.dp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dp-step{font-size:12px;color:var(--stone);font-weight:700;letter-spacing:.08em}
+.dp-prog{display:flex;gap:6px;justify-content:center;margin:2px 0}
+.dp-prog i{width:26px;height:5px;border-radius:3px;background:rgba(255,255,255,.15);transition:transform .3s var(--spring),background .3s}
+.dp-prog i.done{background:var(--sun)}
+.dp-prog i.cur{background:var(--bone);transform:scaleX(1.25)}
+.dp-stage{text-align:center;padding:18px 6px 4px}
+.dp-emoji{font-size:56px;display:inline-block;animation:duel-pop .55s var(--spring)}
+.dp-q{font-size:26px;font-weight:800;font-stretch:76%;letter-spacing:-.03em;line-height:1.02;margin-top:10px}
+.dp-opts{margin-top:6px}
+.dp-tiny{font-size:11.5px;color:var(--stone);text-align:center}
+.dp-fp{display:flex;gap:6px;justify-content:center}
+.dp-fp i{width:46px;height:60px;border-radius:10px;background:linear-gradient(160deg,rgba(255,93,122,.3),rgba(255,209,102,.2));border:1px solid var(--line);animation:bob2 1.6s var(--ease) infinite alternate}
+.dp-fp i:nth-child(2){animation-delay:.25s}.dp-fp i:nth-child(3){animation-delay:.5s}
+@keyframes bob2{to{transform:translateY(-6px)}}
+.dp-list{display:flex;flex-direction:column;gap:8px}
+.dp-row{display:flex;gap:10px;align-items:center;padding:12px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.dp-row.same{border-color:rgba(255,209,102,.4);background:rgba(255,209,102,.07)}
+.dp-row-e{font-size:22px;flex:none}
+.dp-row div{min-width:0;flex:1}
+.dp-row b{display:block;font-size:14px;line-height:1.3}
+.dp-row span{display:block;font-size:12px;color:var(--stone);margin-top:2px}
+.dp-row em{font-style:normal;font-size:16px}
+.dp-cardwrap{border-radius:22px;overflow:hidden;border:1px solid var(--line)}
+.dp-cardwrap canvas{display:block;width:100%;height:auto;aspect-ratio:1/1;background:#0A0A09}
+.dp-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dp-h{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);margin-top:6px}
+.dp-skel{display:flex;flex-direction:column;gap:14px;padding-top:30px}
+.dp-skel i{height:64px;border-radius:18px;background:linear-gradient(100deg,var(--ash) 40%,var(--ash2) 50%,var(--ash) 60%);background-size:220% 100%;animation:skshine 1.4s linear infinite}
+.dp-body .cta{width:100%}
+.fp-story-hint{position:absolute;left:14px;bottom:10px;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mist);background:rgba(14,14,13,.6);border:1px solid var(--line);border-radius:99px;padding:5px 10px;backdrop-filter:blur(8px)}
+.fp-story-hint svg{width:13px;height:13px}
+button.fp-bleed{border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+
+/* ---- 18. Reduced motion + Calm Mode swap every effect to the end state --- */
+.calm .ob-stack-card,.calm .fx-fan button,.calm .dcard.leak::before,.calm .mut-rip i,.calm .mut-cards .mc,.calm .dp-fp i,.calm .empty-stk>span,.calm .bub-rxs .bub-rx,.calm .typing i,.calm .duel-status .live-dot,.calm .dcard.playing .art>svg,.calm .pc-ovl .fp-ring{animation:none!important}
+.calm .mut-cards .mc.a{transform:translateX(12px) rotate(-7deg)}
+.calm .mut-cards .mc.b{transform:translateX(-12px) rotate(7deg)}
+.calm .ob-fp .ob-fp-ring{stroke-dasharray:none;stroke-dashoffset:0}
+.calm .sk-card{animation:none;background:var(--ash)}
+.calm .odo-c.roll u{animation:none}.calm .odo-c.roll b{animation:none}
+@media (prefers-reduced-motion:reduce){
+  .fx-fan button,.dcard.leak::before,.mut-rip i,.mut-cards .mc,.dp-fp i,.empty-stk>span,.bub-rxs .bub-rx,.typing i,.duel-status .live-dot,.dcard.playing .art>svg,.pc-ovl .fp-ring,.mut-fp.merge .fp-ring{animation:none!important}
+  .mut-cards .mc.a{transform:translateX(12px) rotate(-7deg)}
+  .mut-cards .mc.b{transform:translateX(-12px) rotate(7deg)}
+  .ob-fp .ob-fp-ring{stroke-dasharray:none;stroke-dashoffset:0}
+  #onboard .step{animation:none}
+  .sk-card{animation:none;background:var(--ash)}
+  .ob-stack-card.top{transition:none}
+}
+/* small tails the suites reference */
+.fx-wipe{animation:fxwipe var(--dur-base) var(--ease)}
+@keyframes fxwipe{from{opacity:.35;transform:scale(1.015)}}
+.fx-tilt-out{animation:fxtilt var(--dur-base) var(--ease)}
+@keyframes fxtilt{from{transform:perspective(700px) rotateY(-5deg)}}
+.dp-vs{display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:800;letter-spacing:.14em;color:var(--stone)}
+.dp-vs i{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-style:normal;background:rgba(255,93,122,.16);border:1px solid rgba(255,93,122,.4);color:var(--heart)}
+.dp-vs i:last-child{background:rgba(255,209,102,.14);border-color:rgba(255,209,102,.4);color:var(--sun)}
+.wait{margin-top:14px;display:flex;justify-content:center}
+@media (prefers-reduced-motion:reduce){
+  .fx-wipe,.fx-tilt-out{animation:none!important}
+  .dp-vs i{animation:none}
+}
+.calm .fx-wipe,.calm .fx-tilt-out{animation:none!important}
+
+/* ---- 19. Profile look: avatar, tint picker, and the hero layout they need -- */
+.you-id{display:flex;align-items:flex-end;gap:14px}
+.you-av{position:relative;flex:none;width:64px;height:64px}
+.you-av img{width:64px;height:64px;border-radius:22px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.3);box-shadow:0 14px 30px rgba(0,0,0,.45)}
+.you-av .orb{width:64px;height:64px;font-size:26px;border-radius:22px;display:grid;place-items:center;color:#141413;font-weight:800}
+.av-cam{position:absolute;right:-7px;bottom:-7px;width:26px;height:26px;border-radius:50%;background:var(--sun);color:#141413;display:grid;place-items:center;box-shadow:0 6px 14px rgba(0,0,0,.4);transition:transform .25s var(--spring)}
+.av-cam svg{width:14px;height:14px}
+.av-cam:active{transform:scale(.86)}
+.you-meta{flex:1;min-width:0}
+.you-id .nm{font-size:44px}
+.you-chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.you-chips .chipg{font-size:10px;opacity:.85}
+.tint-row{display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tint-row::-webkit-scrollbar{display:none}
+.tint-o{flex:none;display:flex;align-items:center;gap:8px;padding:8px 13px 8px 8px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;font-weight:700;color:var(--mist);transition:border-color .25s,background .25s,transform .25s var(--spring)}
+.tint-o i{width:26px;height:26px;border-radius:10px;display:block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.tint-o.on{border-color:rgba(255,209,102,.55);color:var(--bone);background:rgba(255,209,102,.08)}
+.tint-o:active{transform:scale(.95)}
+
+/* ---- 20. Arena games: tighter card grid, art thumbnail instead of half a poster */
+.games-row{gap:10px}
+.g-card{grid-template-columns:86px minmax(0,1fr);gap:12px;padding:12px;border-radius:22px}
+.g-art{min-height:112px;border-radius:16px}
+.g-art span{font-size:26px}
+.g-art .g-glyph{width:38px;height:38px;border-radius:13px}
+.g-art .g-glyph svg{width:17px;height:17px}
+.g-copy h3{font-size:19.5px;letter-spacing:-.035em;margin-top:8px}
+.g-copy p{font-size:12.5px;line-height:1.35;margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.g-copy .cta.sm{margin-top:10px}
+.pulse-wrap{padding-bottom:152px}
+.pulse-hero{min-height:250px}
+.pulse-hero h1{font-size:46px}
+.pulse-hero p{font-size:14px;margin-top:12px}
+
+/* ---- 21. Tomorrow plate: the procedural dusk background (no bitmap needed) */
+.tm-media-art{background:none}
+.tm-media-art svg{width:100%;height:100%;display:block}
+.tm-media-art::after{content:'';position:absolute;inset:0;background:linear-gradient(200deg,rgba(10,10,9,.05),rgba(10,10,9,.55) 70%)}
+
+.tm-media-photo{opacity:.3;mix-blend-mode:soft-light;filter:saturate(1.1) contrast(1.05)}
+.tm-media-photo{background-image:var(--media-url);background-size:cover;background-position:center}
+
+/* hero got taller with the avatar row — let it breathe and move the story pill clear */
+.you-hero{height:412px}
+.you-tint{height:470px}
+.you-id{bottom:18px}
+.you-hero .fp-story-hint{left:auto;right:116px;top:126px;bottom:auto}
+#s-you .blk .row .tx{flex:1;min-width:0}
+#s-you .blk .row .tx b{display:block}
+#s-you .blk .row .tx span{display:block;margin-top:2px}
+.you-id{align-items:flex-start}
+.you-id .you-av{margin-top:6px}
+#s-arena .g-copy .cta.sm{white-space:nowrap;justify-content:center}
+#s-arena .g-copy .cta.sm svg{flex:none}
+
+/* ---- 22. Tomorrow is now the page, not a card: dusk plate full-bleed, card goes glass */
+.tm{position:relative;isolation:isolate}
+.tm-bg{position:absolute;inset:-150px -22px -30px;z-index:0;pointer-events:none;overflow:hidden}
+.tm-bg-art{position:absolute;inset:0}
+.tm-bg-art svg{width:100%;height:100%;display:block;filter:saturate(1.08) brightness(1.06)}
+.tm-bg-photo{position:absolute;inset:0;background-image:var(--media-url);background-size:cover;background-position:center;opacity:.3;mix-blend-mode:soft-light}
+.tm-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,9,.58) 0%,rgba(10,10,9,.05) 26%,rgba(10,10,9,.1) 55%,rgba(10,10,9,.8) 92%,var(--ink) 100%)}
+.tm>.drow,.tm-art{position:relative;z-index:1}
+.tm-art{background:linear-gradient(165deg,rgba(26,24,30,.55),rgba(13,13,16,.62) 55%,rgba(20,16,25,.6));backdrop-filter:blur(13px) saturate(1.12);border-color:rgba(255,255,255,.13);box-shadow:0 26px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}
+.tm-art::after{background:linear-gradient(180deg,rgba(7,7,6,0) 0%,rgba(7,7,6,.22) 58%,rgba(10,10,9,.66) 100%)}
+.tm-bg-art{animation:tm-drift 30s ease-in-out infinite alternate}
+.calm .tm-bg-art,.calm .tm-bg-art svg{animation:none}
+@media (prefers-reduced-motion:reduce){.tm-bg-art{animation:none}}
+
+/* arena CTA: base .cta is display:block — the chevron was wrapping onto a line of its own */
+#s-arena .g-copy .cta.sm{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+#s-arena .g-copy .cta.sm svg{width:15px;height:15px}
+
+/* profile: wall art styles + accent threading */
+.you-artbg{position:absolute;inset:0;border-radius:34px;overflow:hidden;z-index:0;pointer-events:none}
+.you-artbg svg{width:100%;height:100%;display:block}
+.you-artbg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,9,0) 8%,rgba(10,10,9,.5) 62%,rgba(10,10,9,.94) 96%)}
+.you-hero{isolation:auto}
+.you-hero.has-art .fp-bleed svg,.you-hero.no-bleed .fp-bleed svg{opacity:.14}
+#s-you .stats div{border-color:color-mix(in srgb,var(--acc,#ff8a5b) 30%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--acc,#ff8a5b) 7%,var(--ash)),var(--ash) 62%)}
+.look-row{display:flex;gap:6px}
+.look-o{padding:7px 13px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;font-weight:700;color:var(--mist);transition:border-color .25s,color .25s,background .25s,transform .25s var(--spring)}
+.look-o.on{color:var(--bone);border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.08)}
+.look-o:active{transform:scale(.94)}
+.drow{position:relative;z-index:1}

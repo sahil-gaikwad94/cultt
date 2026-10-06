@@ -24,7 +24,7 @@ import type {
   CirclePost,
   DataExportResult,
   DecideResult,
-  DuelState,
+  DuelLink,
   FeedPage,
   Fingerprint,
   LegalDoc,
@@ -556,34 +556,28 @@ export class SupabaseRepo implements Repo {
 
   /* ------------------------------------------------------------- duels */
 
-  async getDuel(matchId: string): Promise<DuelState | null> {
-    const rows = asRows<Record<string, unknown>>(await this.client.rpc('duel_open', { p_match: matchId }));
-    const row = rows[0];
-    if (!row) return null;
-    return {
-      id: String(row.id),
-      matchId: String(row.match_id),
-      memeIds: (row.meme_set as string[]) ?? [],
-      picks: (row.picks as Record<string, 'a' | 'b'>) ?? {},
-      submitted: Boolean(row.submitted),
-      partnerSubmitted: Boolean(row.partner_submitted),
-      verdict: (row.verdict as DuelState['verdict']) ?? null,
-    };
-  }
-
-  async submitDuel(duelId: string, picks: Record<string, 'a' | 'b'>): Promise<DuelState> {
-    const rows = asRows<Record<string, unknown>>(await this.client.rpc('duel_submit', { p_duel: duelId, p_picks: picks }));
-    const row = rows[0] ?? {};
-    return {
-      id: duelId,
-      matchId: String(row.match_id ?? ''),
-      memeIds: (row.meme_set as string[]) ?? [],
-      picks: picks,
-      submitted: true,
-      partnerSubmitted: Boolean(row.partner_submitted),
-      verdict: (row.verdict as DuelState['verdict']) ?? null,
-    };
-  }
+  /**
+   * Stubs, on purpose. The RPC pair (`duel_link`, `duel_submit`, `duel_reveal`
+   * + the `duel_watch` realtime channel) lands with the next migration set.
+   * Until then the app runs the mock, which implements the full two-party
+   * contract, so nothing in the UI waits on this file.
+   */
+  readonly duel: DuelLink = {
+    create: async () => {
+      throw new Error('Supabase duel RPCs are not migrated yet. The mock adapter is the working reference.');
+    },
+    join: async () => {
+      throw new Error('Supabase duel RPCs are not migrated yet. The mock adapter is the working reference.');
+    },
+    submit: async () => {
+      throw new Error('Supabase duel RPCs are not migrated yet. The mock adapter is the working reference.');
+    },
+    reveal: async () => {
+      throw new Error('Supabase duel RPCs are not migrated yet. The mock adapter is the working reference.');
+    },
+    get: async () => null,
+    watch: () => () => undefined,
+  };
 
   /* ------------------------------------------------------------- trust */
 
@@ -636,6 +630,11 @@ export class SupabaseRepo implements Repo {
       status: (row.status as LegalDoc['status']) ?? 'needs_lawyer_review',
       updatedAt: String(row.updated_at ?? ''),
     };
+  }
+
+  async logout(): Promise<void> {
+    const { error } = await this.client.auth.signOut();
+    if (error) throw error;
   }
 
   async requestDataExport(): Promise<DataExportResult> {
