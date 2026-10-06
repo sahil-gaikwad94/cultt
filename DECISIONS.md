@@ -473,3 +473,33 @@ suites run against a locally extracted Chromium when `CULTURED_CHROME` is set
 (both configs read it). Emoji render as tofu under that headless shell because
 the image has no color-emoji font — a testbed limitation, not a product one;
 screenshots taken with it should be read accordingly.
+
+## Fix — the sixth dot could not be passed
+
+**The sound-calibration step dead-ended and nothing on screen said so.** Its clip
+list is the one onboarding scene whose content renders outside `.ob-body` (the
+meme deck's sibling), so its height was never bounded: at 390px the four
+`.ob-wave` rows came to ~1470px, the grid items stretched to their content, the
+question above them was squeezed into a 26px scroll window, and the pinned
+footer — Continue included — landed at y=968 in an 844px viewport. `#onboard`
+was `overflow:hidden` and the step had no scrollable region wide enough to help,
+so no gesture reached the button. The funnel stopped on dot six of nine, with
+nothing visibly broken to explain why.
+
+**The scene now has an anatomy with a scroll region.** The question keeps its
+natural height, the clip list becomes the flexible child
+(`flex:1 1 auto;min-height:0`) and scrolls inside itself, and the footer stays
+where it is — the same shape the other steps get from `.ob-body`. The rail drops
+118px → 100px, which is what lets each row read as two lines instead of eight;
+the preview status is clamped to two lines so a longer PreviewProvider string
+can never re-inflate the list. `#onboard` also gains `overflow-y:auto` as a
+backstop — a step taller than the panel should be scrollable rather than fatal —
+but no step needs it: `scrollHeight` equals `clientHeight` on all nine.
+
+**The guard is an e2e contract, not a screenshot.** A capture of the broken step
+looks plausible with the CTA 180px below the fold. `tests/e2e/onboarding-flow.spec.ts`
+walks the whole funnel with real taps at 390x844 and 360x800 and asserts, per
+step, that the forward control is inside the viewport and is the topmost element
+at its own centre, plus that the clip list scrolls without moving the footer.
+Reverting the CSS fails it on exactly the sound step, at both viewports. The
+sandbox's font caveat from Phase B2 applies to any screenshot of this step.
