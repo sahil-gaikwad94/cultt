@@ -42,6 +42,16 @@ import {
   type Entitlements,
 } from '../lib/entitlements';
 import { SEED_MEMES } from './seed/memes';
+import { DUEL_PROMPTS } from './seed/duelPrompts';
+import {
+  announceDuel,
+  createDuel,
+  findDuel,
+  joinDuel,
+  submitPicks,
+  watchDuel,
+  type StoredDuel,
+} from './duelStore';
 import { SEED_TRACKS, trackById, type SeedTrack } from './seed/tracks';
 import { LEGAL_DOCUMENTS } from '../content/legal';
 import { buildPopulation, seededRandom, hashString } from './population';
@@ -50,7 +60,7 @@ import type {
   CirclePost,
   DataExportResult,
   DecideResult,
-  DuelState,
+  DuelLink,
   FeedPage,
   Fingerprint,
   LegalDoc,
@@ -144,7 +154,8 @@ interface MockState {
   vibeReports: Array<{ to: string; reason: string; at: number }>;
   reports: Array<{ to: string; reason: string; detail: string | null; at: number }>;
   sessions: StoredSession[];
-  duel: DuelState | null;
+  /** Duel picks made before onboarding; folded into calibration by `onboard`. */
+  duelSeed: Array<{ promptId: string; pick: 'a' | 'b' }>;
   deletion: DeletionRequest | null;
   exports: Array<{ requestedAt: string }>;
   liveness: LivenessResult | null;
@@ -189,7 +200,7 @@ const freshState = (now: number): MockState => ({
   vibeReports: [],
   reports: [],
   sessions: [],
-  duel: null,
+  duelSeed: [],
   deletion: null,
   exports: [],
   liveness: null,
@@ -359,6 +370,13 @@ export class MockRepo implements Repo {
     for (const signal of payload.audioSignals) {
       await this.applyContentEvent('like', true, true, 'track', signal.trackId);
     }
+
+    // Duel answers seed the same calibration stream the in-app flow writes to.
+    const duelSignals = payload.duelPicks?.length
+      ? payload.duelPicks
+      : (this.state.duelSeed ?? []).map((entry) => ({ promptId: entry.promptId, pick: entry.pick }));
+    for (const signal of duelSignals) this.applyDuelSignal(signal.promptId, signal.pick);
+    this.state.duelSeed = [];
 
     this.state.me.onboarded = true;
     this.persist();
@@ -795,7 +813,6 @@ export class MockRepo implements Repo {
         };
       }
       icebreaker = `You both play ${this.sharedTitles(candidate)}`;
-      this.state.duel = this.newDuel(this.state.threads[threadId].matchId);
     }
 
     this.persist();
@@ -1036,49 +1053,86 @@ export class MockRepo implements Repo {
 
   /* ------------------------------------------------------------ duels */
 
-  private newDuel(matchId: string): DuelState {
-    const memeIds = SEED_MEMES.slice(0, 5).map((meme) => meme.id);
-    return {
-      id: idFor('d', matchId),
-      matchId,
-      memeIds,
-      picks: {},
-      submitted: false,
-      partnerSubmitted: false,
-      verdict: null,
-    };
-  }
+  /**
+   * The two-party Duel Link. `DuelStore` keeps it in its own localStorage key
+   * with a BroadcastChannel so a second tab can play the other side — the same
+   * contract the production RPCs will implement. The Supabase adapter stays
+   * stubbed; nothing about the duel depends on a server existing.
+   */
+  readonly duel: DuelLink = {
+    create: async (input) => {
+      const rec = createDuel(input?.displayName ?? this.state.me.displayName);
+      announceDuel(rec.id);
+      this.trace({ type: 'duel_create', id: rec.id });
+      return rec;
+    },
+    join: async (id, displayName) => {
+      const rec = joinDuel(id, displayName);
+      if (!rec) throw new Error('This duel link has ended.');
+      announceDuel(id);
+      this.trace({ type: 'duel_join', id });
+      return rec;
+    },
+    submit: async (id, side, picks) => {
+      const rec = submitPicks(id, side, picks);
+      if (!rec) throw new Error('This duel link has ended.');
+      await this.calibrateFromDuel(rec, side);
+      announceDuel(id);
+      this.trace({ type: 'duel_submit', id, side, revealed: Boolean(rec.verdict) });
+      return rec;
+    },
+    reveal: async (id) => {
+      const rec = findDuel(id);
+      // Both sides in, or nothing. A partial duel is not a reveal.
+      return rec && rec.verdict ? rec : null;
+    },
+    get: async (id) => findDuel(id),
+    watch: (id, listener) => watchDuel(id, listener),
+  };
 
-  async getDuel(matchId: string): Promise<DuelState | null> {
-    if (!this.state.duel) {
-      const thread = Object.values(this.state.threads).find((entry) => entry.matchId === matchId);
-      this.state.duel = thread ? this.newDuel(matchId) : null;
+  /**
+   * Duel answers are taste signal, not just a scorecard. Each pick boosts the
+   * chosen caption's taxonomy (`duel`, weight 2.0) and quietly declines the
+   * other (`meh`), through the events the engine already defines. Picks made
+   * before onboarding survive as pending calibration for `onboard()` to fold
+   * in — that is the growth loop's honest half.
+   */
+  private calibrateFromDuel(rec: StoredDuel, side: 'a' | 'b'): void {
+    const picks = rec[side]?.picks;
+    if (!picks) return;
+    const signals = rec.prompts.map((prompt) => ({ promptId: prompt.id, pick: picks[prompt.id] ?? null }));
+    if (this.state.me.onboarded) {
+      for (const signal of signals) this.applyDuelSignal(signal.promptId, signal.pick ?? undefined);
+    } else {
+      const pending = signals.filter((signal) => signal.pick === 'a' || signal.pick === 'b');
+      this.state.duelSeed = [...(this.state.duelSeed ?? []), ...pending];
       this.persist();
     }
-    return this.state.duel && this.state.duel.matchId === matchId ? this.state.duel : null;
   }
 
-  async submitDuel(duelId: string, picks: Record<string, 'a' | 'b'>): Promise<DuelState> {
-    const duel = this.state.duel;
-    if (!duel || duel.id !== duelId) throw new Error('That duel is no longer open.');
-    duel.picks = picks;
-    duel.submitted = true;
-    // The partner submits independently; the reveal only fires on a mutual.
-    duel.partnerSubmitted = Object.keys(picks).length === duel.memeIds.length;
-    duel.verdict = duel.partnerSubmitted ? this.scoreDuel(duel) : null;
+  private applyDuelSignal(promptId: string, pick: 'a' | 'b' | undefined): void {
+    if (pick !== 'a' && pick !== 'b') return;
+    const prompt = DUEL_PROMPTS.find((entry) => entry.id === promptId);
+    if (!prompt) return;
+    const chosen = pick === 'a' ? prompt.options.a : prompt.options.b;
+    const declined = pick === 'a' ? prompt.options.b : prompt.options.a;
+    for (const [kind, option] of [['duel', chosen], ['meh', declined]] as const) {
+      const target = memeStyleVector({ tags: option.tags });
+      const result = applyEvent({
+        fingerprint: this.state.fingerprint,
+        event: eventFor(kind, 'humor'),
+        humorVector: target,
+        antiGenres: this.state.me.antiGenres,
+      });
+      if (result.applied) this.state.fingerprint = result.fingerprint;
+      this.state.eventLog.push({ kind, targetType: 'meme', targetId: `duel:${promptId}:${pick}`, at: this.now });
+    }
+    for (const tag of chosen.tags) {
+      const category = normalizeHumorTag(tag);
+      if (category) this.state.topCategories = bump(this.state.topCategories, category, 1);
+    }
     this.persist();
-    return duel;
-  }
-
-  private scoreDuel(duel: DuelState): { score: number; of: number; line: string } {
-    const lines = [
-      'Same damage. Suspiciously aligned.',
-      'Mostly same damage. Concerning.',
-      'Adjacent chaos. Respectable.',
-      'Different damage. Send a meme anyway.',
-    ];
-    const score = Object.values(duel.picks).filter((pick, index) => pick === (index % 2 === 0 ? 'a' : 'b')).length;
-    return { score, of: duel.memeIds.length, line: lines[Math.min(lines.length - 1, Math.floor(score / 1.5))] as string };
+    this.trace({ type: 'duel_calibration', promptId, pick });
   }
 
   /* ------------------------------------------------------------ trust */
@@ -1110,6 +1164,12 @@ export class MockRepo implements Repo {
 
   async getLegalDocument(document: LegalDocument): Promise<LegalDoc> {
     return LEGAL_DOCUMENTS[document];
+  }
+
+  /** Local-first device: signing out changes which profile the UI opens with,
+      it never touches the data. There is no server session to revoke here. */
+  async logout(): Promise<void> {
+    return;
   }
 
   async requestDataExport(): Promise<DataExportResult> {

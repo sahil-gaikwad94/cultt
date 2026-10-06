@@ -23,6 +23,9 @@ export default defineConfig({
     baseURL,
     ...devices['Pixel 5'],
     viewport: { width: 390, height: 844 },
+    launchOptions: process.env.CULTURED_CHROME
+      ? { executablePath: process.env.CULTURED_CHROME, env: { ...process.env, LD_LIBRARY_PATH: '/tmp/alib' } }
+      : {},
   },
   expect: { timeout: 8_000 },
 });

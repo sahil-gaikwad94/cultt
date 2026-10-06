@@ -191,6 +191,8 @@ export interface OnboardingPayload {
   pickedTastes: string[];
   memeSignals: Array<{ memeId: string; kind: 'laugh' | 'meh' | 'skip' }>;
   audioSignals: Array<{ trackId: string; kind: 'react' | 'skip' }>;
+  /** Duel picks made before onboarding seed the same calibration stream. */
+  duelPicks?: Array<{ promptId: string; pick: 'a' | 'b' }>;
   photoChecked: boolean;
   antiGenres: string[];
 }
@@ -227,14 +229,59 @@ export interface ListeningSessionResult {
   reason: string | null;
 }
 
-export interface DuelState {
+/* ---- Duel Link: the real, two-party, shareable Meme Duel ----------------
+ *
+ * `a` is the side that created the duel, `b` the friend who opened the link.
+ * Both sides answer the same five fixed-choice prompts independently; the
+ * reveal only exists once both have submitted. There is no free text on the
+ * flow, so there is no UGC to moderate, and the recipient needs no account.
+ * -------------------------------------------------------------------------- */
+
+export interface DuelOption {
+  text: string;
+  tags: readonly string[];
+}
+
+export interface DuelPrompt {
   id: string;
-  matchId: string;
-  memeIds: string[];
-  picks: Record<string, 'a' | 'b'>;
-  submitted: boolean;
-  partnerSubmitted: boolean;
-  verdict: { score: number; of: number; line: string } | null;
+  emoji: string;
+  q: string;
+  options: { a: DuelOption; b: DuelOption };
+}
+
+export interface DuelSide {
+  name: string | null;
+  picks: Record<string, 'a' | 'b'> | null;
+  submittedAt: number | null;
+}
+
+export interface DuelRecord {
+  id: string;
+  createdAt: number;
+  prompts: readonly DuelPrompt[];
+  a: DuelSide;
+  b: DuelSide & { joinedAt: number | null };
+  /** Present only after both sides have submitted. Never before. */
+  verdict: { score: number; of: number; line: string; sharedPromptIds: string[] } | null;
+}
+
+export interface DuelLink {
+  /** Creates a duel and returns its record; the id is what goes in `/d/:id`. */
+  create(input?: { displayName?: string }): Promise<DuelRecord>;
+  /** Marks the `b` seat as taken. No account, no free text, no display name. */
+  join(id: string, displayName?: string): Promise<DuelRecord>;
+  /**
+   * Stores one side's picks. When both sides are in, the verdict computes —
+   * the function never reveals a partial. Picks also feed the caller's
+   * calibration: the mock folds them into the event stream as `duel` events.
+   */
+  submit(id: string, side: 'a' | 'b', picks: Record<string, 'a' | 'b'>): Promise<DuelRecord>;
+  /** The record with its verdict, or null while the other side is missing. */
+  reveal(id: string): Promise<DuelRecord | null>;
+  /** The stored record either way (status for the waiting state). */
+  get(id: string): Promise<DuelRecord | null>;
+  /** Live updates across tabs (BroadcastChannel + storage events in the mock). */
+  watch(id: string, listener: (record: DuelRecord | null) => void): () => void;
 }
 
 export interface LivenessInput {
@@ -327,8 +374,12 @@ export interface Repo {
   /* ---- sessions + duels --------------------------------------------- */
   startListeningSession(input: ListeningSessionInput): Promise<ListeningSessionResult>;
   endListeningSession(sessionId: string, secondsUsed: number): Promise<void>;
-  getDuel(matchId: string): Promise<DuelState | null>;
-  submitDuel(duelId: string, picks: Record<string, 'a' | 'b'>): Promise<DuelState>;
+  /**
+   * The shareable Meme Duel. The mock persists through localStorage +
+   * BroadcastChannel so a browser tab and a phone on the same origin can each
+   * play one side; the Supabase adapter keeps the RPC contract stubbed.
+   */
+  readonly duel: DuelLink;
 
   /* ---- trust --------------------------------------------------------- */
   submitLiveness(input: LivenessInput): Promise<LivenessResult>;
@@ -337,6 +388,9 @@ export interface Repo {
 
   /* ---- legal + data rights ------------------------------------------- */
   getLegalDocument(document: LegalDocument): Promise<LegalDoc>;
+  /** End the local session. A real backend invalidates tokens; the offline
+      adapter simply acknowledges — nothing about logout deletes anything. */
+  logout(): Promise<void>;
   requestDataExport(): Promise<DataExportResult>;
   requestAccountDeletion(): Promise<DeletionRequest>;
   cancelAccountDeletion(): Promise<DeletionRequest>;

@@ -6,6 +6,11 @@ import { installRepoBridge } from './components/phase1';
 const repo = createRepo();
 installRepoBridge(repo);
 
+/* Deep link: /d/:id (or ?d=id on static hosts without an SPA rewrite) opens the
+   duel recipient page — no app shell, no account, no nav. */
+const duelMatch =
+  location.pathname.match(/^\/d\/([A-Za-z0-9]+)/) || location.search.match(/[?&]d=([A-Za-z0-9]+)/);
+
 const boot = async () => {
   try {
     const response = await fetch('/assets/manifest.json');
@@ -17,6 +22,14 @@ const boot = async () => {
     );
   } catch {
     // Procedural art remains the safe default when the manifest is unavailable.
+  }
+  if (duelMatch) {
+    const page = document.getElementById('duel-page');
+    if (page) page.hidden = false;
+    document.getElementById('phone')?.classList.add('duel-route');
+    const { bootDuelPage } = await import('./duel/page');
+    void bootDuelPage(repo, duelMatch[1] as string);
+    return;
   }
   await import('./legacy');
 };

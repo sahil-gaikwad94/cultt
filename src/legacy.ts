@@ -4,9 +4,25 @@
 /* The Cold Open lives in src/motion/timeline.ts, outside this file, so the
    seam does not grow. It is the only new dependency onboarding takes. */
 import { playColdOpen } from './motion/timeline';
+/* The micro-interaction layer: pop, burst, flyTo, countTo, spring. The seam
+   marks markup with data-fx; this file owns state, micro owns decoration. */
+import { installMicro, microPublic } from './motion/micro';
+/* Onboarding scenes: shared-element step transitions, the physics meme deck,
+   the live-waveform audio calibration, the growing Fingerprint, the reveal. */
+import { stepTransition, physicsStack, waveList, fpGrow, confidence as obConfidence, runReveal } from './motion/onboard';
+/* PreviewProvider stub (brief §2.2): resolves nothing offline, says so. */
+import { fetchPreview } from './lib/preview';
+/* The Duel prompt set — the same list the /d/:id page and the card render. */
+import { DUEL_PROMPTS, duelVerdict as duelVerdictLine } from './data/seed/duelPrompts';
+import { renderDuelCard } from './duel/card';
+/* The shared synth (Settings → Sound gates it here, in one place). */
+import { synth } from './motion/audio';
 /* The 122 original in-house meme cards. Production content is generated, not
    scraped; see scripts/generate-meme-corpus.mjs. */
 import { SEED_MEMES } from './data/seed/memes';
+/* The seed track catalogue, used only to check whether an id can cross the
+   adapter boundary without fabricating a vector. */
+import { SEED_TRACKS } from './data/seed/tracks';
 
 (()=>{
 'use strict';
@@ -46,7 +62,10 @@ const DEMO_MEMES=DEV&&CFG.flags.demoMemes===true;
 const DEMO_DATA=DEV&&CFG.flags.demoData!==false;
 const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
-window.Cultured={config:CFG,track,store};
+/* Merge, never replace: `main.ts` installs `Cultured.repo` before this file is
+   evaluated, and an assignment here used to wipe the bridge — every repoCall
+   silently no-op'd. The seam adds config/track/store to whatever exists. */
+window.Cultured=Object.assign(window.Cultured||{},{config:CFG,track,store});
 const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
 const merge=(a,b)=>{for(const k in b){a[k]=isObj(a[k])&&isObj(b[k])?merge(a[k],b[k]):b[k]}return a};
 function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -111,6 +130,11 @@ const TRACKS={
   soft:{id:'soft',title:'Soft Machine Summer',artist:'Dov and the Echoes',len:229,style:'bloom',genre:'Balearic folk',rating:'4.4',pal:['#0b1a14','#7de3b5','#ffd166','#1f8f78'],desc:'A warm, slightly sad song about a summer that’s already over. Dov and the Echoes recorded it live in one take, and the crowd noise at the end is real.'},
   glass:{id:'glass',title:'Glasshouse',artist:'Imre Tanaka',len:201,style:'dusk',genre:'Ambient',rating:'4.6',pal:['#0e1220','#8fb4ff','#ff9466','#3a2a6e'],desc:'Imre Tanaka layers glass harmonica and field recordings from a greenhouse. Perfect for the last hour before sleep, or the first hour of a hard morning.'}
 };
+/* the profile's own look: which shared palette the hero, avatar and Fingerprint
+   wash borrow. Keys are the tracks' existing palettes — no new colors. */
+const PROF_TINTS=[['route9','Sunset drive'],['moons','Moon water'],['choir','Neon dusk'],['soft','Grove'],['glass','Greenhouse']];
+const youPal=()=>{const t=TRACKS[S.prof.tint]||TRACKS.moons;return t.pal};
+const rgba=(c,a)=>{const v=toRGB(c);return `rgba(${v[0]},${v[1]},${v[2]},${a})`};
 const GENRE_TAGS={'Road rock':'golden hour distortion','Dream pop':'rain on a bus window','Indie anthem':'key-change arguments','Synth pop':'dramatic commute fuel','Balearic folk':'the summer that already ended','Ambient':'last hour before sleep'};
 const BURST=n=>{const r=rng(n),pts=[];for(let i=0;i<32;i++){const a=i/32*6.2832,rad=i%2?36:49;pts.push((50+Math.cos(a)*rad).toFixed(1)+','+(50+Math.sin(a)*rad).toFixed(1))}return pts.join(' ')};
 const MEMES={
@@ -157,22 +181,23 @@ const ANTI=['Smooth jazz','EDM','Drill','Country','Metal','Reggaeton','Opera','M
 const ARTIST_SUGG=['Marlowe Fen','Sunday Radio','Pale Aviator','Juno Kask','Velvet Harbor','Orla Finch','The Quiet Parade','Nico Brandt'];
 const TASTES={Sound:['90s R&B','Bedroom pop','Film scores','Indie folk','Hyperpop','Shoegaze','Anime openings','Jazz standards','Amapiano','Jungle','Neo-soul'],Humor:['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'],Everything:['Podcast brain','Letterboxd diary','Thrifted band tees','Late-night radio','Zines','Cult sitcoms']};
 const ROOMS=['Night bus lounge','Golden hour room','Late shift listening'];
-const ACTIVITY=[
-  {id:'a1',type:'match',t:'Someone nearby resonated with your Fingerprint',ago:'12m'},
-  {id:'a2',type:'culture',t:'41 people saved today’s drop',ago:'1h'},
+/* The activity feed used to carry "someone nearby resonated" and counted
+   statistics nobody produced. In a production build the list is empty because
+   that is the truth; under DEMO_DATA the two remaining rows belong to seeded
+   demo people and are labelled by the prototype banner above them. */
+const ACTIVITY=DEMO_DATA?[
   {id:'a3',type:'culture',t:'Kai saved Night Bus Choir',ago:'3h'},
-  {id:'a4',type:'match',t:'Ines sent you a song',ago:'5h'},
-  {id:'a5',type:'culture',t:'Your humor signals matched 6 new people',ago:'1d'}
-];
+  {id:'a4',type:'match',t:'Ines sent you a song',ago:'5h'}
+]:[];
 
 /* ================= state ================= */
 const DEF=()=>({
-  onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,
+  onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,cal:0,city:'Lisbon',wait:false,
   react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
-    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[]},
+    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons'},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
-  pulse:{duel:false,seen:0},duel:{picks:{},done:false,score:null,ts:0}
+  pulse:{duel:false,seen:0},duelLink:null
 });
 const BASE_THREADS=()=>{const n=Date.now();return{
   ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]},
@@ -180,8 +205,12 @@ const BASE_THREADS=()=>{const n=Date.now();return{
   dev:{unread:1,msgs:[{f:'them',t:'up for a 15 minute listen later?',ts:n-300*6e4}]}
 }};
 let S=merge(DEF(),store.get('state',{}));
-if(!S.threads)S.threads=BASE_THREADS();
+/* Demo people come with demo transcripts. A real account starts with zero
+   threads — the People tab then shows its empty state, not invented chats. */
+if(!S.threads)S.threads=DEMO_DATA?BASE_THREADS():{};
 if(!S.pulse)S.pulse=DEF().pulse;
+if(S.duelLink===undefined)S.duelLink=null;
+if(S.duel)delete S.duel;
 const save=()=>store.set('state',S);
 let cur='feed',busy=false,refreshing=false,fpDirty=false,SES=null,ROOM=null,UID=0;
 const ACT={},SEG={},FT={};
@@ -311,7 +340,7 @@ function closePage(){
 const segHTML=(k,opts,cur)=>`<div class="seg" data-k="${k}" style="--n:${opts.length};--i:${Math.max(0,opts.findIndex(o=>o[0]===cur))}" role="group"><i class="thumb"></i>${opts.map(o=>`<button data-act="seg" data-v="${o[0]}" class="${o[0]===cur?'on':''}" aria-pressed="${o[0]===cur}">${o[1]}</button>`).join('')}</div>`;
 function setSeg(seg,v){const bs=$$('button',seg);bs.forEach((b,i)=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);if(on)seg.style.setProperty('--i',i)})}
 ACT.seg=b=>{const seg=b.closest('.seg');setSeg(seg,b.dataset.v);haptic(6);if(SEG[seg.dataset.k])SEG[seg.dataset.k](b.dataset.v)};
-const swHTML=(act,k,on,label)=>`<button class="sw" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}" data-k="${k}"></button>`;
+const swHTML=(act,k,on,label)=>`<button class="sw" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}" data-fx="toggle" data-k="${k}"></button>`;
 /* folder tabs */
 const ftabsHTML=(k,items,act)=>`<div class="ftabs" data-k="${k}"><i class="fblob"></i>${items.map(i=>`<button class="ft ${i[0]===act?'on':''}" data-act="ftab" data-v="${i[0]}">${i[1]}</button>`).join('')}</div>`;
 function layoutTabs(root){
@@ -326,7 +355,7 @@ ACT.ftab=b=>{const el=b.closest('.ftabs');$$('.ft',el).forEach(x=>x.classList.to
 /* ================= nav ================= */
 const NAVI=[['feed','Home',I.home],['arena','Arena',I.star],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
 const TABS=NAVI.map(n=>n[0]);
-function buildNav(){$('#nav').innerHTML=NAVI.map(n=>`<button class="nv ${n[0]===cur?'on':''}" data-act="tab" data-t="${n[0]}" aria-label="${n[1]}">${n[2]}<span class="l">${n[1]}</span></button>`).join('')}
+function buildNav(){$('#nav').innerHTML=NAVI.map(n=>`<button class="nv ${n[0]===cur?'on':''}" data-act="tab" data-fx="tab" data-t="${n[0]}" aria-label="${n[1]}">${n[2]}<span class="l">${n[1]}</span></button>`).join('')}
 function go(t){
   if(t!==cur)stopPlay();
   if(t!=='arena')stopPulseFX();
@@ -360,7 +389,8 @@ function bigDateHTML(off){const x=dateParts(off),s=x.d+' '+x.m;return `<div clas
 /* With circles empty (production), the last two cards come from yesterday so
    the drop is still a deck of four rather than a deck of two. */
 function deckItems(){if(DK.day===-1)return YEST;const extra=circleList().slice(0,2);return [curDrop().music,curDrop().meme].concat(extra.length?extra:YEST.slice(0,2))}
-const rb=(act,cls,icon,n,on,label)=>`<button class="rb ${cls} ${on?'on':''}" data-act="${act}" aria-label="${label}" aria-pressed="${!!on}"><span class="ri">${icon}</span>${n!==undefined?`<span class="n">${n}</span>`:''}</button>`;
+const FXFOR={like:'like',save:'save',share:'share',laugh:'react'};
+const rb=(act,cls,icon,n,on,label)=>`<button class="rb ${cls} ${on?'on':''}" data-act="${act}"${FXFOR[act]?` data-fx="${FXFOR[act]}"`:''} aria-label="${label}" aria-pressed="${!!on}"><span class="ri">${icon}</span>${n!==undefined?`<span class="n">${n}</span>`:''}</button>`;
 function reactions(p,col){
   const st=rs(p.id);
   const a=[rb('like','like',I.heart,p.likes+st.l,st.l,'Like')];
@@ -373,7 +403,7 @@ function dcardHTML(p){
   return `<div class="dcard" data-id="${id}">
     ${artOf(p)}${isM?'<div class="shade"></div>':''}
     <div class="dc-top"><span class="chipg">${isM?'Song':'Meme'}</span><span class="chipg">${isM?esc(r.genre):(by?'From '+esc(by.name):'Today’s meme')}</span><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
-    ${isM?`<div class="dc-bot"><h3>${esc(r.title)}</h3><p>${esc(r.artist)}</p><button class="playp" data-act="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button></div>`:''}
+    ${isM?`<div class="dc-bot"><h3>${esc(r.title)}</h3><p>${esc(r.artist)}</p><button class="playp" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button></div>`:''}
     <div class="acol">${reactions(p,true)}</div>
     <div class="prog"><i></i></div>
     ${isM?'':`<div class="mm-foot"><button class="mm-l" data-act="mm-open" data-id="${id}" aria-label="Open this meme">${I.chevr}</button></div>`}
@@ -393,7 +423,7 @@ function tomorrowHTML(){
      and the countdown reads left-aligned like the rest of the drop. If the
      manifest leaves the slot empty the procedural gradient still carries it. */
   return `<div class="drow stg">${bigDateHTML(1)}<span class="cnt">Locked</span></div>
-  <div class="tm stg" style="--d:1"><div class="tm-art"><div class="tm-media${ASSETS.tomorrowBg?'':' tm-media-fallback'}" aria-hidden="true"></div><div class="tm-inner">
+  <div class="tm stg" style="--d:1"><div class="tm-art"><div class="tm-media tm-media-art" aria-hidden="true">${posterSVG('dusk',palFrom('late-night drive'),1307)}</div>${ASSETS.tomorrowBg?`<div class="tm-media tm-media-photo" style="--media-url:url(${ASSETS.tomorrowBg})" aria-hidden="true"></div>`:''}<div class="tm-inner">
     <span class="tm-kicker">Tomorrow’s drop</span>
     <div class="tm-cards" aria-hidden="true"><div class="tmc" style="--r:-8deg;--x:-34px;--dl:-1s">?</div><div class="tmc" style="--r:7deg;--x:34px;--dl:-2.5s">?</div><div class="tmc" style="--r:0deg;--x:0px;--dl:-4s">?</div></div>
     <h2>Drops at 9:00 AM</h2><p class="hint">Tomorrow’s song and meme unlock together. Tonight’s hint: <b>late-night drive</b>.</p>
@@ -409,23 +439,24 @@ function homeBodyHTML(){
 }
 function renderFeed(){
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
-    <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
       ${ftabsHTML('day',[['-1','Yesterday'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
-      <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div>'}</section>
+      <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
   layoutTabs($('#s-feed'));afterHome();
 }
 function afterHome(){
+  fitMeme($('#s-feed'));
   const d=$('#hdeck');
   if(d){
     $$('.dcard',d).forEach(c=>{
       bindDrag(c,{can:()=>c.classList.contains('top')&&!DK.busy,fly:dir=>deckFly(dir),tap:()=>openDetail(c.dataset.id,c),dbl:()=>{const id=c.dataset.id;if(!rs(id).l){rs(id).l=1;save();syncPost(id)}bigHeart(c);haptic([10,30,10])}});
     });
     layoutDeck();
-  }else setTint($('#s-feed'),poster(TRACKS.moons,true));
+  }else setTint($('#s-feed'),poster(DK.day===1?TRACKS.route9:TRACKS.moons,true));
   if(cur==='feed')startCountdown();
 }
 function layoutDeck(){
@@ -433,6 +464,25 @@ function layoutDeck(){
   DK.order.forEach((id,i)=>{const c=$(`.dcard[data-id="${id}"]`,d);if(c){c.style.setProperty('--k',i);c.style.zIndex=20-i;c.classList.toggle('top',i===0);c.classList.toggle('far',i>2)}});
   const n=DK.items.findIndex(p=>p.id===DK.order[0])+1;const cn=$('#cnt');if(cn)cn.textContent=n+'/'+DK.items.length;
   const top=POSTS[DK.order[0]];if(top)setTint($('#s-feed'),artOf(top));
+  /* the top card gets a one-shot light-leak sweep as it surfaces (not a loop:
+     it fires on the change, then it is done) */
+  const tc=$('.dcard.top',d);
+  if(tc){tc.classList.remove('leak');void tc.offsetWidth;tc.classList.add('leak');fitMeme(tc)}
+}
+/* auto-fit kinetic typography: shrink-to-measure, capped iterations, never
+   below the readable floor — text memes stop overflowing without a scroll. */
+function fitMeme(host){
+  if(!host)return;
+  $$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host).forEach(pEl=>{
+    pEl.style.fontSize='';
+    let k=0;
+    while(pEl.scrollHeight>pEl.clientHeight+2&&k<6){
+      const fs=parseFloat(getComputedStyle(pEl).fontSize)||20;
+      if(fs<12)break;
+      pEl.style.fontSize=(fs-2)+'px';
+      k++;
+    }
+  });
 }
 function deckFly(dir){
   if(DK.busy)return;DK.busy=true;stopPlay();haptic(8);
@@ -462,9 +512,11 @@ FT.day=v=>{
   $('#circles').style.display=DK.day===0?'':'none';haptic(6);afterHome();
 };
 ACT.refresh=()=>{$('#s-feed').scrollTo({top:0,behavior:'smooth'});refresh()};
+function skel(n){return `<div class="sk-deck">${Array.from({length:n},(_,i)=>`<div class="sk sk-card" style="--d:${i}"></div>`).join('')}</div>`}
 function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);
   const p=$('#ptr');if(p){p.style.opacity=1;p.classList.add('spin')}
+  const hb=$('#hbody');if(hb)hb.innerHTML=skel(3);
   setTimeout(()=>{S.dropIdx++;S.shift+=2;save();DK.day=0;renderFeed();refreshing=false;$('#feedBody').classList.add('fresh');toast('A fresh drop just landed')},950);
 }
 function initPTR(){
@@ -489,21 +541,37 @@ function syncPost(id){
   const p=POSTS[id],st=rs(id);
   $$(`[data-id="${id}"]`).forEach(el=>{
     const l=$('.like',el),h=$('.laugh',el),s=$('.save',el);if(!l)return;
-    l.classList.toggle('on',!!st.l);l.setAttribute('aria-pressed',!!st.l);$('.n',l).textContent=p.likes+st.l;
+    const nEl=$('.n',l),want=p.likes+st.l;
+    l.classList.toggle('on',!!st.l);l.setAttribute('aria-pressed',!!st.l);
+    /* the count rolling is decoration; the number itself is the function */
+    if(nEl&&nEl.textContent!=String(want))microPublic.countTo(nEl,want);
     s.classList.toggle('on',!!st.s);s.setAttribute('aria-pressed',!!st.s);
+    if(h&&p.laughs!==undefined){const hn=$('.n',h);if(hn)hn.textContent=p.laughs+st.h}
   });
 }
 const idOf=b=>b.closest('[data-id]').dataset.id;
-ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCall('recordReaction',id,'like');if(st.l){burst(b,'#ff5d7a');haptic(10)}};
-ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');if(st.h){burst(b,'#ffd166');haptic([8,30,8])}};
-ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');toast(st.s?'Saved to your Fingerprint':'Removed from saved');haptic(8)};
+/* Like/save/share also count toward calibration; the Matrix shows its score
+   only once there is enough of it to be worth showing. */
+const bumpCal=active=>{if(active){S.cal=(S.cal||0)+1;save()}};
+ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCall('recordReaction',id,'like');bumpCal(st.l)};
+ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(st.h)};
+ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');bumpCal(st.s);toast(st.s?'Saved to your Fingerprint':'Removed from saved')};
+/* The long-press fan emits `micro:laugh` on the heart; the seam decides what
+   that means, so the function exists with or without the animation. */
+document.addEventListener('micro:laugh',e=>{
+  const btn=e.target;if(!btn||!btn.closest)return;
+  const host=btn.closest('[data-id]');if(!host)return;
+  const id=host.dataset.id,st=rs(id);
+  if(!st.h){st.h=1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(true)}
+  burst(btn,'#ffd166');haptic([8,30,8]);
+});
 ACT.share=b=>openShare(idOf(b));
 ACT['open-d']=b=>{openDetail(b.dataset.id,b);trackView(b.dataset.id)};
 /* previews */
 let PL={id:null,t:0,iv:null};
 function stopPlay(){
   clearInterval(PL.iv);
-  if(PL.id){$$(`[data-id="${PL.id}"]`).forEach(p=>{p.classList.remove('playing');const bar=$('.prog i',p);if(bar)bar.style.width='0'})}
+  if(PL.id){$$(`[data-id="${PL.id}"]`).forEach(p=>{p.classList.remove('playing');const bar=$('.prog i',p);if(bar)bar.style.width='0';$$('.playp,.glassb',p).forEach(pb=>pb.style.setProperty('--p','0%'))})}
   PL.id=null;const mp=$('#mini-player');if(mp){mp.classList.remove('on');mp.innerHTML=''}
 }
 function renderMiniPlayer(id){
@@ -516,7 +584,7 @@ ACT.play=b=>{
   if(PL.id===id){stopPlay();return}
   stopPlay();PL.id=id;PL.t=0;$$(`[data-id="${id}"]`).forEach(p=>p.classList.add('playing'));haptic(8);
   const p=POSTS[id],r=p&&refOf(p);if(p&&p.kind==='music')renderMiniPlayer(r.id);
-  PL.iv=setInterval(()=>{PL.t+=.25;$$(`[data-id="${id}"] .prog i`).forEach(bar=>bar.style.width=(PL.t/30*100)+'%');if(PL.t>=30)stopPlay()},250);
+  PL.iv=setInterval(()=>{PL.t+=.25;const pctv=(PL.t/30*100).toFixed(1)+'%';$$(`[data-id="${id}"] .prog i`).forEach(bar=>bar.style.width=pctv);$$(`[data-id="${id}"] .playp,[data-id="${id}"] .glassb`).forEach(pb=>pb.style.setProperty('--p',pctv));if(PL.t>=30)stopPlay()},250);
 };
 ACT['mini-stop']=()=>stopPlay();
 
@@ -529,14 +597,14 @@ function detailHTML(p){
   const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span><span class="chipg">${p.likes+p.laughs} reactions</span>`;
   return `<div class="d-scroll" data-id="${p.id}">
     <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips">${chips}</div></div>
-    <div class="d-hero" id="dHero">${artOf(p)}${isM?'<div class="shade" style="height:40%"></div><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div>':''}${isM?`<button class="glassb" data-act="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button>`:''}<div class="prog"><i></i></div></div>
+    <div class="d-hero" id="dHero">${artOf(p)}${isM?'<div class="shade" style="height:40%"></div><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div>':''}${isM?`<button class="glassb" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button>`:''}<div class="prog"><i></i></div></div>
     <h1 class="d-title stg" style="--d:2">${esc(isM?r.title:labelOf(p))}</h1>
     <p class="d-by stg" style="--d:3">${isM?esc(r.artist):'A cultured meme'}</p>
     <div class="arow stg" style="--d:4">${reactions(p,false)}</div>
     <p class="d-desc stg" id="dDesc" style="--d:5">${esc(isM?(p.why?p.why+' ':'')+r.desc:'Sent '+(p.likes+p.laughs)+' times in your circles this week. Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.')}</p>
     <button class="readm stg" style="--d:5" data-act="readmore">Read more</button>
-    <h3 class="d-h stg" style="--d:6">Crew<small>${crew.length} in your circles</small></h3>
-    <div class="hs stg" style="--d:6">${crew.map((c,i)=>`<div class="crew-c"><div class="pt" style="background:linear-gradient(160deg,${c.pal[0]},${c.pal[3]})"><div class="fpmini">${fpSVG(fpParams(c.seed*31+hash(p.id)),'#ffffff',c.pal[1],{n:10,w:1.2})}</div><b>${esc(c.name[0])}</b></div><p>${esc(c.name)}</p><span>${CREW_ROLES[i]}</span></div>`).join('')}</div>
+    ${DEMO_DATA?`<h3 class="d-h stg" style="--d:6">Crew<small>${crew.length} in your circles</small></h3>
+    <div class="hs stg" style="--d:6">${crew.map((c,i)=>`<div class="crew-c"><div class="pt" style="background:linear-gradient(160deg,${c.pal[0]},${c.pal[3]})"><div class="fpmini">${fpSVG(fpParams(c.seed*31+hash(p.id)),'#ffffff',c.pal[1],{n:10,w:1.2})}</div><b>${esc(c.name[0])}</b></div><p>${esc(c.name)}</p><span>${CREW_ROLES[i]}</span></div>`).join('')}</div>`:`<h3 class="d-h stg" style="--d:6">Who’s moved this<small>0</small></h3><p class="hint stg" style="--d:6">Nobody yet — and cultured will not invent anybody to fill the row.</p>`}
     <h3 class="d-h stg" style="--d:7">Comments<small>${cs.length}</small></h3>
     <div class="cm-list stg" style="--d:7">${cs.slice(0,2).map(c=>`<div class="cm">${avatar(c.by,32)}<div><b>${esc(c.by)}</b><p>${esc(c.t)}</p></div></div>`).join('')||'<p class="hint">Nobody’s said anything yet.</p>'}</div>
   </div>
@@ -582,7 +650,7 @@ function openShare(id){
   const p=POSTS[id],r=refOf(p);
   openSheet(`<h3 class="sh-t">Share</h3>
     <div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div>
-    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
+    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 }
 ACT.sharego=async b=>{
   const w=b.dataset.w;
@@ -597,6 +665,17 @@ ACT.closesheet=closeSheet;
 
 /* ================= matrix ================= */
 const MATCH_MIN_SCORE=CFG.matchMinScore??60;
+/* The calibration gate: the percentage only exists once there are ten real
+   signals behind it. Below that, the Matrix says "calibrating" — a number
+   before the math means anything would itself be dishonest. */
+const CAL_NEEDED=10;
+const calFraction=()=>clamp((S.cal||0)/CAL_NEEDED,0,1);
+const calibrating=()=>(S.cal||0)<CAL_NEEDED;
+/* The density gate: the Matrix opens in a city at 25 people; the waitlist is
+   the honest alternative to inventing a deck. Friends mode is exempt — it
+   works from day one. */
+const CITY_OPEN_AT=CFG.cityOpenAt??25;
+const CITY_POP=CFG.cityPop??0;
 function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius&&p.score>=MATCH_MIN_SCORE).sort((a,b)=>b.score-a.score)}
 /* How many in-range people the score gate is holding back. Used only to tell
    "nobody is here" apart from "nobody clears your bar yet" — a deck that goes
@@ -619,35 +698,63 @@ function renderMatchShell(){
     </div>`;
   layoutTabs($('#s-match'));renderDeck();
 }
+function whyChips(p){
+  if(calibrating())return `<span class="chipg why cal">${I.star}calibrating — ${Math.max(0,CAL_NEEDED-(S.cal||0))} more signal${(S.cal||0)===1?'':'s'}</span>`;
+  const me=mineHum(),humor=(p.humor||[]).map((v,i)=>v>=.6&&(me[i]?me[i]>=.6:true)?HUMOR[i]:null).filter(Boolean).slice(0,1);
+  const artist=p.shared[0]?TRACKS[p.shared[0]].title:null;
+  const chips=[artist?`<span class="chipg why">${I.note}${esc(artist)}</span>`:'',humor[0]?`<span class="chipg why">${I.laugh}Same topic: ${esc(humor[0])}</span>`:''];
+  if(S.duelLink&&S.duelLink.verdict)chips.push(`<span class="chipg why">${I.star}Duel: ${S.duelLink.verdict.score}/${S.duelLink.verdict.of} same damage</span>`);
+  return chips.filter(Boolean).join('')||'<span class="chipg why">Two songs in common</span>';
+}
 function pcardHTML(p,k){
+  const cal=calibrating();
   return `<div class="dcard pcard ${k===0?'top':''}" data-id="${p.id}" style="--k:${k};z-index:${20-k}">
     ${personArt(p)}<div class="shade"></div>
+    <div class="pc-ovl" aria-hidden="true">${pairFP(p,false)}</div>
     <div class="stamp res">Resonate</div><div class="stamp pas">Pass</div>
     <div class="dc-top"><span class="chipg">${I.pin}${p.km} km away</span><span class="chipg">${S.lens==='dating'?'Dating':'Friends'}</span></div>
-    <div class="dc-bot"><h3>${esc(p.name)}, ${p.age}</h3><p>${esc(p.bio)}</p><div class="covrow">${p.shared.slice(0,3).map(id=>`<div class="cov">${poster(TRACKS[id],true)}</div>`).join('')}<span>${p.shared.length} in common</span></div></div>
+    <div class="dc-bot">
+      <div class="whyrow" role="list" aria-label="Why you matched">${whyChips(p)}</div>
+      <h3>${esc(p.name)}, ${p.age}</h3><p>${esc(p.bio)}</p>
+      <div class="covrow">${p.shared.slice(0,3).map(id=>`<div class="cov">${poster(TRACKS[id],true)}</div>`).join('')}<span>${p.shared.length} in common</span>${cal?'':'<span class="cov-pct">'+p.score+'%</span>'}</div></div>
   </div>`;
 }
 function endHTML(gated){
   const passed=S.history.filter(id=>S.decided[id]==='pass').length;
   const pair=`<div class="pair">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:12,w:1.3})}</div>`;
   const actions=`<div class="row2">${passed?`<button class="cta sm" style="width:auto;padding:0 22px" data-act="revisit">Revisit ${passed} passed</button>`:''}<button class="cta sm ghostb" style="width:auto;padding:0 22px;margin:0" data-act="open-settings">Widen radius</button></div>`;
+  const wait=`<div class="wait">${S.wait
+    ?`<span class="chipg">${I.check}On the waitlist for ${esc(S.city)}</span>`
+    :`<button class="cta sm ghostb" style="width:auto;padding:0 22px;margin:0" data-act="waitlist">Join the city waitlist</button>`}</div>`;
   if(gated)return `<div class="endq">${pair}<h2>Still calibrating</h2><p>Nobody nearby clears your resonance bar yet. React to a few more memes and songs — your deck refills as the scores move.</p>${actions}</div>`;
+  /* The density gate, stated as a policy rather than a tease. Friends mode is
+     never gated: it works from day one, with however many friends are here. */
+  if(S.lens==='dating'&&CITY_POP<CITY_OPEN_AT)return `<div class="endq">${pair}
+    <h2>The Matrix opens in ${esc(S.city)} at ${CITY_OPEN_AT} people</h2>
+    <p>A dating deck with three people in it is a lie with a nice layout. When enough of the city is here, the deck switches on — no queue counter, no invented hype — just the door opening.</p>
+    ${wait}
+    <p class="hint">Friends mode has no gate: switch tabs and it works today, however small it is.</p>
+    ${actions}</div>`;
   return `<div class="endq">${pair}
     <h2>That’s everyone nearby, for now</h2>
-    <p>New people show up as they join within ${S.set.radius} km. Widen your radius, or take another look at the ones you passed.</p>${actions}</div>`;
+    <p>New people show up as they join within ${S.set.radius} km. Widen your radius, or take another look at the ones you passed.${S.lens==='friends'?' Friends mode opens with you, from day one.':''}</p>${actions}</div>`;
 }
+ACT.waitlist=()=>{S.wait=true;save();renderDeck();toast('On the waitlist for '+S.city+'. We’ll email once the city flips on.');haptic(8);track('city_waitlist_join',{city:S.city})};
 function renderDeck(enter){
   const q=queue(),p=q[0],deck=$('#deck');if(!deck)return;
   const gated=!p&&gatedCount()>0;
   deck.innerHTML=p?q.slice(0,3).map((x,i)=>pcardHTML(x,i)).reverse().join(''):endHTML(gated);
-  $('#msSub').textContent=p?`${q.length} nearby`:(gated?'No strong overlap yet':'Nobody in range');$('#msLabel').textContent=p?labelFor(p.score):(gated?'Still calibrating':'All caught up');
-  if(p)countTo($('#bigScore'),p.score,900);else $('#bigScore').textContent='--';
+  const cal=calibrating();
+  $('#msSub').textContent=p?(cal?`calibrating — ${(S.cal||0)}/${CAL_NEEDED} signals`:`${q.length} nearby`):(gated?'No strong overlap yet':(S.lens==='dating'&&!DEMO_DATA?'Opens in your city at '+CITY_OPEN_AT+' people':'Nobody in range'));
+  $('#msLabel').textContent=p?(cal?'Still calibrating':labelFor(p.score)):(gated?'Still calibrating':'All caught up');
+  if(p&&!cal)countTo($('#bigScore'),p.score,900);else $('#bigScore').textContent='--';
   ['pass','res','cmp'].forEach(x=>$('#b-'+x).disabled=!p);$('#b-rw').disabled=!S.history.length;
   const card=$('.pcard.top',deck);
   if(card){
     const res=$('.stamp.res',card),pas=$('.stamp.pas',card);
     bindDrag(card,{can:()=>!busy,fly:dir=>decide(dir>0?'res':'pass'),tap:()=>openProfile(p.id),drag:dx=>{const k=clamp(Math.abs(dx)/110,0,1);res.style.opacity=dx>0?k:0;pas.style.opacity=dx<0?k:0}});
     if(enter){card.style.transition='none';card.style.transform=`translateX(${enter==='r'?130:-130}%) rotate(${enter==='r'?18:-18}deg)`;card.style.opacity='0';void card.offsetWidth;card.style.transition='';card.style.transform='';card.style.opacity=''}
+    else microPublic.pop($('.dc-bot h3',card),1.03);
   }
   const host=$('#s-match');if(p)setTint(host,personArt(p).replace('class="art"','class="art"'));
 }
@@ -656,7 +763,12 @@ function decide(kind){
   const p=queue()[0];if(!p||busy)return;busy=true;
   const card=$('.pcard.top');haptic(kind==='res'?[12,40,12]:10);
   const st=$(kind==='res'?'.stamp.res':'.stamp.pas',card);if(st)st.style.opacity=1;
-  card.style.transition='transform .55s var(--ease),opacity .5s';
+  /* Resonate: a ripple leaves the button and a light wipe crosses the card.
+     Pass: the card tilts out softly. Both are decoration — the decision was
+     already written above by the state mutation, never by the animation. */
+  if(kind==='res'){microPublic.ringFrom($('#b-res'),'var(--bone)');card.classList.add('fx-wipe');if(S.set.sound!==false)synth.blip('pop')}
+  else card.classList.add('fx-tilt-out');
+  card.style.transition='transform .55s var(--spring),opacity .5s';
   card.style.transform=`translate3d(${kind==='res'?140:-140}%,0,0) rotate(${kind==='res'?20:-20}deg)`;card.style.opacity='0';
   S.decided[p.id]=kind;S.history.push(p.id);
   /* A mutual is only real if the other person actually acted. The seeded
@@ -677,6 +789,9 @@ ACT.rewind=()=>{
   if(S.matchedIds.indexOf(id)>-1){S.matchedIds=S.matchedIds.filter(x=>x!==id);if(S.threads[id]&&!S.threads[id].msgs.length)delete S.threads[id]}
   if(p.intent.indexOf(S.lens)<0){S.lens=p.intent[0];setSeg($('#s-match .ftabs'),S.lens);$$('#s-match .ft').forEach(b=>b.classList.toggle('on',b.dataset.v===S.lens));layoutTabs($('#s-match'))}
   save();haptic(8);renderDeck(kind==='res'?'r':'l');
+  /* Rewind returns the card with a reverse spin — the exit played backwards,
+     which is the least you can do after taking someone's decision back. */
+  const c=$('.pcard.top');if(c&&!S.set.calm)c.animate([{transform:'rotate(-16deg) scale(1.04)'},{transform:'rotate(0) scale(1)'}],{duration:380,easing:'cubic-bezier(.34,1.56,.64,1)'});
 };
 ACT.revisit=()=>{S.history.filter(id=>S.decided[id]==='pass').forEach(id=>delete S.decided[id]);S.history=S.history.filter(id=>S.decided[id]);save();renderDeck()};
 FT.lens=v=>{S.lens=v;save();renderDeck()};
@@ -685,10 +800,11 @@ function openProfile(id){
   const p=person(id),me=mineHum();
   const pg=openPage(`<div class="d-scroll" data-pid="${p.id}">
     <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips"><span class="chipg">${I.pin}${p.km} km</span><span class="chipg">${p.age}</span></div></div>
-    <div class="d-hero" id="dHero" style="aspect-ratio:1/1.05">${personArt(p)}<div class="shade" style="height:45%"></div><div style="position:absolute;left:20px;bottom:18px;z-index:3"><div style="font-size:64px;font-weight:800;font-stretch:75%;letter-spacing:-.05em;line-height:.9">${p.score}%</div><div style="color:rgba(255,255,255,.85);font-size:14.5px;margin-top:4px">${labelFor(p.score)}</div></div></div>
+    <div class="d-hero" id="dHero" style="aspect-ratio:1/1.05">${personArt(p)}<div class="pc-ovl live" aria-hidden="true">${pairFP(p)}</div><div class="shade" style="height:45%"></div><div style="position:absolute;left:20px;bottom:18px;z-index:3">${calibrating()?`<div style="font-size:30px;font-weight:800;font-stretch:78%;letter-spacing:-.02em;line-height:1">${I.star} Calibrating</div><div style="color:rgba(255,255,255,.85);font-size:14px;margin-top:6px">${S.cal||0}/${CAL_NEEDED} signals — the number lands when the math means something</div>`:`<div style="font-size:64px;font-weight:800;font-stretch:75%;letter-spacing:-.05em;line-height:.9">${p.score}%</div><div style="color:rgba(255,255,255,.85);font-size:14.5px;margin-top:4px">${labelFor(p.score)}</div>`}</div></div>
     <h1 class="d-title stg" style="--d:2">${esc(p.name)}</h1>
     <p class="d-by stg" style="--d:3">${S.lens==='dating'?'Open to dating':'Looking for friends'}, ${p.km} km away</p>
     <p class="d-desc open stg" style="--d:4">${esc(p.bio)}</p>
+    <div class="whyrow stg" style="--d:5;padding:0 20px">${whyChips(p)}</div>
     <h3 class="d-h stg" style="--d:5">You both play<small>${p.shared.length} songs</small></h3>
     <div class="hs stg" style="--d:5">${p.shared.map(sid=>`<button class="cov-c" data-act="open-d-track" data-id="${sid}"><div class="pt">${poster(TRACKS[sid],true)}</div><p>${esc(TRACKS[sid].title)}</p><span>${esc(TRACKS[sid].artist)}</span></button>`).join('')}</div>
     <h3 class="d-h stg" style="--d:6">Fingerprint overlap</h3>
@@ -716,8 +832,26 @@ function showMutual(p){
   const COLORS=['#ff5d7a','#ffd166','#EFE9DA'];
   const confetti=Array.from({length:26},(_,i)=>{const x=Math.round(Math.random()*100),dl=(Math.random()*1.1).toFixed(2),t=(2.1+Math.random()*1.4).toFixed(2),dx=`${Math.round(-60+Math.random()*120)}px`;return `<i style="--x:${x}%;--c:${COLORS[i%3]};--r:${Math.round(Math.random()*360)}deg;--dl:${dl}s;--t:${t}s;--dx:${dx}"></i>`}).join('')
     +Array.from({length:12},(_,i)=>{const x=Math.round(Math.random()*100),dl=(Math.random()*1.2).toFixed(2);return `<i class="glyph" style="--x:${x}%;--c:${i%2?'#ffd166':'#ff5d7a'};--r:${Math.round(Math.random()*360)}deg;--dl:${dl}s;--t:${(2.4+Math.random()).toFixed(2)}s;--dx:${Math.round(-60+Math.random()*120)}px">${['♪','✦','♡'][i%3]}</i>`}).join('');
-  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-confetti" aria-hidden="true">${confetti}</div><div class="mut-sparks" aria-hidden="true">${sparks}</div><div class="mut-fp">${pairFP(p)}</div><span class="eyebrow">A rare overlap</span><h2>You two resonate.</h2><p>${p.score}% overlap. You both play ${esc(sharedTitles(p))}.</p><button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button></div>`;
-  o.classList.add('on');haptic([20,60,20,60,30]);track('match_created',{source:'matrix',score:p.score});
+  /* The mutual moment is one scene: two meme cards tilt in, touch at a corner,
+     ripples spread, and the two fingerprints draw toward each other and merge.
+     About two seconds, tap anywhere to skip, a chime and haptics if the
+     settings allow. None of it is required for the match to exist — the match
+     was saved before this function ran. */
+  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-confetti" aria-hidden="true">${confetti}</div><div class="mut-sparks" aria-hidden="true">${sparks}</div>
+    <div class="mut-rip" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="mut-cards" aria-hidden="true"><span class="mc a" style="--bg:${p.pal[1]}">${p.pal.length?'':'?'}</span><span class="mc b" style="--bg:${p.pal[2]}">♥</span></div>
+    <div class="mut-fp merge">${pairFP(p)}</div>
+    <span class="eyebrow">A rare overlap</span><h2>You two resonate.</h2>
+    <p>${calibrating()?'Your overlap score is still calibrating.':p.score+'% overlap.'} You both play ${esc(sharedTitles(p))}.</p>
+    <button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button>
+    <button class="duel-chip" data-act="duel-chip" data-id="${p.id}">${I.pair}Duel ${esc(p.name)} first</button>
+    <span class="mut-skip">tap anywhere to skip</span></div>`;
+  o.classList.add('on');haptic([20,60,20,60,30]);
+  if(S.set.sound!==false)synth.chime();
+  track('match_created',{source:'matrix',score:p.score});
+  /* Tap to skip: one tap anywhere outside the buttons closes the moment. */
+  const skip=e=>{if(e.target.closest('button'))return;ACT['mut-close']()};
+  o.addEventListener('click',skip,{once:true});
 }
 ACT['mut-close']=()=>{const o=$('#overlay');o.classList.remove('on');o.innerHTML=''};
 ACT['mut-hi']=b=>{ACT['mut-close']();go('people');setTimeout(()=>openThread(b.dataset.id),250)};  /* ================= culture arena ================= */
@@ -728,23 +862,26 @@ function stopPulseFX(){if(PFX){clearInterval(PFX.r);PFX=null}}
    Pulse stats strip are removed in this phase; the card row, the local-signal card,
    the note rail and the duel entry all remain as the Phase-3 fill-in point. */
 function renderArena(){
-  const joined=!!S.pulse?.duel;
+  /* The arena tells the truth about a duel: live, waiting, or revealed — read
+     from the same localStorage record the /d/:id tab writes to. */
+  const dl=S.duelLink&&S.duelLink.id?S.duelLink:null;
+  const dstat=dl?(dl.verdict?`Revealed · ${dl.verdict.score}/${dl.verdict.of}`:'Duel live · waiting'):'Enter the duel';
   /* The week badge is the real ISO week of "now", not a hard-coded number.
      Thursday rule: the week owns the year of its Thursday. */
   const now=new Date(),thu=new Date(now);thu.setDate(now.getDate()+3-((now.getDay()+6)%7));
   const week=`WEEK ${1+Math.round(((thu.getTime()-new Date(thu.getFullYear(),0,1).getTime())/864e5-3+((new Date(thu.getFullYear(),0,1).getDay()+6)%7))/7)}`;
   $('#s-arena').innerHTML=`<div class="tint pulse-tint"><div class="pulse-glow glow-a"></div><div class="pulse-glow glow-b"></div>${PFX&&!S.set.calm?'':'<canvas id="arena-fx" class="pulsefx" aria-hidden="true"></canvas>'}</div>
-    <header class="topbar"><div class="wordmark">${RING_GLYPH}Arena</div><div class="hr"><button class="ibtn" data-act="arena-refresh" aria-label="Refresh arena">${I.refresh}</button></div></header>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}Arena</div><div class="hr"><button class="ibtn" data-act="arena-refresh" data-fx="spin" aria-label="Refresh arena">${I.refresh}</button></div></header>
     <div class="pulse-wrap">
       <section class="pulse-hero stg" style="--d:1"><div class="pulse-kicker"><span class="live-dot"></span> CULTURE IS MOVING</div><h1>What the room<br>is feeling <em>now.</em></h1><p>Small signals from the people, sounds and jokes shaping your week.</p><div class="pulse-orbit" aria-hidden="true"><div class="orbit-ring r1"></div><div class="orbit-ring r2"></div><div class="orbit-core">${I.star}</div><i class="orbit-dot d1">♪</i><i class="orbit-dot d2">♡</i><i class="orbit-dot d3">✦</i></div></section>
       <div class="pulse-section-head stg" style="--d:2"><div><span class="eyebrow">Your weekly ritual</span><h2>Pick a little culture</h2></div><span class="pulse-week">${week}</span></div>
       <section class="games-row stg" style="--d:3">
-        <article class="g-card duel-card"><div class="g-art duel-art"><span style="--dl:-1s">😂</span><span style="--dl:-2.6s">📝</span><span class="g-glyph">${I.pair}</span></div><div class="g-copy"><span class="chipg">MEME DUEL · 3 MIN</span><h3>Same meme.<br>Different damage.</h3><p>Caption five prompts. See who gets your exact flavor of funny.</p><button class="cta sm ${joined?'done':''}" data-act="pulse-duel">${joined?'Duel joined':'Enter the duel'} ${joined?I.check:I.chevr}</button></div></article>
-        <article class="g-card nhi-card"><div class="g-art nhi-art"><span style="--dl:-.6s">🙈</span><span style="--dl:-3.2s">👀</span><span class="g-glyph">${I.star}</span></div><div class="g-copy"><span class="chipg">NEVER HAVE I EVER · 2 MIN</span><h3>Confess<br>carefully.</h3><p>Ten cards. Own it or deny it — your answers redraw your humor map.</p><button class="cta sm ${S.nhi?.done?'done':''}" data-act="nhi-open">${S.nhi?.done?'Round played':'Play a round'} ${S.nhi?.done?I.check:I.chevr}</button></div></article>
-        <article class="g-card ice-card-game"><div class="g-art ice-art"><span style="--dl:-1.8s">🫂</span><span class="g-glyph">${I.chat}</span></div><div class="g-copy"><span class="chipg">ICEBREAKER ROULETTE</span><h3>An opener,<br>not “hey”.</h3><p>A question built from what you two actually share. Spin, then send.</p><button class="cta sm ghostb" data-act="nhi-icebreaker">Spin the wheel ${I.chevr}</button></div></article>
+        <article class="g-card duel-card"><div class="g-art duel-art"><span style="--dl:-1s">😂</span><span style="--dl:-2.6s">📝</span><span class="g-glyph">${I.pair}</span></div><div class="g-copy"><span class=\"chipg\">MEME DUEL · REAL LINK</span><h3>Same meme, different damage.</h3><p>Caption five prompts, send the link. The verdict opens only once both sides are in.</p><button class=\"cta sm ${dl?'done':''}\" data-act=\"pulse-duel\">${esc(dstat)} ${dl?I.check:I.chevr}</button></div></article>
+        <article class="g-card nhi-card"><div class="g-art nhi-art"><span style="--dl:-.6s">🙈</span><span style="--dl:-3.2s">👀</span><span class="g-glyph">${I.star}</span></div><div class="g-copy"><span class="chipg">NEVER HAVE I EVER · 2 MIN</span><h3>Confess, but funnier.</h3><p>Ten cards, two answers: guilty or innocent. Your picks redraw your humor map — and stay on this device.</p><button class="cta sm ${S.nhi?.done?'done':''}" data-act="nhi-open">${S.nhi?.done?'Round played':'Play a round'} ${S.nhi?.done?I.check:I.chevr}</button></div></article>
+        <article class="g-card ice-card-game"><div class="g-art ice-art"><span style="--dl:-1.8s">🫂</span><span class="g-glyph">${I.chat}</span></div><div class="g-copy"><span class="chipg">ICEBREAKER ROULETTE</span><h3>An opener, not “hey”.</h3><p>A question built from what you two actually share. Spin, then send.</p><button class="cta sm ghostb" data-act="nhi-icebreaker">Spin the wheel ${I.chevr}</button></div></article>
       </section>
       <section class="pulse-grid stg" style="--d:4">
-        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Your city<br>is still quiet.</h3><p>Local signal switches on once enough people in one area are here. We would rather show you nothing than invent a number.</p><button class="cta sm ghostb" data-act="arena-explore">How this works ${I.chevr}</button></div></article>
+        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Your city is still quiet.</h3><p>Local signal switches on once enough people in one area are here. We would rather show you nothing than invent a number.</p><button class="cta sm ghostb" data-act="arena-explore">How this works ${I.chevr}</button></div></article>
       </section>
       <section class="pulse-note stg" style="--d:5"><div class="note-icon">${I.note}</div><div><b>Your Fingerprint gets sharper in public.</b><span>React, save, listen. We’ll keep the useful parts.</span></div><button class="ibtn" data-act="tab" data-t="feed" aria-label="Open Culture Feed">${I.chevr}</button></section>
     </div>`;
@@ -759,62 +896,111 @@ function loadArenaFX(){const c=$('#arena-fx');if(!c||S.set.calm)return;PFX=null;
       if(q.g){ctx.font=`${11*dp}px serif`;ctx.fillStyle=`rgba(255,209,102,${q.a+.12})`;ctx.fillText(q.g,q.x+9,q.y)}}},33);
   PFX=st;
 }
-const DUEL=[
- {id:'d1',e:'🚪',q:'What the club door says at 1am',a:['“you shall not pass until 2am”','capacity is a suggestion']},
- {id:'d2',e:'🎧',q:'Your 3am playlist is…',a:['a love letter with no recipient','a war crime against genres']},
- {id:'d3',e:'🫠',q:'Group chat energy tonight',a:['feral but supportive','dead but still replying']},
- {id:'d4',e:'💸',q:'The fee that hurts the most',a:['concert ticket service fees','the delivery tip']},
- {id:'d5',e:'🐈',q:'2026 so far, in one image',a:['a cat sitting calmly in chaos','a cat knocking a glass off the table']}
-];
-const duelPartner=()=>person((S.matchedIds&&S.matchedIds[0])||'ines');
-const duelPartnerPick=qid=>{const p=duelPartner();return hash((p?p.seed:3)+'|'+qid)%2?'b':'a'};
-/* Duel v3: prompt cards, a stepping progress bar and a ring verdict. The
-   scoring is unchanged — the same deterministic partner picks, so a replay is
-   still honest — only the presentation moved. */
-function duelBody(){
-  const D=S.duel,step=Object.keys(D.picks).length;
-  if(step>=DUEL.length&&!D.done){
-    const score=DUEL.reduce((n,x)=>n+((D.picks[x.id]||'')===duelPartnerPick(x.id)?1:0),0);
-    D.done=true;D.score=score;D.ts=Date.now();save();
-  }
-  if(D.done){
-    const p=duelPartner(),sc=D.score||0;
-    const verdicts=[[5,'Same damage. Suspiciously aligned.'],[4,'Mostly same damage. Concerning.'],[3,'Adjacent chaos. Respectable.'],[2,'Different damage. Send a meme anyway.'],[1,'Different damage. Opposites attract?'],[0,'Different damage. A whole cultural gap to explore.']];
-    const v=(verdicts.find(x=>sc>=x[0])||verdicts[4])[1];
-    const de=['🙈','😅','🙂','😈','🔥','🔥'][sc]||'🔥';
-    const C=2*Math.PI*74,off=C*(1-sc/DUEL.length);
-    return `<div class="duel2-verdict">
-      <div class="duel2-ring" role="img" aria-label="${sc} of ${DUEL.length} answers matched">
-        <svg viewBox="0 0 168 168" aria-hidden="true"><circle class="track" cx="84" cy="84" r="74" stroke-width="7"/><circle class="fill" cx="84" cy="84" r="74" stroke-width="7" style="--len:${C.toFixed(1)};--to:${off.toFixed(1)}"/></svg>
-        <span class="dv-wrap"><span class="dv">${sc}<small>/${DUEL.length}</small></span><span class="de">${de}</span></span>
-      </div>
-      <b>${v}</b><span class="hint">You and ${esc(p?p.name:'your match')} captioned five prompts without peeking.</span>
-    </div>
-    <div class="game-cta-row">${p?`<button class="cta" data-act="duel-send">Send to ${esc(p.name)}</button>`:''}<button class="cta ghostb" data-act="duel-again">Replay</button></div>`;
-  }
-  const cur=DUEL[step];
-  return `<div class="duel2-head"><span class="chipg">Meme Duel</span><span class="duel2-step">${step+1} / ${DUEL.length}</span></div>
-    <div class="duel2-prog" aria-hidden="true">${DUEL.map((x,i)=>`<i class="${i<step?'done':i===step?'cur':''}"></i>`).join('')}</div>
-    <div class="duel2-stage"><span class="duel2-emoji">${cur.e}</span><h3 class="duel2-q">${esc(cur.q)}</h3><span class="duel2-vs">pick your caption</span></div>
-    <div class="duel2-opts">${cur.a.map((t,i)=>`<button class="duel2-opt ${i?'opt-b':'opt-a'}" data-act="duel-pick" data-v="${i?'b':'a'}"><b>${i?'B':'A'}</b><span>${esc(t)}</span></button>`).join('')}</div>`;
+/* ================= meme duel: the real, two-party link flow ============
+   There is no deterministic fake partner any more. `duelPartnerPick` — the
+   hash that used to invent what your friend would pick — is deleted. A duel is
+   created through `repo.duel`, shared as a `/d/:id` link, and the recipient
+   answers independently in their own tab. The verdict exists only after both
+   sides have submitted; before that the app shows the wait, and nothing else.
+   Picks land as real calibration events on both sides. */
+const DUI={id:null,step:0,picks:{},rec:null,unsub:null};
+function duelLinkUrl(id){
+  /* Deep link when the host can route it; query fallback for static hosts. */
+  const atRoot=location.pathname==='/'||location.pathname.endsWith('.html');
+  return atRoot?location.origin+'/d/'+id:location.origin+location.pathname+'?d='+id;
 }
-function duelOpen(){S.pulse.duel=true;save();openSheet(duelBody())}
-function duelRefresh(){const sh=$('#sheetwrap .sheet');if(sh)sh.innerHTML=duelBody()}
+const duelSheetEl=()=>$('#sheetwrap .sheet');
+function duelStatusLine(rec){
+  if(rec.verdict)return {t:'Revealed · both sides are in',cls:'ok'};
+  if(rec.a.submittedAt&&rec.b.submittedAt)return {t:'Locking the reveal…',cls:'wait'};
+  if(rec.a.submittedAt)return rec.b.joinedAt?{t:'They’re playing. Your five are locked.',cls:'wait'}:{t:'Link is live. Nobody has opened it yet.',cls:'wait'};
+  if(rec.b.joinedAt)return {t:'They’re waiting on your five.',cls:'you'};
+  return {t:'Send the link when you’re ready.',cls:'you'};
+}
+function duelSheetHTML(){
+  const rec=DUI.rec;if(!rec)return '';
+  const link=duelLinkUrl(rec.id),st=duelStatusLine(rec);
+  const head=`<div class="game-sheet-head"><div class="game-sheet-title"><span class="chipg">Meme Duel · two players</span><h3 class="sh-t">Same memes.<br>Different damage.</h3><span class="hint">Five fixed choices each. No typing, so nothing needs moderating.</span></div><button class="ibtn" data-act="closesheet" aria-label="Close">${I.x}</button></div>
+    <div class="duel-link"><code>${esc(link)}</code><button class="chip" data-act="duel-copy" data-fx="sharego">${I.link}Copy</button><button class="chip" data-act="duel-share">${I.send}Send link</button></div>
+    <div class="duel-status ${st.cls}"><span class="live-dot"></span>${esc(st.t)}</div>`;
+  if(rec.verdict){
+    const sc=rec.verdict.score,of=rec.verdict.of,C=2*Math.PI*74,off=C*(1-sc/of);
+    const v=duelVerdictLine(sc,of);
+    return head+`<div class="duel2-verdict">
+      <div class="duel2-ring" role="img" aria-label="${sc} of ${of} picks matched">
+        <svg viewBox="0 0 168 168" aria-hidden="true"><circle class="track" cx="84" cy="84" r="74" stroke-width="7"/><circle class="fill" cx="84" cy="84" r="74" stroke-width="7" style="--len:${C.toFixed(1)};--to:${off.toFixed(1)}"/></svg>
+        <span class="dv-wrap"><span class="dv" id="duelDv">${sc}<small>/${of}</small></span><span class="de">${v.emoji}</span></span>
+      </div>
+      <b>${esc(v.line)}</b><span class="hint">Both sides submitted independently. ${rec.b.joinedAt?'Your friend answered as “'+esc(rec.b.name||'Your friend')+'”':''}</span>
+    </div>
+    <div class="duel-cardwrap"><canvas class="duel2-card" aria-label="Your Duel Card preview"></canvas><span class="chipg">1080×1920 · 1080×1080</span></div>
+    <div class="game-cta-row">
+      <button class="cta" data-act="duel-sharecard" data-fx="sharego">${I.share}Share card</button>
+      <button class="cta ghostb" data-act="duel-savecard">Download</button>
+    </div>
+    <div class="game-cta-row" style="margin-top:10px">
+      <button class="cta sm ghostb" data-act="duel-send">Send verdict to a chat</button>
+      <button class="cta sm ghostb" data-act="duel-again">New duel</button>
+    </div>`;
+  }
+  const myDone=!!rec.a.submittedAt;
+  if(!myDone){
+    const prompts=DUEL_PROMPTS,step=DUI.step,cur=prompts[Math.min(step,prompts.length-1)];
+    return head+`<div class="duel2-head" style="margin-top:16px"><span class="chipg">${step>=prompts.length?'submitting':'your five'}</span><span class="duel2-step">${Math.min(step+1,prompts.length)} / ${prompts.length}</span></div>
+      <div class="duel2-prog" aria-hidden="true">${prompts.map((x,i)=>`<i class="${i<step?'done':i===step?'cur':''}"></i>`).join('')}</div>
+      <div class="duel2-stage"><span class="duel2-emoji">${cur.emoji}</span><h3 class="duel2-q">${esc(cur.q)}</h3><span class="duel2-vs">pick your caption</span></div>
+      <div class="duel2-opts">${(['a','b']).map(side=>`<button class="duel2-opt opt-${side}" data-act="duel-pick" data-fx="duel-pick" data-q="${cur.id}" data-v="${side}"><b>${side.toUpperCase()}</b><span>${esc(cur.options[side].text)}</span></button>`).join('')}</div>
+      ${step?`<button class="linkb" data-act="duel-back">← back one</button>`:''}`;
+  }
+  return head+`<div class="duel2-stage" style="margin-top:20px"><span class="duel2-emoji">🔒</span><h3 class="duel2-q">Your five are locked.</h3><p class="hint">The reveal opens only after your friend submits theirs. That is the whole game: nobody sees a partial.</p><div class="duel2-prog" aria-hidden="true">${DUEL_PROMPTS.map((x,i)=>`<i class="done"></i>`).join('')}</div><button class="cta ghostb" data-act="duel-again" style="margin-top:14px">Start a fresh duel</button></div>`;
+}
+function paintDuel(){
+  const sh=duelSheetEl();
+  if(sh){
+    sh.innerHTML=duelSheetHTML();
+    const cv=$('.duel2-card',sh);
+    if(cv&&DUI.rec&&DUI.rec.verdict){
+      renderDuelCard(cv,DUI.rec,{size:'story',external:false});
+      microPublic.countTo($('#duelDv',sh),DUI.rec.verdict.score);
+      if(S.set.sound!==false)synth.chime();
+      haptic([20,60,20]);
+    }
+  }
+  if(DUI.rec){S.duelLink={id:DUI.rec.id,verdict:DUI.rec.verdict?{score:DUI.rec.verdict.score,of:DUI.rec.verdict.of}:null};save()}
+  if(cur==='arena')renderArena();
+}
+async function duelEnsure(){
+  const repo=window.Cultured&&window.Cultured.repo;
+  if(!repo||!repo.duel)throw new Error('adapter offline');
+  let rec=null;
+  if(S.duelLink&&S.duelLink.id)rec=await repo.duel.get(S.duelLink.id);
+  if(!rec){rec=await repo.duel.create({displayName:S.prof.name});track('duel_created',{source:DEMO_DATA?'demo':'live'})}
+  DUI.rec=rec;DUI.id=rec.id;DUI.picks={...(rec.a.picks||{})};DUI.step=Object.keys(DUI.picks).length;
+  if(DUI.unsub)DUI.unsub();
+  DUI.unsub=repo.duel.watch(rec.id,r=>{if(r){DUI.rec=r;paintDuel()}});
+  S.duelLink={id:rec.id,verdict:rec.verdict?{score:rec.verdict.score,of:rec.verdict.of}:null};save();
+  return rec;
+}
+function duelOpen(){duelEnsure().then(()=>{paintDuel()}).catch(()=>toast('The duel adapter is offline in this build'))}
+function duelRefresh(){paintDuel()}
 
 /* ================= never have i ever ================= */
 /* Ten confession cards. Answering honestly is the point: every “guilty” is a
    real humor-style signal, so the round feeds the same event seam the feed
    uses — but only the participant's own answers, nothing invented. */
+/* Ten confession cards. The answers feed the humor map; the copy is allowed to
+ be ridiculous — the mechanic never is. No streaks, no loss, no invented crowd:
+ just you and a card. */
 const NHI_CARDS=[
- {e:'🎧',q:'…replayed one song so many times it got embarrassing',hint:'The replay count is between you and the algorithm.'},
- {e:'🚕',q:'…cried on night transport to a song I chose',hint:'The night bus claims all of us eventually.'},
- {e:'📕',q:'…pretended to have read the book for the group chat',hint:'The group chat suspects already.'},
- {e:'🎬',q:'…watched the same film five-plus times in one year',hint:'Comfort is a legitimate genre.'},
- {e:'🎤',q:'…performed a full concert alone in my room',hint:'Sold out. Every night.'},
- {e:'📱',q:'…stalked an artist’s page at 3am instead of sleeping',hint:'The 3am brain wants what it wants.'},
- {e:'💸',q:'…bought concert tickets I could not really afford',hint:'Rent is temporary. The setlist is forever.'},
- {e:'🫥',q:'…left someone on read because the vibe was too good to ruin',hint:'A masterpiece needs the right silence.'},
- {e:'🛍️',q:'…bought merch from an artist I discovered that same week',hint:'Commitment speedrun.'},
+ {e:'🎧',q:'…gave a song a personality disorder by replaying one 14-second outro',hint:'The replay count is between you and the algorithm.'},
+ {e:'🚕',q:'…cried in a cab and quietly blamed the driver’s playlist',hint:'The night bus claims all of us eventually.'},
+ {e:'📕',q:'…nodded through a book conversation I had absolutely not read',hint:'The group chat suspects already. The group chat always suspects.'},
+ {e:'🎬',q:'…called a fictional character “basically me” at a party',hint:'They stopped making characters like that. So did the party.'},
+ {e:'🎤',q:'…performed the full album, air-drum solo included, to an empty room',hint:'Sold out. Every night. The merch table was a cat.'},
+ {e:'📱',q:'…followed an artist in 2016 and still think about their side project',hint:'They broke up in a comment section. It got lyrical.'},
+ {e:'💸',q:'…bought the merch out of spite for my rent, not love of the music',hint:'Rent is temporary. The tote bag is forever.'},
+ {e:'🫥',q:'…left someone on read because the vibe was too good to ruin with words',hint:'A masterpiece needs the right silence.'},
+ {e:'🍜',q:'…ranked the city’s late-night food spots and started a real fight',hint:'Third place holds a grudge. Third place is right.'},
  {e:'🌀',q:'…made an entire playlist for a person I never sent it to',hint:'The saddest art form of our generation.'}
 ];
 function nhiBody(){
@@ -851,13 +1037,71 @@ ACT['nhi-answer']=b=>{
 };
 ACT['nhi-again']=()=>{S.nhi={i:0,hits:0,done:false};save();nhiRefresh();haptic(8)};
 /* Icebreaker straight from the arena — same honest prompts as the chat one. */
-ACT['nhi-icebreaker']=b=>{const p=duelPartner();if(p)ACT.icebreaker({dataset:{id:p.id}})};
-ACT['pulse-duel']=()=>{duelOpen();haptic([8,25,8]);if(DEMO_DATA)track('duel_ghost_fallback',{source:'demo'});
+ACT['nhi-icebreaker']=b=>{const id=Object.keys(S.threads||{})[0];if(id)ACT.icebreaker({dataset:{id}});else toast('Opener needs a real match — duel someone first')};
+ACT['pulse-duel']=async b=>{
+  try{await duelEnsure()}catch(e){toast('The duel adapter is offline in this build');return}
+  openSheet(duelSheetHTML());paintDuel();haptic([8,25,8]);
 };
-ACT['duel-start']=duelOpen;
-ACT['duel-pick']=b=>{const D=S.duel,step=Object.keys(D.picks).length;if(step>=DUEL.length)return;D.picks[DUEL[step].id]=b.dataset.v;save();haptic(6);duelRefresh()};
-ACT['duel-again']=()=>{S.duel={picks:{},done:false,score:null,ts:0};save();duelRefresh();haptic(8)};
-ACT['duel-send']=()=>{const p=duelPartner();if(!p)return;ensureThread(p.id);S.threads[p.id].msgs.push({f:'me',t:`Meme Duel verdict: ${S.duel.score||0}/5 same damage`,ts:Date.now()});save();closeSheet();toast('Verdict sent to '+p.name);haptic(10);track('duel_completed',{source:DEMO_DATA?'demo':'live'})};
+ACT['duel-start']=ACT['pulse-duel'];
+ACT['duel-pick']=async b=>{
+  const q=b.dataset.q,side=b.dataset.v;
+  DUI.picks[q]=side;DUI.step=Math.min(DUI.step+1,DUEL_PROMPTS.length);
+  const last=DUI.step>=DUEL_PROMPTS.length;
+  if(last){
+    const repo=window.Cultured&&window.Cultured.repo;
+    try{DUI.rec=await repo.duel.submit(DUI.id,'a',DUI.picks);toast(DUI.rec.verdict?'Both in — reveal opened':'Locked. Waiting on your friend.')}
+    catch(e){toast('That duel has ended — start a fresh one');return}
+  }
+  paintDuel();
+};
+ACT['duel-back']=()=>{
+  const prev=DUEL_PROMPTS[DUI.step-1];
+  if(prev){delete DUI.picks[prev.id];DUI.step--}
+  paintDuel();
+};
+ACT['duel-again']=async()=>{
+  const repo=window.Cultured&&window.Cultured.repo;
+  DUI.picks={};DUI.step=0;
+  if(repo&&repo.duel){const rec=await repo.duel.create({displayName:S.prof.name});DUI.rec=rec;DUI.id=rec.id;if(DUI.unsub)DUI.unsub();DUI.unsub=repo.duel.watch(rec.id,r=>{if(r){DUI.rec=r;paintDuel()}});S.duelLink={id:rec.id,verdict:null};save()}
+  paintDuel();haptic(8);
+};
+ACT['duel-copy']=async b=>{
+  const link=duelLinkUrl(DUI.id);
+  try{await navigator.clipboard.writeText(link)}catch(e){}
+  toast('Link copied — the reveal waits for both sides');
+};
+ACT['duel-share']=async()=>{
+  const link=duelLinkUrl(DUI.id);
+  if(navigator.share){try{await navigator.share({title:'cultured — Meme Duel',text:'Same five prompts. Let’s see who gets my funny.',url:link});return}catch(e){}}
+  try{await navigator.clipboard.writeText(link)}catch(e){}
+  toast('Link copied — paste it anywhere');
+};
+ACT['duel-sharecard']=async()=>{
+  if(!DUI.rec||!DUI.rec.verdict)return;
+  /* An external share carries the watermark + CTA; the in-app preview never does. */
+  try{
+    const mod=await import('./duel/card');
+    const ok=await mod.downloadDuelCard(DUI.rec,'story');
+    if(ok)toast('Card saved — watermark included, since it leaves the app');
+  }catch(e){toast('Download blocked here — copy the link instead')}
+};
+ACT['duel-savecard']=async()=>{
+  if(!DUI.rec||!DUI.rec.verdict)return;
+  try{const mod=await import('./duel/card');await mod.downloadDuelCard(DUI.rec,'square');toast('Square card saved')}catch(e){toast('Download blocked here')}
+};
+ACT['duel-send']=()=>{
+  const v=DUI.rec&&DUI.rec.verdict;if(!v){toast('No verdict yet — the reveal opens after both submit');return}
+  const id=Object.keys(S.threads||{})[0];
+  if(!id){toast('Open a chat first, then send it there');return}
+  ensureThread(id);
+  S.threads[id].msgs.push({f:'me',t:`Meme Duel verdict: ${v.score}/${v.of} — ${v.line} (${duelLinkUrl(DUI.id)})`,ts:Date.now()});save();closeSheet();toast('Verdict sent');haptic(10);track('duel_completed',{score:v.score})
+};
+/* The thread chip: start (or resume) a duel with this person, ready to paste
+   the link straight into the chat. */
+ACT['duel-chip']=async b=>{
+  try{await duelEnsure()}catch(e){toast('The duel adapter is offline in this build');return}
+  openSheet(duelSheetHTML());paintDuel();haptic(8);track('duel_chip',{source:'thread'});
+};
 ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Arena refreshed · new signals found');haptic(8)};
 ACT['arena-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
 
@@ -871,6 +1115,7 @@ function renderPeople(){
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
     ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
+    ${!fresh.length&&!chats.length?`<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🫥</span><p class="hint">No conversations yet. A thread opens when you and someone both Resonate — cultured won’t write the first message for you.</p></div></div>`:''}
     ${fresh.length?`<div class="blk tight stg"><h2 style="padding-top:18px">New resonances</h2></div><div class="strip stg" style="--d:1">${fresh.map(x=>`<button class="nr" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,64)}<span>${esc(x.p.name)}</span></button>`).join('')}</div>`:'<div style="height:12px"></div>'}<ul class="inbox">${chats.map((x,i)=>{const m=x.t.msgs[x.t.msgs.length-1];return `<li class="stg" style="--d:${i+1}"><button class="row-chat ${x.t.unread?'un':''}" data-act="open-thread" data-id="${x.p.id}">${orb(x.p,56)}<div class="tx"><div class="nm"><span>${esc(x.p.name)}</span><time>${ago(m.ts)}</time></div><div class="pv">${m.f==='me'?'You: ':''}${esc(msgPreview(m))}</div><div class="ctx">You both play ${esc(sharedTitles(x.p))}</div></div>${x.t.unread?`<span class="unread">${x.t.unread}</span>`:''}</button></li>`}).join('')}</ul></div>`;
   layoutTabs($('#s-people'));updateBadge();
   const t=chats[0]?poster(TRACKS.choir,true):poster(TRACKS.glass,true);setTint($('#s-people'),t);
@@ -879,15 +1124,25 @@ FT.pv=v=>{PV=v;renderPeople();const el=$('#s-people');el.classList.remove('enter
 ACT['open-thread']=b=>openThread(b.dataset.id);
 function openThread(id){
   const p=person(id),t=S.threads[id];if(!t)return;t.unread=0;save();updateBadge();
-  const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${p.score}% resonance, ${p.km} km away</span></div>${FEATURE_ROOMS?`<button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="${ROOM_OFFER_LABEL}">${I.headphones}</button>`:'<span style="width:42px"></span>'}</div>
+  const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${calibrating()?'calibrating':p.score+'% resonance'}, ${p.km} km away</span></div>${FEATURE_ROOMS?`<button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="${ROOM_OFFER_LABEL}">${I.headphones}</button>`:'<span style="width:42px"></span>'}</div>
     <div class="msgs" id="msgs"></div><div id="starters"></div>
-    <div class="composer"><button class="send alt" data-act="song-pick" aria-label="Send a song">${I.note}</button><button class="send alt" data-act="meme-pick" aria-label="Send a meme">😂</button><input id="msg-in" placeholder="Say something about a song" maxlength="280" autocomplete="off" aria-label="Message"><button class="send" data-act="send" aria-label="Send">${I.send}</button></div>`);
+    <div class="composer"><span id="repochip"></span><button class="send alt" data-act="song-pick" aria-label="Send a song">${I.note}</button><button class="send alt" data-act="meme-pick" aria-label="Send a meme">😂</button><input id="msg-in" placeholder="Say something about a song" maxlength="280" autocomplete="off" aria-label="Message"><button class="send" data-act="send" data-fx="send" aria-label="Send">${I.send}</button></div>`);
   pg.dataset.thread=id;pg.onclose=()=>{renderPeople()};
   setTint(pg,poster({id:'t'+id,style:STY[hash(id)%5],pal:p.pal},true));
   renderMsgs(id);
   $('#msg-in',pg).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ACT.send()}});
 }
 const TYPING={};
+/* First lines built from shared evidence, never a canned "hey". */
+function evidenceStarters(p){
+  const out=[];
+  if(p.shared[0])out.push(`Be honest about ${TRACKS[p.shared[0]].title}: bridge or verse?`);
+  const topic=(p.humor||[]).findIndex(v=>v>=.8);
+  if(topic>-1)out.push(`You both lean ${HUMOR[topic].toLowerCase()} — send the funniest thing you saved this week`);
+  if(S.duelLink&&S.duelLink.verdict)out.push(`Your duel landed ${S.duelLink.verdict.score}/${S.duelLink.verdict.of}. Argue your best caption.`);
+  out.push('Pick a song for waiting on a late bus');
+  return out.slice(0,3);
+}
 function renderMsgs(id){
   const pg=$(`.page[data-thread="${id}"]`);if(!pg)return;
   const p=person(id),t=S.threads[id],box=$('#msgs',pg);
@@ -895,22 +1150,66 @@ function renderMsgs(id){
      only renders when the day actually changes, so old threads stay calm. */
   let lastDay='';
   const dayChip=ts=>{const d=new Date(ts).toDateString();if(d===lastDay)return '';lastDay=d;const today=new Date().toDateString();return `<div class="daychip">${d===today?'today':d}</div>`};
-  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button>${FEATURE_ROOMS?`<button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">${ROOM_OFFER_LABEL}</button>`:''}</div></div>`
-    +t.msgs.map(m=>dayChip(m.ts)+(m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div>${FEATURE_ROOMS?`<button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button>`:''}</div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`)).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
+  const replyOf=m=>m.rep!=null&&t.msgs[m.rep]?`<span class="bub-rep">↩ ${esc((t.msgs[m.rep].t||'a meme').slice(0,60))}</span>`:'';
+  const rxRow=m=>{
+    if(!m.rx)return '';
+    const parts=Object.entries(m.rx).filter(x=>x[1]).map(([e,n])=>`<button class="bub-rx on" data-act="bub-react" data-i="${t.msgs.indexOf(m)}" data-e="${e}" aria-label="${e} reaction">${e}<b>${n}</b></button>`);
+    return parts.length?`<div class="bub-rxs">${parts.join('')}</div>`:'';
+  };
+  const bubAct=i=>`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`;
+  box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>${calibrating()?'You two are still calibrating':'You and '+esc(p.name)+' resonate at '+p.score+'%'}</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button><button class="cta sm ghostb" data-act="duel-chip">${I.pair}Meme Duel</button>${FEATURE_ROOMS?`<button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">${ROOM_OFFER_LABEL}</button>`:''}</div></div>`
+    +t.msgs.map((m,i)=>dayChip(m.ts)+(m.kind==='meme'?memeBub(m,i):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div>${m.readAt?`<span class="bub-read" aria-label="Read">✓</span>`:''}${bubAct(i)}</div>`:`<div class="bub ${m.f} ${S.repTo===i?'replying':''}" data-i="${i}">${replyOf(m)}${esc(m.t)}${m.readAt&&m.f==='me'?`<span class="bub-read" aria-label="Read">✓</span>`:''}${bubAct(i)}</div>`)+rxRow(m)).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
+  $('#starters',pg).innerHTML=t.msgs.length<=1?`<div class="starters">${evidenceStarters(p).map(s=>`<button class="chip" data-act="starter" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:'';
+  paintRepoChip(id);
   box.scrollTop=box.scrollHeight;
-  $('#starters',pg).innerHTML=t.msgs.length<=1?`<div class="starters">${STARTERS.map(s=>`<button class="chip" data-act="starter" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:'';
+  /* double-tap a bubble for the emoji burst — the reaction is state, the
+     burst is the flourish, both work with motion off */
+  const lastTap={};
+  box.ondblclick=e=>{
+    const bub=e.target.closest('.bub,.bub-m,.bub-t');if(!bub)return;
+    const idx=bub.dataset.i!==undefined?+bub.dataset.i:Array.from(box.querySelectorAll('.bub,.bub-m,.bub-t')).indexOf(bub);
+    const m=t.msgs[idx];if(!m||idx<0)return;
+    m.rx=m.rx||{};const k='🔥';m.rx[k]=(m.rx[k]||0)+1;save();
+    microPublic.burst(bub,undefined,8);microPublic.pop(bub,1.04);haptic(10);
+    renderMsgs(id);
+  };
 }
+function paintRepoChip(id){
+  const chip=$('#repochip');if(!chip)return;
+  const t=S.threads[id]||{msgs:[]};
+  if(S.repTo==null||!t.msgs[S.repTo]){chip.innerHTML='';chip.classList.remove('on');S.repTo=null;return}
+  const src=t.msgs[S.repTo];
+  chip.innerHTML=`<span class="repo-view">↩ ${(src.t||(src.kind==='meme'?'a meme':'a song')+'').slice(0,48)}<button data-act="reply-x" aria-label="Cancel reply">${I.x}</button></span>`;
+  chip.classList.add('on');
+}
+ACT['reply-to']=b=>{S.repTo=+b.dataset.i;const id=threadId();renderMsgs(id);const inp=$('#msg-in');if(inp)inp.focus();haptic(5)};
+ACT['reply-x']=()=>{S.repTo=null;renderMsgs(threadId())};
+ACT['bub-react']=b=>{
+  const id=threadId(),t=S.threads[id],m=t&&t.msgs[+b.dataset.i];if(!m)return;
+  m.rx=m.rx||{};const e=b.dataset.e;m.rx[e]=m.rx[e]?0:(m.rx[e]||0)+1;
+  if(!m.rx[e])delete m.rx[e];
+  save();haptic(6);renderMsgs(id);
+};
+function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}${tools}</div>`}
 function reply(id){
   TYPING[id]=true;renderMsgs(id);const t=S.threads[id];
   setTimeout(()=>{
     TYPING[id]=false;t.msgs.push({f:'them',t:REPLIES[t.msgs.length%REPLIES.length],ts:Date.now()});
+    /* the demo side "reads": mark my latest message read so the tick draws */
+    const mine=[...t.msgs].reverse().find(x=>x.f==='me'&&!x.readAt);if(mine)mine.readAt=Date.now();
     if(!$(`.page[data-thread="${id}"]`)){t.unread=(t.unread||0)+1;updateBadge()}
     save();renderMsgs(id);
   },1500);
 }
 function sendMsg(id,text){
   text=text.trim();if(!text)return;const t=S.threads[id];
-  t.msgs.push({f:'me',t:text,ts:Date.now()});save();haptic(6);reply(id);
+  const m={f:'me',t:text,ts:Date.now(),readAt:null};
+  if(S.repTo!=null&&t.msgs[S.repTo])m.rep=S.repTo;
+  t.msgs.push(m);S.repTo=null;save();haptic(6);
+  /* the sent bubble rises from the composer (CSS), the read tick draws
+     itself when the other side comes back */
+  const box=$('#msgs');if(box)box.scrollTop=box.scrollHeight;
+  reply(id);
 }
 const threadId=()=>{const pg=$('.page[data-thread]:not([data-closing])');return pg&&pg.dataset.thread};
 ACT.send=()=>{const id=threadId();if(!id)return;const inp=$('#msg-in');const v=inp.value;inp.value='';sendMsg(id,v)};
@@ -1082,26 +1381,33 @@ ACT['s-recap']=()=>{
 /* ================= you (Cultural Fingerprint) ================= */
 function renderYou(){
   const pr=S.prof,mine=fpParams(mineSeed());
+  const P=youPal();
   const saved=Object.keys(S.react).filter(id=>S.react[id].s&&POSTS[id]);
   const laughs=Object.keys(S.react).filter(id=>S.react[id].h).length;
-  $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,rgba(239,233,218,.28),transparent 70%),radial-gradient(60% 50% at 0 0,rgba(255,146,100,.22),transparent 70%)"></div></div>
+  $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
-    <section class="you-hero"><div class="fp-bleed" id="fpb">${fpSVG(mine,'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div>
-      <div class="you-id stg"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea></div></section>
+    <section class="you-hero"><button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
+      <div class="you-id stg"><div class="you-av">${pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:orb({name:pr.name,pal:P.slice(1)},64)}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
+        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
+        <div class="you-chips">${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
     <div class="stats stg" style="--d:1"><div><b>${Object.keys(S.threads).length}</b><span>Resonances</span></div><div><b>${saved.length}</b><span>Saved</span></div><div><b>${laughs}</b><span>Laughs given</span></div></div>
     <div class="stage2">
+    <div class="blk stg" style="--d:2"><h2>Look and feel<small>Changes your wash, not your worth</small></h2>
+      <div class="tint-row" role="radiogroup" aria-label="Profile tint">${PROF_TINTS.map(t=>{const TP=(TRACKS[t[0]]||{}).pal||TRACKS.moons.pal;return `<button class="tint-o ${pr.tint===t[0]?'on':''}" role="radio" aria-checked="${pr.tint===t[0]}" data-act="prof-tint" data-fx="chip" data-k="${t[0]}"><i style="background:linear-gradient(150deg,${TP[0]},${TP[1]} 46%,${TP[2]})"></i><span>${t[1]}</span></button>`}).join('')}</div>
+      <div class="row"><div class="tx"><b>Profile photo</b><span>Stays on this device. Square crops best.</span></div><span style="display:flex;gap:8px">${pr.pfp?`<button class="chip" data-act="pfp-remove">Remove</button>`:''}<button class="chip on" data-act="pfp-pick">${pr.pfp?'Replace':'Choose'}</button></span></div>
+    </div>
     <div class="blk stg" style="--d:2"><h2>Who sees your Fingerprint</h2><div style="margin-top:12px">${segHTML('vis',[['all','Everyone'],['matches','Matches'],['me','Only me']],pr.vis)}</div></div>
-    <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
+    <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
     <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
     <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
-  drawPhotos();
+  drawPhotos();shelfWire();
   const sc=$('#s-you');sc.onscroll=()=>{const f=$('#fpb');if(f)f.style.translate=`0 ${sc.scrollTop*.25}px`};
 }
-function updateFP(){const b=$('#fpb');if(b)b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4});fpDirty=true}
+function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',(youPal()||[])[1]||'#ff8a5b',{n:18,w:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
 function drawPhotos(){
   const g=$('#photos');if(!g)return;
   g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}"><button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<9?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
@@ -1126,6 +1432,36 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='Escape'){if($('#sheetwrap').classList.contains('open'))closeSheet();else closePage()}
 });
+ACT['prof-tint']=b=>{S.prof.tint=b.dataset.k;save();renderYou();haptic(6)};
+ACT['pfp-remove']=()=>{S.prof.pfp='';save();renderYou();toast('Profile photo removed from this device');haptic(6)};
+ACT['pfp-pick']=()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.style.cssText='position:fixed;left:-9999px';
+  inp.addEventListener('change',()=>{if(inp.files&&inp.files[0])readPfp(inp.files[0]);setTimeout(()=>inp.remove(),400)});
+  document.body.appendChild(inp);inp.click();
+};
+/* the photo never leaves the device: the resize happens in canvas here, and
+   the dataURL lands next to the rest of the profile under the same keys. */
+function readPfp(file){
+  if(!/^image\//.test(file.type)){toast('That file is not an image');return}
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,240/Math.max(img.width,img.height,1));
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+      const x=c.getContext('2d');if(!x){toast('That image could not be read');return}
+      x.drawImage(img,0,0,c.width,c.height);
+      S.prof.pfp=c.toDataURL('image/jpeg',.85);
+      save();renderYou();haptic(8);toast('Profile photo updated — it stays on this device');
+    };
+    img.onerror=()=>toast('That file is not an image');
+    img.src=fr.result;
+  };
+  fr.onerror=()=>toast('That file could not be read');
+  fr.readAsDataURL(file);
+}
 ACT.hum=b=>{
   const h=b.dataset.h,i=S.prof.humor.indexOf(h);if(i>-1)S.prof.humor.splice(i,1);else S.prof.humor.push(h);
   b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);save();updateFP();haptic(6);
@@ -1170,7 +1506,7 @@ ACT['share-fp']=()=>{
   openSheet(`<h3 class="sh-t">Share your Fingerprint</h3>
     <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
     <p class="hint" style="margin:12px 0 16px">A live preview built from your current signals. Photos and location stay private.</p>
-    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
+    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 };
 
 /* ================= settings + activity ================= */
@@ -1198,7 +1534,7 @@ function drawSet(tab){
       <div class="row col"><div class="tx"><b>Radius</b><span id="radv">${s.radius} km</span></div><input type="range" id="radius" min="1" max="100" value="${s.radius}" style="--p:${(s.radius-1)/99*100}%" aria-label="Discovery radius in kilometers"></div>
       <div class="row col"><div class="tx"><b>Looking for</b></div>${segHTML('intent',[['dating','Dating'],['friends','Friends'],['both','Both']],S.intent)}</div>
     </div>
-    <div class="blk"><h2>Anti-genres</h2><p class="hint" style="margin-top:6px">Tap to filter out. You won’t be matched on these.</p><div class="chips" style="margin-top:12px">${ANTI.map(g=>`<button class="chip no ${s.anti.indexOf(g)>-1?'on':''}" data-act="anti" data-g="${g}" aria-pressed="${s.anti.indexOf(g)>-1}">${g}</button>`).join('')}</div></div>
+    <div class="blk"><h2>Anti-genres</h2><p class="hint" style="margin-top:6px">Tap to filter out. You won’t be matched on these.</p><div class="chips" style="margin-top:12px">${ANTI.map(g=>`<button class="chip no ${s.anti.indexOf(g)>-1?'on':''}" data-act="anti" data-fx="chip" data-g="${g}" aria-pressed="${s.anti.indexOf(g)>-1}">${g}</button>`).join('')}</div></div>
     <div class="blk"><h2>Listening sessions</h2></div>
     <div class="group">
       <div class="row"><div class="tx"><b>Co-listening invites</b><span>Matches can ask you to listen together for 15 minutes.</span></div>${swHTML('tog','invites',s.invites,'Co-listening invites')}</div>
@@ -1222,6 +1558,7 @@ function drawSet(tab){
       <button class="row" data-act="legal" data-doc="terms"><div class="tx"><b>Terms of use</b><span>The rules for using cultured.</span></div></button>
       <button class="row" data-act="legal" data-doc="guidelines"><div class="tx"><b>Community guidelines</b><span>Keep the room kind and human.</span></div></button>
       <button class="row" data-act="export"><div class="tx"><b>Export my data</b><span>Request a copy of what you’ve shared.</span></div></button>
+      <button class="row" data-act="logout"><div class="tx"><b>Log out</b><span>Ends the session on this device. Nothing is deleted.</span></div></button>
       <button class="row danger" data-act="delete-account"><div class="tx"><b>Delete my account</b><span>Starts a 14-day cooling-off period.</span></div></button>
     </div>
     <div class="blk"><h2>Data on this device</h2></div>
@@ -1236,6 +1573,8 @@ SEG.activity=v=>{S.set.activity=v;save();drawSet('act')};
 ACT.tog=b=>{
   const k=b.dataset.k,on=b.getAttribute('aria-checked')!=='true';S.set[k]=on;b.setAttribute('aria-checked',on);save();haptic(6);
   if(k==='calm')applyCalm();
+  if(k==='sound')synth.setEnabled(on);
+  if(k==='haptics'&&on)haptic(10);
   if(k==='quiet')$('#qrow').style.display=on?'':'none';
   if(k==='remind')toast(on?'We’ll nudge you at 9:00 AM':'Reminder off');
 };
@@ -1247,20 +1586,33 @@ ACT.safety=b=>{const id=b.dataset.id;openSheet(`<h3 class="sh-t">Keep your space
 ACT['safety-go']=b=>{repoCall('submitSafetyAction',b.dataset.id,b.dataset.reason);closeSheet();toast(b.dataset.reason==='block'?'Blocked. They’ll disappear from your decks.':'Thanks. We’ll keep this private.');if(b.dataset.reason==='block'){closePage();setTimeout(()=>renderMatchShell(),320)}};
 ACT.legal=async b=>{const doc=await repoCall('getLegalDocument',b.dataset.doc);const title=doc&&doc.title?doc.title:b.dataset.doc;const body=doc&&doc.body?doc.body:'Draft for review. This copy needs lawyer review before launch.';openSheet(`<span class="chipg">needs lawyer review</span><h3 class="sh-t" style="margin-top:14px">${esc(title)}</h3><p class="hint" style="font-size:15px;line-height:1.55">${esc(body)}</p><button class="cta ghostb" data-act="closesheet">Close</button>`)};
 ACT.export=async()=>{await repoCall('requestDataExport');toast('Your export request is queued.');};
+ACT['logout']=()=>openSheet(`<h3 class="sh-t">Log out?</h3><p class="hint" style="margin:-4px 0 18px;font-size:15px">This prototype keeps everything on this device, so logging out simply takes you back to the welcome screen. Nothing is deleted, nothing is uploaded — signing back in lands on the same profile in this browser.</p><button class="cta" data-act="logout-go">Log out</button><button class="cta ghostb" data-act="closesheet">Stay in</button>`);
+ACT['logout-go']=async()=>{
+  try{await repoCall('logout')}catch(e){/* the offline adapter has no session to revoke */}
+  closeSheet();closePage();
+  toast('Logged out on this device.');
+  setTimeout(showOnboarding,280);
+};
 ACT['delete-account']=()=>openSheet(`<h3 class="sh-t">Start account deletion?</h3><p class="hint" style="margin:-4px 0 18px;font-size:15px">Your account will enter a 14-day cooling-off period. Sign back in during that window to cancel. After it ends, deletion must purge your profile, messages, photos and push tokens.</p><button class="cta" style="background:var(--bad);color:#1b0509" data-act="delete-go">Start the 14-day period</button><button class="cta ghostb" data-act="closesheet">Keep my account</button>`);
 ACT['delete-go']=async()=>{await repoCall('requestAccountDeletion');closeSheet();closePage();toast('Deletion started. You have 14 days to change your mind.');};
 ACT.reset=()=>{
   openSheet(`<h3 class="sh-t">Reset local data?</h3><p class="hint" style="margin:-4px 0 18px;font-size:15px">This clears your comments, saved items, photos, profile edits and settings on this device. It doesn’t touch anything else.</p><button class="cta" style="background:var(--bad);color:#1b0509" data-act="reset-go">Reset local data</button><button class="cta ghostb" data-act="closesheet">Cancel</button>`);
 };
 ACT['reset-go']=()=>{
-  store.clear();S=merge(DEF(),{});S.threads=BASE_THREADS();S.onboarded=true;save();applyCalm();DK.day=0;
+  store.clear();S=merge(DEF(),{});S.threads=DEMO_DATA?BASE_THREADS():{};S.onboarded=true;save();applyCalm();DK.day=0;
   closeSheet();closePage();renderAll();toast('Local data cleared');
 };
 const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.calm);
 
 /* ================= onboarding ================= */
-const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false};
-function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false});$('#onboard').classList.add('on');drawOb()}
+/* Onboarding is a sequence of scenes, not a stack of forms. Every step change
+   runs through the View Transitions API (crossfade fallback), the meme deck is
+   a physics stack with haptic ticks, the audio step plays 7-second clips with
+   a live waveform, the Fingerprint builds itself live as answers land, and
+   the ending is a three-beat reveal: Fingerprint, Taste Card, Duel a friend. */
+const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
+let OBSTACK=null,OBWAVE=null;
+function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
 /* ---------------- the Cold Open: onboarding scene 0 ----------------
    Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
    intro from src/motion/timeline.ts, which ends by advancing to step 1. */
@@ -1289,50 +1641,173 @@ function drawColdOpen(){
     onDone:()=>{COLD=null;OB.step=1;drawOb();track('intro_complete',{v:4})}
   });
 }
-function drawOb(){
+/* the shared "growing Fingerprint" rail on the calibration steps */
+const obFrac=()=>clamp((OB.memeSignals.length+OB.audioSignals.length)/13,0,1);
+function obFpUpdate(){
+  fpGrow($('#obFp'),obFrac());
+  obConfidence($('#obConf'),obFrac());
+}
+function obDeckSlice(){
+  const startAt=(OB.memeIndex*5)%Math.max(1,MM.length-5);
+  return MM.slice(startAt,startAt+5).concat(MM.slice(0,Math.max(0,startAt+5-MM.length)))
+    .map(m=>({id:m.id,emoji:m.e||'✨',text:m.t,bg:m.bg||'#EFE9DA',fg:m.fg||'#141413'}));
+}
+const isSeedMeme=id=>SEED_MEMES.some(m=>m.id===id);
+function obSignal(id,kind){
+  OB.memeSignals.push({memeId:id,kind});
+  if(kind==='laugh'){bumpCal(true);if(isSeedMeme(id))repoCall('recordEvent','laugh','meme',id)}
+  else if(kind==='meh'){if(isSeedMeme(id))repoCall('recordEvent','meh','meme',id)}
+  else if(isSeedMeme(id))repoCall('recordEvent','skip','meme',id);
+  obFpUpdate();
+}
+function drawOb(transition){
   if(OB.step===0){drawColdOpen();return}
   if(COLD){try{COLD.destroy()}catch(e){}COLD=null}
+  /* destroy() takes the intro's shell down with it; every later scene is
+     rendered inside #onboard, so the panel has to be re-opened here. */
+  $('#onboard').classList.add('on');
+  const paint=()=>drawObNow();
+  if(transition===false){paint();afterObPaint();return}
+  stepTransition($('#onboard'),paint).then(afterObPaint);
+}
+function afterObPaint(){
+  if(OB.step===4){
+    const host=$('#obStack');
+    if(host){
+      if(OBSTACK)OBSTACK.destroy();
+      OBSTACK=physicsStack(host,obDeckSlice(),{
+        onDecide:(id,kind)=>{obSignal(id,kind)},
+        haptic,
+        onDone:()=>{OB.memeIndex+=5;OB.step=5;drawOb()}
+      });
+      obFpUpdate();
+    }
+  } else if(OBSTACK){OBSTACK.destroy();OBSTACK=null}
+  if(OB.step===5){
+    const host=$('#obWave');
+    if(host){
+      if(OBWAVE)OBWAVE.destroy();
+      const order=['choir','cherry','soft','moons'];
+      OBWAVE=waveList(host,order.map((id,i)=>({id,title:TRACKS[id].title,sub:TRACKS[id].artist})),{
+        haptic,
+        onRate:(trackId,kind)=>{
+          const i=order.indexOf(trackId);
+          if(i>-1&&!OB.audioSignals.some(a=>a.i===i)){OB.audioSignals.push({i,track:trackId,kind});bumpCal(kind==='react')}
+          if(isSeedTrack(trackId))repoCall('recordEvent',kind==='react'?'like':'skip','track',seedTrackId(trackId));
+          obFpUpdate();
+        },
+        status:()=>'7-second clip · resolving preview…'
+      });
+      /* Ask the PreviewProvider (brief §2.2) per row; the offline answer is
+         "no source connected", and the row says so instead of faking audio. */
+      $$('.ob-wave',host).forEach(row=>{
+        const r=TRACKS[row.dataset.id];
+        fetchPreview('ob:'+row.dataset.id,{artist:r&&r.artist,title:r&&r.title,seconds:7}).then(res=>{
+          const el=$('.ob-wave-status',row);if(el)el.textContent=res.ok?'Preview cached · 7-second cut':res.status;
+        });
+      });
+      obFpUpdate();
+    }
+  } else if(OBWAVE){OBWAVE.destroy();OBWAVE=null}
+}
+/* legacy keeps short keys (choir); the seed — and the repo — speak t_choir */
+const seedTrackId=id=>id.startsWith('t_')?id:'t_'+id;
+const isSeedTrack=id=>SEED_TRACKS.some(t=>t.id===seedTrackId(id));
+function drawObNow(){
   const o=$('#onboard');let body='';
   const prog=`<div class="ob-prog">${Array.from({length:9},(_,i)=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
   const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;
-  if(OB.step===0){const fan=[[TRACKS.cherry,-86,-9],[TRACKS.moons,86,8],[TRACKS.route9,0,0]];body=`<div class="step"><div class="ob-hero">${STK}<div class="fan">${fan.map((f,i)=>`<div class="oc" style="--x:${f[1]}px;--r:${f[2]}deg;--d:${i};z-index:${i===2?3:1}">${poster(f[0])}</div>`).join('')}</div><h1 class="ob-h">Match on your humor.<br>Not your headshot.</h1><p class="ob-p">A warmer way to meet: shared songs, niche references and the people who actually get them.</p></div>${foot('Start with the good stuff')}</div>`}
-  else if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
+  /* the last step finishes on ob-done, not on a capped ob-next */
+  const footDone=label=>`<div class="ob-foot"><button class="cta" data-act="ob-done">${label}</button></div>`;
+  const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% signal confidence</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
+  if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
   else if(OB.step===2){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Photo check</span><h1 class="ob-q">Show there’s a real person here.</h1><p class="ob-s">A quick on-device check keeps the Matrix human. This badge says <b>photo checked</b>, not verified identity.</p><div class="verify-orb ${OB.photoChecked?'done':''}">${OB.photoChecked?I.check:RING_GLYPH}</div><button class="cta ghostb" data-act="ob-photo">${OB.photoChecked?'Photo checked':'Run photo check'}</button></div>${foot('Continue')}</div>`}
   else if(OB.step===3){const providers=[['manual','Manual taste chips','Start without connecting anything.'],['lastfm','Last.fm username','Bring in public scrobbles later.'],['apple','Apple Music','Connect when MusicKit is configured.'],['spotify','Spotify · alpha only','Allowlisted testers only.']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Music signal</span><h1 class="ob-q">Where should your taste come from?</h1><p class="ob-s">Manual is the default. You can reconnect or rebuild this vector later.</p><div class="provider-list">${providers.map(p=>`<button class="provider ${OB.music===p[0]?'on':''}" data-act="ob-music" data-v="${p[0]}"><span>${p[0]==='manual'?I.note:I.link}</span><div><b>${p[1]}</b><small>${p[2]}</small></div>${OB.music===p[0]?I.check:''}</button>`).join('')}</div></div>${foot('Use this source')}</div>`}
-  else if(OB.step===4){const m=MM[OB.memeIndex%MM.length];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Meme calibration · ${OB.memeIndex+1}/5</span><h1 class="ob-q">What kind of funny are you?</h1><p class="ob-s">React quickly. There’s no wrong answer and nothing is shared.</p><div class="cal-card" style="--bg:${m.bg};--fg:${m.fg}"><span>${m.e}</span><p>${mmTxt(m.t)}</p></div><div class="cal-actions"><button class="dbtn" data-act="ob-meme" data-v="meh">${I.minus}<small>Meh</small></button><button class="rbtn" data-act="ob-meme" data-v="laugh">${I.laugh}<span>That’s me</span></button><button class="dbtn" data-act="ob-meme" data-v="skip">${I.chevr}<small>Skip</small></button></div></div></div>`}
-  else if(OB.step===5){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Sound calibration · 10 clips</span><h1 class="ob-q">Let the music do some talking.</h1><p class="ob-s">Seven-second previews tune the edges of your fingerprint. Audio is off in this prototype; the adapter is ready.</p><div class="audio-cal">${['Night Bus Choir','Cherry Static','Soft Machine Summer','Paper Moons'].map((x,i)=>`<button class="provider ${OB.audioSignals[i]?'on':''}" data-act="ob-audio" data-i="${i}"><span class="wave-mini">${[1,3,5,2,4].map(n=>`<i style="--h:${n*4}px"></i>`).join('')}</span><div><b>${x}</b><small>${OB.audioSignals[i]?'Signal saved':'Tap to rate this clip'}</small></div>${OB.audioSignals[i]?I.check:I.play}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
+  else if(OB.step===4){body=`<div class="step ob-scene-stack"><div class="ob-body"><span class="eyebrow">Meme calibration · ${Math.min(OB.memeSignals.length%5+1,5)}/5 in this deck</span><h1 class="ob-q">What kind of funny are you?</h1><p class="ob-s">Drag the card toward what it is, or use the buttons. Nothing here is shared.</p></div>
+    <div class="ob-split">${calSide}
+      <div class="ob-right"><div class="ob-stack" id="obStack" aria-label="Meme cards — drag or use the buttons"></div>
+      <div class="cal-actions">
+        <button class="dbtn" data-act="ob-meme" data-v="meh" aria-label="Meh">${I.minus}<small>Meh</small></button>
+        <button class="rbtn" data-act="ob-meme" data-v="laugh" aria-label="That’s me">${I.laugh}<span>That’s me</span></button>
+        <button class="dbtn" data-act="ob-meme" data-v="skip" aria-label="Skip">${I.chevr}<small>Skip</small></button>
+      </div></div></div></div>`}
+  else if(OB.step===5){body=`<div class="step ob-scene-wave"><div class="ob-body"><span class="eyebrow">Sound calibration · 4 clips</span><h1 class="ob-q">Let the music do some talking.</h1><p class="ob-s">Seven-second previews tune the edges of your fingerprint. The waveform is live; the audio adapter is next in line.</p></div>
+    <div class="ob-split ob-split-wide">${calSide}<div class="ob-right"><div class="audio-cal" id="obWave"></div></div></div>
+    ${foot('Continue')}</div>`}
   else if(OB.step===6){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your context</span><h1 class="ob-q">A little more than a face.</h1><p class="ob-s">Photos and prompts have equal weight with your Fingerprint. Add them now or later.</p><div class="onboarding-grid"><button class="gt add" data-act="add-photo"><span>${I.plus}</span><b>Add photos</b></button><button class="prompt-tile"><span>Prompt 1</span><b>A song I’ll defend forever…</b></button><button class="prompt-tile"><span>Prompt 2</span><b>My most niche reference…</b></button></div></div>${foot('Continue')}</div>`}
-  else if(OB.step===7){const opts=[['dating','Dating'],['friends','Friends'],['both','Both']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Basics</span><h1 class="ob-q">What should we call you?</h1><label class="field"><span>Name</span><input id="ob-name" maxlength="24" placeholder="Your first name" value="${esc(OB.name)}"></label><h3 class="tg">Looking for</h3><div class="chips">${opts.map(x=>`<button class="chip ${OB.intent===x[0]?'on':''}" data-act="ob-intent" data-v="${x[0]}">${x[1]}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
-  else {body=`<div class="step"><div class="ob-body"><span class="eyebrow">Last step</span><h1 class="ob-q">Keep the ritual close.</h1><p class="ob-s">Choose what you want to hear about. You can change this anytime in Settings.</p><div class="permission-card"><button class="row" data-act="ob-permission"><div class="tx"><b>Daily Drop at 9:00 AM</b><span>One track, one meme, no guilt trips.</span></div><span class="sw" data-on="${OB.permissions}"></span></button><button class="row"><div class="tx"><b>Location</b><span>Used to tune your discovery radius.</span></div><span class="chipg">Later</span></button></div></div><div class="ob-foot"><button class="cta" data-act="ob-done">Build my Fingerprint</button></div></div>`}
+  else if(OB.step===7){const opts=[['dating','Dating'],['friends','Friends'],['both','Both']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Basics</span><h1 class="ob-q">What should we call you?</h1><label class="field"><span>Name</span><input id="ob-name" maxlength="24" placeholder="Your first name" value="${esc(OB.name)}"></label><h3 class="tg">Looking for</h3><div class="chips">${opts.map(x=>`<button class="chip ${OB.intent===x[0]?'on':''}" data-act="ob-intent" data-fx="chip" data-v="${x[0]}" aria-pressed="${OB.intent===x[0]}">${x[1]}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
+  else {body=`<div class="step"><div class="ob-body"><span class="eyebrow">Last step</span><h1 class="ob-q">Keep the ritual close.</h1><p class="ob-s">Choose what you want to hear about. You can change this anytime in Settings.</p><div class="permission-card"><button class="row" data-act="ob-permission"><div class="tx"><b>Daily Drop at 9:00 AM</b><span>One track, one meme, no guilt trips.</span></div><span class="sw" data-on="${OB.permissions}"></span></button><button class="row"><div class="tx"><b>Location</b><span>Used to tune your discovery radius.</span></div><span class="chipg">Later</span></button></div></div>${footDone('Build my Fingerprint')}</div>`}
   o.innerHTML=prog+body;
-  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;drawOb()};
+  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;drawOb(false)};
   const name=$('#ob-name');if(name)name.oninput=()=>{OB.name=name.value};
 }
-ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;haptic(6)};
+ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;const c=$('#onboard .step .cta');if(c)c.disabled=!OB.adult;haptic(6)};
 ACT['ob-next']=()=>{OB.step=Math.min(8,OB.step+1);drawOb();haptic(8)};
 ACT['ob-auth']=b=>{$$('.auth-rail .chip').forEach(x=>x.classList.toggle('on',x===b));toast('Auth adapter ready for '+b.dataset.v);haptic(5)};
-ACT['ob-photo']=()=>{OB.photoChecked=true;drawOb();toast('Photo checked on this device');haptic([10,30,10])};
-ACT['ob-music']=b=>{OB.music=b.dataset.v;drawOb();haptic(6)};
-ACT['ob-meme']=b=>{OB.memeSignals.push(b.dataset.v);OB.memeIndex++;if(OB.memeIndex>=5)OB.step=5;drawOb();haptic(6)};
-ACT['ob-audio']=b=>{OB.audioSignals[+b.dataset.i]=1;b.classList.add('on');b.querySelector('small').textContent='Signal saved';haptic(6)};
-ACT['ob-permission']=()=>{OB.permissions=!OB.permissions;drawOb();haptic(6)};
-ACT['ob-intent']=b=>{OB.intent=b.dataset.v;$$('#onboard [data-act="ob-intent"]').forEach(t=>{const on=t===b;t.classList.toggle('on',on);t.setAttribute('aria-pressed',on)});$('#onboard .cta').disabled=false;haptic(6)};
-ACT['ob-pick']=b=>{
-  const v=b.dataset.v,i=OB.picks.indexOf(v);if(i>-1)OB.picks.splice(i,1);else OB.picks.push(v);
-  b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);
-  const g=$('#ob-go'),ok=OB.picks.length>=3;g.disabled=!ok;g.textContent=ok?'Build my Fingerprint':'Pick '+(3-OB.picks.length)+' more';haptic(5);
+ACT['ob-photo']=b=>{
+  OB.photoChecked=true;
+  drawOb(false);
+  /* the orb completes with a check that draws itself, not a swap */
+  const orb=$('.verify-orb');
+  if(orb){microPublic.drawCheck(orb);microPublic.burst(orb,'var(--ok)',8)}
+  toast('Photo checked on this device');haptic([10,30,10]);
 };
+ACT['ob-music']=b=>{OB.music=b.dataset.v;drawOb();haptic(6)};
+ACT['ob-meme']=b=>{
+  const kind=b.dataset.v;
+  const items=obDeckSlice();
+  const used=OB.memeSignals.map(x=>x.memeId);
+  const top=items.find(x=>used.indexOf(x.id)<0)||items[0];
+  if(OBSTACK)OBSTACK.decide(top.id,kind);else obSignal(top.id,kind);
+  if(OB.memeSignals.length>=5&&!OB.stackDone){OB.stackDone=true;OB.step=5;drawOb()}
+};
+ACT['ob-permission']=()=>{OB.permissions=!OB.permissions;drawOb(false);haptic(6)};
+ACT['ob-intent']=b=>{OB.intent=b.dataset.v;$$('#onboard [data-act="ob-intent"]').forEach(t=>{const on=t===b;t.classList.toggle('on',on);t.setAttribute('aria-pressed',on)});$('#onboard .cta').disabled=false;haptic(6)};
 ACT['ob-done']=()=>{
   S.onboarded=true;S.intent=OB.intent||'both';S.lens=S.intent==='friends'?'friends':'dating';S.tastes=OB.picks.slice();
   if(OB.name.trim())S.prof.name=OB.name.trim();
   const hs=OB.picks.filter(x=>HUMOR.indexOf(x)>-1);if(hs.length)S.prof.humor=hs;
+  S.cal=(S.cal||0)+OB.memeSignals.length+OB.audioSignals.length;
   S.decided={};S.history=[];save();renderAll();demoBanner();
+  /* calibration crosses the adapter boundary: the mock's onboard() folds the
+     pending duel picks into the same event stream, so a duel played before
+     onboarding is not decoration — it is your fingerprint. */
+  const repo=window.Cultured&&window.Cultured.repo;
+  if(repo&&repo.onboard){
+    repo.onboard({
+      dateOfBirth:OB.dob||(OB.adult?'2000-01-01':''),displayName:OB.name||S.prof.name,mode:OB.intent||'both',city:S.city,
+      musicSource:OB.music,pickedTastes:S.prof.humor,
+      memeSignals:OB.memeSignals.filter(x=>isSeedMeme(x.memeId)),
+      audioSignals:OB.audioSignals.map(x=>({trackId:seedTrackId(x.track),kind:x.kind})),
+      photoChecked:OB.photoChecked,antiGenres:S.set.anti||[]
+    }).catch(()=>{/* offline-only: the local fingerprint still stands */});
+  }
   const o=$('#onboard');
-  o.innerHTML=`<div class="gen"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:19,w:1.4})}</div><h2>Reading your taste</h2><p>Your Fingerprint is forming.</p></div>`;
+  /* The reveal: three beats, not a spinner. Fingerprint, then Taste Card, then
+     the invitation. Tap jumps ahead; the buttons below do the work. */
+  const pct=Math.round(obFrac()*100);
+  o.innerHTML=`<div class="reveal">
+    <div class="rv rv-fp"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div><span class="eyebrow">Beat one · yours, from your answers</span><h2>Your Fingerprint.</h2><p>${pct}% signal confidence from ${S.cal||0} calibration events.</p></div>
+    <div class="rv rv-tc"><span class="eyebrow">Beat two · shareable, with real numbers</span>
+      <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${76+pct/4|0}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))||'unwritten'}</strong></div><div><small>on repeat</small><strong>${S.prof.artists.slice(0,2).map(esc).join(' · ')||'your first saves'}</strong></div></div><footer>cultured · find who else relates</footer></div>
+    </div>
+    <div class="rv rv-duel"><span class="eyebrow">Beat three · the only real test</span><h2>Prove it on someone.</h2><p>Duel a friend: same five prompts, no peeking, verdict only when both are in.</p><button class="cta" data-act="ob-duel">${I.pair}Duel a friend</button><button class="cta ghostb" data-act="ob-enter">Enter cultured</button></div>
+  </div>`;
   haptic([10,40,10,40,20]);
-  setTimeout(()=>{o.classList.remove('on');o.innerHTML='';go('feed');toast('Welcome to cultured')},3000);
+  RUN_REVEAL=runReveal(o,[
+    {id:'fp',el:$('.rv-fp',o)},
+    {id:'tc',el:$('.rv-tc',o)},
+    {id:'duel',el:$('.rv-duel',o)}
+  ],()=>{},{perStep:1600,haptic});
+  track('onboarding_complete',{cal:S.cal||0});
 };
-
+let RUN_REVEAL=null;
+ACT['ob-enter']=()=>{if(RUN_REVEAL){RUN_REVEAL();RUN_REVEAL=null}const o=$('#onboard');o.classList.remove('on');o.innerHTML='';go('feed');toast('Welcome to cultured')};
+ACT['ob-duel']=async()=>{
+  ACT['ob-enter']();
+  await new Promise(r=>setTimeout(r,350));
+  ACT['pulse-duel']();
+};
 
 /* ================= v3: today's memes ================= */
 const STK='<div class="stks" aria-hidden="true">'+['😂','🎧','🔥','💀','✨','🫠'].map((e,i)=>`<i style="--i:${i};--x:${[6,80,14,74,44,90][i]}%;--y:${[2,8,66,60,90,36][i]}%">${e}</i>`).join('')+'</div>';
@@ -1387,7 +1862,7 @@ const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
 const mmTxt=t=>esc(t).replace(/\n/g,'<br>');
 function mmVisual(m){return m.img?`<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy"></div>`:`<span class="mm-e">${m.e}</span>`}
 function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}">${m.img?`<img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy">`:`<span>${m.e}</span>`}<i>${esc(m.t.split('\n')[0])}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" aria-label="Send to a match">${I.share}</button></div></article>`}
+function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
 function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in-house</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
@@ -1399,9 +1874,122 @@ ACT['mm-share']=b=>{
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
 function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
-ACT['meme-pick']=()=>openSheet(`<h3 class="sh-t">Send a meme</h3><div class="mm-grid">${MM.map(m=>`<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`).join('')}</div>`);
+function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
+ACT['meme-pick']=()=>{
+  const st=mmS();
+  const saved=MM.filter(m=>st.s[m.id]);
+  const liked=MM.filter(m=>st.l[m.id]&&st.s[m.id]===undefined);
+  const rest=MM.filter(m=>!st.s[m.id]&&!st.l[m.id]);
+  openSheet(`<h3 class="sh-t">Send a meme</h3>
+    ${saved.length?`<span class="chipg" style="margin:6px 0 8px">Saved · ${saved.length}</span><div class="mm-grid">${saved.map(mmMiniRow).join('')}</div>`:''}
+    ${liked.length?`<span class="chipg" style="margin:12px 0 8px">You laughed at · ${liked.length}</span><div class="mm-grid">${liked.slice(0,10).map(mmMiniRow).join('')}</div>`:''}
+    <span class="chipg" style="margin:12px 0 8px">All cards</span><div class="mm-grid">${rest.slice(0,30).map(mmMiniRow).join('')}</div>`);
+};
 ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();renderMsgs(id);haptic(8);reply(id);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
-function mmShelf(){const st=mmS(),ids=MM.filter(m=>st.s[m.id]);return `<div class="blk stg" style="--d:5"><h2>Meme shelf</h2><div class="mm-shelf">${ids.length?ids.map(m=>mmMini(m,'sh')).join(''):'<p class="hint">Save memes from Today’s memes and they pin here.</p>'}</div></div>`}
+/* The shelf is the profile's pinned corner: memes AND songs, from saved and
+   liked, in an order you can drag. Unpin peels the item off; pinning a card
+   from the feed arcs it here (see data-fx="pin"). */
+function shelfIds(){
+  if(!S.shelf){
+    const ids=[];
+    Object.keys(S.react).forEach(id=>{if(S.react[id].s&&POSTS[id]&&POSTS[id].kind==='music')ids.push('t:'+POSTS[id].ref)});
+    const st=mmS();MM.forEach(m=>{if(st.s[m.id])ids.push('m:'+m.id)});
+    S.shelf=ids;
+  }
+  return S.shelf;
+}
+function shelfEntry(id){
+  const [kind,key]=id.split(':');
+  if(kind==='m'){const m=mmOf(key);return m?{kind:'m',m}:null}
+  const t=TRACKS[key];return t?{kind:'t',t}:null;
+}
+function mmShelf(){
+  const ids=shelfIds().map(shelfEntry).filter(Boolean);
+  const liked=Object.keys(S.react).filter(id=>S.react[id].h).length;
+  return `<div class="blk stg" style="--d:5"><h2>Pin board<small>drag to reorder</small></h2>
+    <div class="mm-shelf" id="shelf">${ids.length?ids.map(x=>x.kind==='m'?
+      `<button class="mm-mini sh" data-k="m:${x.m.id}" data-act="shelf-open">${x.m.img?`<img src="${x.m.img}" alt="${esc(x.m.alt||x.m.t)}">`:`<span>${x.m.e}</span>`}<i>${esc(String(x.m.t).split('\n')[0])}</i><em class="pin-x" data-act="shelf-unpin" data-k="m:${x.m.id}" aria-label="Unpin">✕</em></button>`:
+      `<button class="mm-mini sh song" data-k="t:${x.t.id}" data-act="shelf-open"><span class="pt">${poster(x.t,true)}</span><i>${esc(x.t.title)}</i><em class="pin-x" data-act="shelf-unpin" data-k="t:${x.t.id}" aria-label="Unpin">✕</em></button>`
+      ).join(''):'<p class="hint">Save a meme or a song and pin it here — it becomes the first thing a match sees after your Fingerprint.</p>'}</div>
+    <div class="shelf-tray">${ids.length?'':'<span class="chipg">'+liked+' laughs given · save anything from the feed to grow this shelf</span>'}</div>
+  </div>`;
+}
+ACT['shelf-unpin']=b=>{
+  const k=b.dataset.k,shelf=shelfIds();
+  S.shelf=shelf.filter(x=>x!==k);
+  if(k.startsWith('m:')){const st=mmS();delete st.s[k.slice(2)]}
+  else{const id=k.slice(2);const post=Object.values(POSTS).find(p=>p.kind==='music'&&p.ref===id);if(post&&S.react[post.id])S.react[post.id].s=0}
+  const item=b.closest('.mm-mini');
+  const done=()=>{save();renderYou();renderFeed()};
+  if(item&&!S.set.calm){
+    const a=item.animate([{transform:'rotate(0) scale(1)',opacity:1},{transform:'rotate(8deg) scale(.6) translateY(24px)',opacity:0}],{duration:260,easing:'cubic-bezier(.22,.61,.36,1)'});
+    a.finished.then(done,done);
+  } else done()
+  haptic(6);
+};
+ACT['shelf-open']=b=>{
+  if(b.closest('.pin-x'))return;
+  const k=b.dataset.k;
+  if(k.startsWith('m:')){toast('Pinned meme · '+(mmOf(k.slice(2))||{}).t?.split('\n')[0]||'')}
+  else toast('Pinned song · '+(TRACKS[k.slice(2)]||{}).title);
+};
+/* FLIP drag-reorder shared by the shelf and the photo grid. */
+function dragReorder(host,items,onDone){
+  if(!host)return;
+  let dragging=null,ox=0,oy=0;
+  host.addEventListener('pointerdown',e=>{
+    const it=e.target.closest(items);
+    if(!it||e.target.closest('button,.pin-x'))return;
+    dragging=it;const r=it.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;
+    it.classList.add('lift');try{it.setPointerCapture(e.pointerId)}catch(_){}
+    haptic(6);
+  });
+  host.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const hr=host.getBoundingClientRect();
+    const fr=dragging.getBoundingClientRect();
+    dragging.style.transform=`translate3d(${e.clientX-hr.left-ox-fr.left+hr.left}px,${e.clientY-hr.top-oy-fr.top+hr.top}px,0)`;
+    [...host.querySelectorAll(items)].forEach(sb=>{
+      if(sb===dragging){return}
+      const br=sb.getBoundingClientRect();
+      const hit=(br.left+br.width/2)> (fr.left+fr.width/2);
+      sb.style.transform=hit?`translateX(${fr.width+8}px)`:'';
+    });
+  });
+  const end=()=>{
+    if(!dragging)return;
+    const it=dragging;dragging=null;
+    it.classList.remove('lift');
+    [...host.querySelectorAll(items)].forEach(sb=>sb.style.transform='');
+    const rectOf=el=>el.getBoundingClientRect().left;
+    const ordered=[...host.querySelectorAll(items)].sort((a,b)=>rectOf(a)-rectOf(b)).map(el=>el.dataset.k).filter(Boolean);
+    if(ordered.length)onDone(ordered);
+  };
+  host.addEventListener('pointerup',end);host.addEventListener('pointercancel',end);
+}
+function shelfWire(){
+  const host=$('#shelf');if(!host)return;
+  dragReorder(host,'.mm-mini.sh',order=>{S.shelf=order;save();renderYou();haptic([8,20,8])});
+}
+/* The Fingerprint "story": chapters read straight off the stored vector —
+   no invented adjectives, no fabricated percentiles. */
+ACT['fp-story']=()=>{
+  const ids=shelfIds().map(shelfEntry).filter(Boolean);
+  const chapters=[
+    ['The drawing',`Built from ${S.cal||0} calibration events and ${Object.keys(S.react).filter(k=>S.react[k].l||S.react[k].h).length} reactions on culture.`],
+    ['The lean',`${S.prof.humor.slice(0,3).join(', ')||'unwritten — react to memes to set it'}.`],
+    ['The rotation',`${S.prof.artists.slice(0,3).join(', ')||'no artists pinned yet'}.`],
+    ['The shelf',ids.length?`${ids.length} pinned: ${ids.map(x=>x.kind==='m'?'a meme':'“'+x.t.title+'”').slice(0,3).join(', ')}.`:'empty — save something and pin it.'],
+    ['The duel',S.duelLink&&S.duelLink.verdict?`last verdict ${S.duelLink.verdict.score}/${S.duelLink.verdict.of} against a real opponent.`:'not fought yet. Duel a friend from the Matrix reveal.']
+  ];
+  const pg=openPage(`<div class="d-scroll">
+    <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips"><span class="chipg">${S.cal||0} events</span></div></div>
+    <div class="d-hero" style="aspect-ratio:1/1">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:20,w:1.3})}</div>
+    <h1 class="d-title stg" style="--d:2">Your Fingerprint, in chapters.</h1>
+    ${chapters.map((c,i)=>`<h3 class="d-h stg" style="--d:${3+i}">${c[0]}</h3><p class="d-desc open stg" style="--d:${4+i}">${esc(c[1])}</p>`).join('')}
+  </div>`,{fade:true});
+  setTint(pg,fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:8,w:1}));haptic(8);
+};
 /* ================= boot ================= */
 function initMicroInteractions(){
   document.addEventListener('pointermove',e=>{
@@ -1446,6 +2034,11 @@ function demoBanner(){
 }
 function init(){
   grainInit();applyCalm();buildNav();splashInit();initMicroInteractions();
+  /* one delegated micro layer over the existing data-act handlers; it decorates
+     and never owns state. The synth follows the same Sound setting. */
+  installMicro({haptic:p=>haptic(p),sound:()=>S.set.sound!==false,stage:()=>$('#phone')});
+  window.CulturedMicro=microPublic;
+  synth.setEnabled(S.set.sound!==false);
   initPTR();renderAll();go('feed');
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layoutTabs(document));
   window.addEventListener('resize',()=>layoutTabs(document));

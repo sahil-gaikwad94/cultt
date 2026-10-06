@@ -332,3 +332,115 @@ comment explaining it contained the phrase "liked you", which tripped
 `guardrails.test.ts` — that suite scans `legacy.ts` for paywall copy, and it
 cannot tell a comment from UI text. The test is the correct one here, so the
 comment was reworded rather than the assertion relaxed.
+
+## 2026-10-06 — onboarding rebuild, duel-link growth engine, and the honesty tails
+
+**Prompt wins over the brief.** The build prompt overrides `cultured-agent-build-brief.md`
+wherever they disagree; the cases that came up this phase, logged as instructed:
+
+- Duel prompts are five fixed *choice* cards with no free-text anywhere — the
+  brief's older framing allowed a caption box; the prompt's "5 choice prompts,
+  NO free text (no UGC)" won. Nothing on the recipient side needs moderation
+  because nothing can be typed.
+- The watermark + "duel your friends" CTA is drawn **only** on cards that leave
+  the app (`renderDuelCard(..., {external:true})` for save/share; the in-app
+  sheet canvas never carries it). The brief had treated the card as always
+  watermarked.
+- The verdict computes when and only when *both* sides have submitted — the
+  brief's flow let the creator see a score early. `duelStore.submitPicks`
+  refuses partial submissions outright.
+
+**The repo bridge was dead in production builds and nobody noticed** because
+the mock adapter is also where "working" is measured. `main.ts` installs
+`window.Cultured = {repo}` before `legacy.ts` evaluates; legacy then ran
+`window.Cultured = {…helpers}` and silently wiped the repo. Every `repoCall()`
+was a no-op in the built app. Fixed with an `Object.assign` merge, and
+`tests/e2e` now exercises a cross-repo flow (the duel) so the bridge can never
+quietly die again.
+
+**Streaks.** The brief asks for a streak counter; the seam renders **no streak
+UI at all**. Decision: keep `dropStreak` passive in the adapter (a counter that
+only grows, surfaced nowhere as obligation) and ship no visible number, because
+any visible streak is a loss frame the moment it resets. The guardrail test
+bans the loss copy; the counter stays as data for a future, gentler surface.
+
+**Honesty, finished.** The activity feed's invented rows are gone — production
+shows the two demo rows only under `DEMO_DATA`, labelled by the prototype
+banner. Crew/"who moved this" falls back to `Who's moved this · 0` plus a line
+saying nobody was invented. Demo chat transcripts now also seed only under
+`DEMO_DATA`; a real account opens People with an empty state ("cultured won't
+write the first message for you"). The Matrix density gate is a stated policy
+(dating opens at 25 people in this city, friends mode works from day one), with
+a waitlist that stores a local intent — no queue counter, no claims.
+
+**Two real bugs the new surfaces exposed.** (1) An unclosed
+`@media (max-height:720px)` in the inherited `app.css` made *every rule after
+it* — about 200 lines, including all of Phase-2 — conditional on a viewport
+that tall phones never match. Pixels on a Pixel were silently missing. Closed.
+(2) `micro.ts`' toast decorator was a MutationObserver watching the `class`
+attribute whose callback *changed* the class attribute: every toast starved the
+microtask queue (forced reflow ping-pong) for its entire 2.3s life, which is
+what froze the duel submit path. The observer now keys on message identity and
+returns when nothing changed. Lesson written into the file: never watch what
+you touch without a guard.
+
+**Onboarding wiring fixes** (found by scripted play-through, all real):
+skipping the Cold Open ran the intro's `destroy()`, which unhooks
+`#onboard.on`; the next scene painted *inside a closed panel*. `drawOb()` now
+reopens the host. The final step's CTA was `ob-next` clamped by `Math.min(8,…)`
+— onboarding literally could not finish; it now dispatches `ob-done`. The
+adult switch didn't unlock its own Continue button. Seed audio ids needed the
+`t_` prefix (`seedTrackId`) or calibration events would have written fake ids
+into the repo. And `startViewTransition` is now serialized with `ready` /
+`updateCallbackDone` handled — Chrome's "invalid state" abort used to surface
+as an uncaught page error during fast step changes.
+
+**Micro contract, tested not promised.** Playwright specs run the core
+interactions (like, tab, switch) with `prefers-reduced-motion` on: state flips
+land, zero `.fx-particle` nodes are created, Calm mode behaves identically,
+and in normal motion a burst never exceeds ten particles and cleans itself up.
+
+## Phase B — Arena games, Tomorrow plate, profile identity, logout
+
+**Arena is a games shelf, not a manifesto.** The intro copy was three stacked
+paragraphs doing the design's talking for it; it's now one sentence and the
+game cards carry the tone. The duel card says "Same meme, different damage."
+because that is the whole mechanic in four words. Chips lost their adjectives
+("MEME DUEL · REAL LINK", "NEVER HAVE I EVER · 2 MIN") and the card grid moved
+to an 86px art thumb so three games read as a shelf instead of three posters.
+
+**Never Have I Ever is the taste-maker now.** Ten cards, each a real, specific,
+slightly embarrassing cultural habit (14-second-outro replays, the unsent
+playlist, the cab-driver's playlist) instead of generic party icebreakers.
+Every one has an answer-independent hint line so the game keeps moving when
+nobody is guilty. They redraw the humor map — and stay on the device, per the
+no-UGC rule: the only outbound thing is the five-prompt duel link.
+
+**Tomorrow finally has its background.** The layer existed but `--media-url`
+was never set anywhere — a permanently empty div. It now always paints a
+procedural dusk plate (`posterSVG`, seed-palmed from tonight's hint, zero
+network bytes) and the manifest bitmap, when present, rides on top at
+soft-light. A 2KB generated webp gets to texture the scene, not replace it.
+
+**Profile identity lives in two knobs, both device-local.** A profile photo is
+picked through a file input, downscaled to 240px JPEG on a canvas, and stored
+as a data URL under the existing state key — nothing uploads, removal is one
+tap. The tint picker borrows five palettes that already exist in TRACKS (no
+new colors, per the token rule) and recolors the hero wash, the Fingerprint
+bleed, and the fallback orb. Name and bio stay inline-editable where they
+already were; a duplicate "edit profile" sheet would be a third way to do one
+thing.
+
+**Logout is honest or it's theatre.** This prototype has no session to end. The
+row sits above delete-account (logout first, destruction second), and the sheet
+says exactly what happens: back to the welcome screen, nothing deleted, nothing
+uploaded, same profile on sign-back-in. The repo layer gains `logout()` — a
+resolved no-op offline, a real `auth.signOut()` on the Supabase adapter — so
+when the backend arrives the UI doesn't change. The emoji/tofu caveat above
+applies to all Phase B screenshots; card glyphs are emoji by design.
+
+**Sandbox note.** The environment blocks Playwright's browser CDN, so the
+suites run against a locally extracted Chromium when `CULTURED_CHROME` is set
+(both configs read it). Emoji render as tofu under that headless shell because
+the image has no color-emoji font — a testbed limitation, not a product one;
+screenshots taken with it should be read accordingly.

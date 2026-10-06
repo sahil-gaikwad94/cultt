@@ -20,6 +20,7 @@
  */
 
 import { DUR, EASE, shouldAnimate, whileVisible } from './reduce';
+import { synth } from './audio';
 
 export interface ColdOpenOptions {
   host: HTMLElement;
@@ -129,101 +130,9 @@ const el = <K extends keyof HTMLElementTagNameMap>(
   return node;
 };
 
-/* ------------------------------------------------------------ sound (opt-in) */
-
-/**
- * A hum and a chime, synthesised on the spot. No audio file ships, so the intro
- * adds nothing to the download and there is no licence to clear. Only ever
- * constructed when the sound setting is on and the viewer has already tapped.
- */
-class IntroAudio {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
-  private hum: OscillatorNode | null = null;
-
-  private ensure(): AudioContext | null {
-    if (this.ctx) return this.ctx;
-    const Ctor =
-      window.AudioContext ??
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return null;
-    try {
-      this.ctx = new Ctor();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.0001;
-      this.master.connect(this.ctx.destination);
-      return this.ctx;
-    } catch {
-      this.ctx = null;
-      return null;
-    }
-  }
-
-  /** A low filtered hum that swells in and fades at the split. */
-  start(): void {
-    const ctx = this.ensure();
-    if (!ctx || !this.master) return;
-    void ctx.resume().catch(() => undefined);
-
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 55;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 220;
-    filter.Q.value = 6;
-
-    osc.connect(filter);
-    filter.connect(this.master);
-    osc.start();
-    this.hum = osc;
-
-    const now = ctx.currentTime;
-    this.master.gain.cancelScheduledValues(now);
-    this.master.gain.setValueAtTime(0.0001, now);
-    this.master.gain.exponentialRampToValueAtTime(0.06, now + 1.4);
-    this.master.gain.exponentialRampToValueAtTime(0.0001, now + 6.0);
-  }
-
-  /** Two notes, an octave apart, with a bell decay. Used on the heart pulse. */
-  chime(): void {
-    const ctx = this.ensure();
-    if (!ctx || !this.master) return;
-    void ctx.resume().catch(() => undefined);
-    const now = ctx.currentTime;
-    [880, 1320].forEach((freq, index) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, now + index * 0.06);
-      gain.gain.exponentialRampToValueAtTime(0.12, now + index * 0.06 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.06 + 1.1);
-      osc.connect(gain);
-      gain.connect(this.master as GainNode);
-      osc.start(now + index * 0.06);
-      osc.stop(now + index * 0.06 + 1.2);
-    });
-  }
-
-  destroy(): void {
-    try {
-      this.hum?.stop();
-    } catch {
-      /* already stopped */
-    }
-    this.hum = null;
-    if (this.master && this.ctx) {
-      const now = this.ctx.currentTime;
-      this.master.gain.cancelScheduledValues(now);
-      this.master.gain.setValueAtTime(0.0001, now);
-    }
-    void this.ctx?.close().catch(() => undefined);
-    this.ctx = null;
-    this.master = null;
-  }
-}
+/* ------------------------------------------------------------ sound (opt-in)
+   The hum and chime live in src/motion/audio.ts, shared with the micro layer so
+   the page has exactly one AudioContext. */
 
 /* --------------------------------------------------------- canvas: one layer */
 
@@ -823,7 +732,8 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
     }
   }
 
-  const audio = animate && sound ? new IntroAudio() : null;
+  const audio = animate && sound ? synth : null;
+  if (audio) audio.setEnabled(true);
 
   let settled = false;
   let destroyed = false;
@@ -852,7 +762,7 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
       return;
     }
     particles?.start();
-    audio?.start();
+    audio?.startHum();
     timers = [
       window.setTimeout(() => {
         audio?.chime();
