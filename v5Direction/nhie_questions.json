@@ -1,0 +1,961 @@
+{
+ "version": 1,
+ "prefix": "Never have I ever",
+ "axes": [
+  "deadpan",
+  "absurdist",
+  "dry_wit",
+  "chaotic",
+  "wholesome",
+  "niche_refs"
+ ],
+ "spice_legend": {
+  "1": "safe for everyone",
+  "2": "flirty / socially spicy (still PG-13)",
+  "3": "reserved"
+ },
+ "categories": [
+  {
+   "slug": "gc",
+   "name": "Group Chat Crimes"
+  },
+  {
+   "slug": "night",
+   "name": "3 AM Brain"
+  },
+  {
+   "slug": "music",
+   "name": "Playlist Felonies"
+  },
+  {
+   "slug": "love",
+   "name": "Situationship Studies"
+  },
+  {
+   "slug": "screen",
+   "name": "Screen Time Shame"
+  },
+  {
+   "slug": "food",
+   "name": "Kitchen Crimes"
+  },
+  {
+   "slug": "work",
+   "name": "Campus & Office Survival"
+  },
+  {
+   "slug": "delulu",
+   "name": "Delulu Hall of Fame"
+  },
+  {
+   "slug": "cringe",
+   "name": "Cringe Archive"
+  },
+  {
+   "slug": "chaos",
+   "name": "Tiny Chaos"
+  }
+ ],
+ "questions": [
+  {
+   "id": "nhie-001",
+   "category": "gc",
+   "emoji": "📱",
+   "text": "…typed \"haha\" with a completely straight face.",
+   "sub": "The most common lie in any language.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-002",
+   "category": "gc",
+   "emoji": "💀",
+   "text": "…reacted 💀 to a message that was genuinely sad.",
+   "sub": "Context is a suggestion.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-003",
+   "category": "gc",
+   "emoji": "🔇",
+   "text": "…muted a group chat and then checked it every four minutes.",
+   "sub": "Muted. Monitored.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-004",
+   "category": "gc",
+   "emoji": "🕊️",
+   "text": "…replied \"sorry, just saw this\" nine days later.",
+   "sub": "The phone was in the room. I was not.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-005",
+   "category": "gc",
+   "emoji": "🧨",
+   "text": "…sent a message to the wrong chat and considered a new identity.",
+   "sub": "Witness protection starts at \"delete for everyone\".",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-006",
+   "category": "gc",
+   "emoji": "🔎",
+   "text": "…screenshotted a chat to ask a friend \"is this rude??\"",
+   "sub": "Jury duty, but gossip.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-007",
+   "category": "gc",
+   "emoji": "🗳️",
+   "text": "…proposed a plan in the group chat that I privately hoped would be cancelled.",
+   "sub": "Planning is a form of lying.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-008",
+   "category": "gc",
+   "emoji": "🧊",
+   "text": "…left someone on read for my peace and thought about it for three hours.",
+   "sub": "Peace has a surprisingly high cost.",
+   "axis": "deadpan",
+   "spice": 2
+  },
+  {
+   "id": "nhie-009",
+   "category": "gc",
+   "emoji": "🎭",
+   "text": "…typed a long, heartfelt reply, deleted it, and sent a thumbs up.",
+   "sub": "Emotional range: one thumb.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-010",
+   "category": "gc",
+   "emoji": "🧵",
+   "text": "…muted the one friend who sends one thought as six separate messages.",
+   "sub": "Six messages. One thought.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-011",
+   "category": "night",
+   "emoji": "🌙",
+   "text": "…lain awake replaying something embarrassing from years ago.",
+   "sub": "Memory has terrible taste in reruns.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-012",
+   "category": "night",
+   "emoji": "🧠",
+   "text": "…googled something at 3 AM that I'd never say out loud.",
+   "sub": "Even incognito felt judged.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-013",
+   "category": "night",
+   "emoji": "🛒",
+   "text": "…filled a cart at 2 AM and called it \"just browsing\".",
+   "sub": "Window shopping with a very large window.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-014",
+   "category": "night",
+   "emoji": "🎧",
+   "text": "…made a playlist for a trip I'm not taking.",
+   "sub": "Hopeful logistics.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-015",
+   "category": "night",
+   "emoji": "🥨",
+   "text": "…had a full existential crisis over what to snack on.",
+   "sub": "Salty or sweet. Who am I.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-016",
+   "category": "night",
+   "emoji": "📞",
+   "text": "…rehearsed a phone call out loud before making it.",
+   "sub": "Dress rehearsal for \"hello\".",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-017",
+   "category": "night",
+   "emoji": "⏰",
+   "text": "…set seven alarms and woke up for the eighth.",
+   "sub": "Optimism, in stages.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-018",
+   "category": "night",
+   "emoji": "🧮",
+   "text": "…calculated how much sleep I'd get if I slept RIGHT now.",
+   "sub": "Maths for the doomed.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-019",
+   "category": "night",
+   "emoji": "🌊",
+   "text": "…clicked one \"quick\" video and surfaced in a documentary about undersea cables.",
+   "sub": "Education by accident.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-020",
+   "category": "night",
+   "emoji": "🥊",
+   "text": "…won an argument in the shower against someone who wasn't there.",
+   "sub": "Undefeated against nobody.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-021",
+   "category": "music",
+   "emoji": "🚗",
+   "text": "…skipped a song because someone was in the car and I wanted to seem cooler.",
+   "sub": "Taste is a performance.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-022",
+   "category": "music",
+   "emoji": "🔁",
+   "text": "…played one song on repeat until it stopped meaning anything.",
+   "sub": "Murder by replay.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-023",
+   "category": "music",
+   "emoji": "🕺",
+   "text": "…danced alone like 40,000 people were watching.",
+   "sub": "Stadium energy, bathroom mirror.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-024",
+   "category": "music",
+   "emoji": "🚿",
+   "text": "…sang in the shower and believed I was about to get signed.",
+   "sub": "Acoustics are a powerful drug.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-025",
+   "category": "music",
+   "emoji": "🙈",
+   "text": "…pretended to know the lyrics and hummed through the hard parts.",
+   "sub": "Mumble karaoke.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-026",
+   "category": "music",
+   "emoji": "🏷️",
+   "text": "…judged someone's entire personality by their top artist.",
+   "sub": "Wrapped as a red flag.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-027",
+   "category": "music",
+   "emoji": "🔒",
+   "text": "…kept a guilty-pleasure song off my public playlists.",
+   "sub": "Private mode for shame.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-028",
+   "category": "music",
+   "emoji": "😭",
+   "text": "…cried at a song I don't even like.",
+   "sub": "The bridge had a plan.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-029",
+   "category": "music",
+   "emoji": "🎤",
+   "text": "…picked a karaoke song and discovered mid-song that there's a rap verse.",
+   "sub": "Bravery or stupidity: pending.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-030",
+   "category": "music",
+   "emoji": "⏱️",
+   "text": "…said \"this is the best part\" twelve seconds before the best part.",
+   "sub": "Spoiler alert for the soul.",
+   "axis": "niche_refs",
+   "spice": 1
+  },
+  {
+   "id": "nhie-031",
+   "category": "love",
+   "emoji": "💬",
+   "text": "…drafted a text, deleted it, and rewrote it to sound \"casual\".",
+   "sub": "Casual takes at least four drafts.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-032",
+   "category": "love",
+   "emoji": "🔍",
+   "text": "…researched someone's entire online history before a first date.",
+   "sub": "Due diligence, FBI edition.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-033",
+   "category": "love",
+   "emoji": "⏳",
+   "text": "…waited twenty minutes to reply so I wouldn't seem available.",
+   "sub": "A cold war with a stopwatch.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-034",
+   "category": "love",
+   "emoji": "🚩",
+   "text": "…ignored a red flag because the playlist was good.",
+   "sub": "Taste can't fix character. It tries.",
+   "axis": "niche_refs",
+   "spice": 2
+  },
+  {
+   "id": "nhie-035",
+   "category": "love",
+   "emoji": "🪞",
+   "text": "…rehearsed my \"casual\" entrance in the mirror.",
+   "sub": "Natural. Rehearsed. Natural.",
+   "axis": "deadpan",
+   "spice": 2
+  },
+  {
+   "id": "nhie-036",
+   "category": "love",
+   "emoji": "📸",
+   "text": "…taken forty photos to find the one that looks like I didn't try.",
+   "sub": "Effortless costs effort.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-037",
+   "category": "love",
+   "emoji": "🍽️",
+   "text": "…said \"I'm easy, anywhere works\" and had strong opinions about every option.",
+   "sub": "Choose a place. We all know.",
+   "axis": "deadpan",
+   "spice": 2
+  },
+  {
+   "id": "nhie-038",
+   "category": "love",
+   "emoji": "☕",
+   "text": "…said \"let's grab coffee sometime\" and, for once, meant it.",
+   "sub": "Sometime is a real place.",
+   "axis": "wholesome",
+   "spice": 2
+  },
+  {
+   "id": "nhie-039",
+   "category": "love",
+   "emoji": "🎯",
+   "text": "…scored a first date in my head and revised it by dessert.",
+   "sub": "Initial score: negotiable.",
+   "axis": "dry_wit",
+   "spice": 2
+  },
+  {
+   "id": "nhie-040",
+   "category": "love",
+   "emoji": "🧸",
+   "text": "…kept a gift from someone I no longer speak to because it was cute.",
+   "sub": "Sentimental, not stupid.",
+   "axis": "wholesome",
+   "spice": 2
+  },
+  {
+   "id": "nhie-041",
+   "category": "screen",
+   "emoji": "📵",
+   "text": "…said \"I'm putting my phone down\" and picked it up in the same breath.",
+   "sub": "Willpower, buffering.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-042",
+   "category": "screen",
+   "emoji": "🔋",
+   "text": "…hovered near a charger like a dog by a door.",
+   "sub": "Loyalty to 3%.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-043",
+   "category": "screen",
+   "emoji": "🌀",
+   "text": "…opened an app, forgot why, and closed it with confidence.",
+   "sub": "Productive loop detected.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-044",
+   "category": "screen",
+   "emoji": "⏱️",
+   "text": "…swiped away my own screen-time warning.",
+   "sub": "Bold of it to assume I'd stop.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-045",
+   "category": "screen",
+   "emoji": "🔦",
+   "text": "…searched for my phone while holding it.",
+   "sub": "Found me. Lost me. Found me.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-046",
+   "category": "screen",
+   "emoji": "🧊",
+   "text": "…opened the fridge, then my phone, then the fridge again.",
+   "sub": "Two hungers, zero results.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-047",
+   "category": "screen",
+   "emoji": "🖼️",
+   "text": "…saved a meme \"for later\" and never saw it again.",
+   "sub": "The graveyard of \"for later\".",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-048",
+   "category": "screen",
+   "emoji": "🏳️",
+   "text": "…lost an argument online and refreshed for a reply anyway.",
+   "sub": "Dignity left the chat.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-049",
+   "category": "screen",
+   "emoji": "🔕",
+   "text": "…turned notifications off and then checked manually every ten minutes.",
+   "sub": "Self-discipline: DIY edition.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-050",
+   "category": "screen",
+   "emoji": "🥚",
+   "text": "…fallen into a four-hour rabbit hole that began with \"how to boil an egg\".",
+   "sub": "All roads lead somewhere else.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-051",
+   "category": "food",
+   "emoji": "🍕",
+   "text": "…eaten cold leftovers standing at the fridge like it was a confession.",
+   "sub": "The fridge light knows.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-052",
+   "category": "food",
+   "emoji": "🥡",
+   "text": "…ordered food I could've cooked faster than it took to arrive.",
+   "sub": "Convenience is a lie we love.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-053",
+   "category": "food",
+   "emoji": "🍜",
+   "text": "…burned my mouth because I couldn't wait two more minutes.",
+   "sub": "Patience: skill issue.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-054",
+   "category": "food",
+   "emoji": "🧂",
+   "text": "…followed a recipe \"loosely\" and invented a new tragedy.",
+   "sub": "Creative differences with the stove.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-055",
+   "category": "food",
+   "emoji": "🍫",
+   "text": "…hidden snacks from the people I live with.",
+   "sub": "Snack witness protection.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-056",
+   "category": "food",
+   "emoji": "🥤",
+   "text": "…finished someone's drink \"to avoid waste\".",
+   "sub": "Heroic, technically.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-057",
+   "category": "food",
+   "emoji": "☕",
+   "text": "…had coffee at 9 PM and acted surprised at 3 AM.",
+   "sub": "Cause. Effect. Shock.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-058",
+   "category": "food",
+   "emoji": "🍳",
+   "text": "…cooked for one and made enough for four.",
+   "sub": "Optimism in portions.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-059",
+   "category": "food",
+   "emoji": "🧾",
+   "text": "…lied about how many I ate.",
+   "sub": "Math is flexible after midnight.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-060",
+   "category": "food",
+   "emoji": "🥬",
+   "text": "…bought vegetables with total confidence and watched them die.",
+   "sub": "A ceremony, in the crisper drawer.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-061",
+   "category": "work",
+   "emoji": "📧",
+   "text": "…replied \"noted\" to an email when I'd only read the subject line.",
+   "sub": "Skimming is a lifestyle.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-062",
+   "category": "work",
+   "emoji": "💻",
+   "text": "…typed \"per my last email\" with real violence.",
+   "sub": "Polite, with teeth.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-063",
+   "category": "work",
+   "emoji": "🎥",
+   "text": "…joined a call and immediately wished to be muted out of existence.",
+   "sub": "Camera off. Soul off.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-064",
+   "category": "work",
+   "emoji": "📚",
+   "text": "…started the assignment the night before and called it \"pressure-driven creativity\".",
+   "sub": "Deadline whisperer.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-065",
+   "category": "work",
+   "emoji": "🤝",
+   "text": "…nodded at a joke I didn't hear.",
+   "sub": "Laughing in 144p.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-066",
+   "category": "work",
+   "emoji": "✋",
+   "text": "…raised my hand and forgot the question mid-air.",
+   "sub": "Hand up. Brain down.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-067",
+   "category": "work",
+   "emoji": "🚶",
+   "text": "…taken the long way to avoid saying hi to someone.",
+   "sub": "Cardio via social anxiety.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-068",
+   "category": "work",
+   "emoji": "📎",
+   "text": "…organized my entire desk instead of doing the work.",
+   "sub": "Productive-adjacent.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-069",
+   "category": "work",
+   "emoji": "😴",
+   "text": "…fallen asleep upright and answered \"present\" to nothing.",
+   "sub": "Consciousness: optional.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-070",
+   "category": "work",
+   "emoji": "🎙️",
+   "text": "…blamed a broken mic to avoid answering a question.",
+   "sub": "Technical difficulties, convenient timing.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-071",
+   "category": "delulu",
+   "emoji": "👑",
+   "text": "…practiced my acceptance speech in the shower.",
+   "sub": "Thank you, mirror.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-072",
+   "category": "delulu",
+   "emoji": "🗓️",
+   "text": "…said \"I'll start Monday\" on a Tuesday.",
+   "sub": "Time is a spectrum.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-073",
+   "category": "delulu",
+   "emoji": "📦",
+   "text": "…bought something for the \"new me\" and never met him.",
+   "sub": "He's still in the box.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-074",
+   "category": "delulu",
+   "emoji": "🔮",
+   "text": "…checked my horoscope to justify a decision I'd already made.",
+   "sub": "Stars, but make it consent.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-075",
+   "category": "delulu",
+   "emoji": "🏡",
+   "text": "…planned an entire future with someone I'd only waved at once.",
+   "sub": "Subtle? We built a house.",
+   "axis": "chaotic",
+   "spice": 2
+  },
+  {
+   "id": "nhie-076",
+   "category": "delulu",
+   "emoji": "💼",
+   "text": "…updated my CV in a burst of motivation and closed the file.",
+   "sub": "Ambition lasted four minutes.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-077",
+   "category": "delulu",
+   "emoji": "🎬",
+   "text": "…narrated my own life like a nature documentary.",
+   "sub": "In the wild, the subject eats cereal.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-078",
+   "category": "delulu",
+   "emoji": "🧠",
+   "text": "…believed I'd remember it without writing it down.",
+   "sub": "Memory said \"sure\".",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-079",
+   "category": "delulu",
+   "emoji": "🎒",
+   "text": "…packed for a trip ten minutes before leaving and called it \"efficiency\".",
+   "sub": "Panic as a packing strategy.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-080",
+   "category": "delulu",
+   "emoji": "🌧️",
+   "text": "…stood in the rain on purpose to feel like a main character.",
+   "sub": "Soundtrack: yes.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-081",
+   "category": "cringe",
+   "emoji": "👋",
+   "text": "…waved back at someone who wasn't waving at me.",
+   "sub": "Commit to the bit.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-082",
+   "category": "cringe",
+   "emoji": "🚪",
+   "text": "…pushed a door that said pull. In public.",
+   "sub": "Doors are hate crimes.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-083",
+   "category": "cringe",
+   "emoji": "🤝",
+   "text": "…gone for a handshake while they went for a hug.",
+   "sub": "Choreography: unrehearsed.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-084",
+   "category": "cringe",
+   "emoji": "🍽️",
+   "text": "…said \"you too\" when the waiter said \"enjoy your meal\".",
+   "sub": "Bold. Wrong. Final.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-085",
+   "category": "cringe",
+   "emoji": "🏷️",
+   "text": "…left the price tag on and found out at the party.",
+   "sub": "Fashion-forward, accidentally.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-086",
+   "category": "cringe",
+   "emoji": "💌",
+   "text": "…sent \"love you\" to someone very surprised.",
+   "sub": "Muscle memory is rude.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-087",
+   "category": "cringe",
+   "emoji": "🤳",
+   "text": "…opened the front camera by mistake.",
+   "sub": "The jump scare is you.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-088",
+   "category": "cringe",
+   "emoji": "🪑",
+   "text": "…missed the chair.",
+   "sub": "Gravity always wins.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-089",
+   "category": "cringe",
+   "emoji": "🧠",
+   "text": "…remembered a cringe moment mid-silence and said \"no\" out loud.",
+   "sub": "Memory has a sense of humor.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-090",
+   "category": "cringe",
+   "emoji": "🚶",
+   "text": "…walked into the wrong room with total confidence.",
+   "sub": "Shape-shifting at speed.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-091",
+   "category": "chaos",
+   "emoji": "🐦",
+   "text": "…named a pigeon.",
+   "sub": "Gerald knows what he did.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-092",
+   "category": "chaos",
+   "emoji": "🧦",
+   "text": "…worn mismatched socks and called it a personality.",
+   "sub": "Left foot: lore. Right foot: sports.",
+   "axis": "absurdist",
+   "spice": 1
+  },
+  {
+   "id": "nhie-093",
+   "category": "chaos",
+   "emoji": "🪴",
+   "text": "…bought a plant and immediately forgot it was alive.",
+   "sub": "It's fine. It's a succulent. It's fine.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-094",
+   "category": "chaos",
+   "emoji": "🛋️",
+   "text": "…cancelled plans and felt pure joy.",
+   "sub": "The sound of freedom.",
+   "axis": "deadpan",
+   "spice": 1
+  },
+  {
+   "id": "nhie-095",
+   "category": "chaos",
+   "emoji": "🚌",
+   "text": "…missed a bus by watching it leave.",
+   "sub": "Slow motion. Real life.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-096",
+   "category": "chaos",
+   "emoji": "🐶",
+   "text": "…talked to my pet like a coworker.",
+   "sub": "Dave from accounting is a golden retriever.",
+   "axis": "wholesome",
+   "spice": 1
+  },
+  {
+   "id": "nhie-097",
+   "category": "chaos",
+   "emoji": "🎲",
+   "text": "…made a big decision with a coin flip and ignored the result.",
+   "sub": "The coin was a formality.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-098",
+   "category": "chaos",
+   "emoji": "🧃",
+   "text": "…drank straight from the carton and then looked around for witnesses.",
+   "sub": "Nobody saw. Everybody knows.",
+   "axis": "chaotic",
+   "spice": 1
+  },
+  {
+   "id": "nhie-099",
+   "category": "chaos",
+   "emoji": "🔌",
+   "text": "…unplugged something to charge my phone and forgot what it was.",
+   "sub": "Priorities, rearranged.",
+   "axis": "dry_wit",
+   "spice": 1
+  },
+  {
+   "id": "nhie-100",
+   "category": "chaos",
+   "emoji": "🎧",
+   "text": "…walked faster because the song got intense.",
+   "sub": "Main character pace.",
+   "axis": "wholesome",
+   "spice": 1
+  }
+ ]
+}

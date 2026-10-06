@@ -1,0 +1,209 @@
+genre,title,artist,vibe
+pop,Espresso,Sabrina Carpenter,main-character
+pop,Flowers,Miley Cyrus,self-love-era
+pop,As It Was,Harry Styles,bus-window
+pop,Levitating,Dua Lipa,party-starter
+pop,good 4 u,Olivia Rodrigo,villain-era
+pop,Anti-Hero,Taylor Swift,3am-brain
+pop,Birds of a Feather,Billie Eilish,soft-launch
+indie,Float On,Modest Mouse,sunday-reset
+indie,Electric Feel,MGMT,road-trip
+indie,Do I Wanna Know?,Arctic Monkeys,3am-drive
+indie,Skinny Love,Bon Iver,rainy-window
+indie,Such Great Heights,The Postal Service,slow-burn
+indie,Dog Days Are Over,Florence + The Machine,dramatic-entrance
+indie,Mykonos,Fleet Foxes,sunday-reset
+hiphop,HUMBLE.,Kendrick Lamar,main-character
+hiphop,Alright,Kendrick Lamar,walk-with-purpose
+hiphop,Lose Yourself,Eminem,gym-delusion
+hiphop,Juicy,The Notorious B.I.G.,nostalgia-hit
+hiphop,SICKO MODE,Travis Scott,chaos-goblin
+hiphop,Gold Digger,Kanye West,karaoke-felony
+hiphop,Empire State of Mind,JAY-Z & Alicia Keys,dramatic-entrance
+rnb,Snooze,SZA,slow-burn
+rnb,Kill Bill,SZA,villain-era
+rnb,Best Part,Daniel Caesar & H.E.R.,soft-launch
+rnb,Redbone,Childish Gambino,3am-drive
+rnb,Adorn,Miguel,slow-burn
+rnb,No Scrubs,TLC,karaoke-felony
+rnb,Pink + White,Frank Ocean,sunday-reset
+rock,Mr. Brightside,The Killers,karaoke-felony
+rock,Seven Nation Army,The White Stripes,stadium-brain
+rock,Smells Like Teen Spirit,Nirvana,nostalgia-hit
+rock,Bohemian Rhapsody,Queen,dramatic-entrance
+rock,Take Me Out,Franz Ferdinand,party-starter
+rock,Last Nite,The Strokes,bus-window
+rock,Under the Bridge,Red Hot Chili Peppers,existential
+metal,Enter Sandman,Metallica,villain-era
+metal,Paranoid,Black Sabbath,chaos-goblin
+metal,Ace of Spades,Motörhead,gym-delusion
+metal,Duality,Slipknot,rage-cleaning
+metal,Chop Suey!,System of a Down,chaos-goblin
+metal,Du Hast,Rammstein,dramatic-entrance
+metal,Master of Puppets,Metallica,gym-delusion
+punk,Basket Case,Green Day,existential
+punk,Blitzkrieg Bop,Ramones,party-starter
+punk,London Calling,The Clash,dramatic-entrance
+punk,Anarchy in the U.K.,Sex Pistols,chaos-goblin
+punk,Should I Stay or Should I Go,The Clash,karaoke-felony
+punk,All the Small Things,blink-182,nostalgia-hit
+punk,Holiday,Green Day,road-trip
+emo,Misery Business,Paramore,villain-era
+emo,I Write Sins Not Tragedies,Panic! at the Disco,dramatic-entrance
+emo,Welcome to the Black Parade,My Chemical Romance,dramatic-entrance
+emo,"Sugar, We're Goin Down",Fall Out Boy,nostalgia-hit
+emo,"Dear Maria, Count Me In",All Time Low,karaoke-felony
+emo,Sk8er Boi,Avril Lavigne,nostalgia-hit
+emo,Teenagers,My Chemical Romance,chaos-goblin
+emo,Helena,My Chemical Romance,cry-in-shower
+electronic,One More Time,Daft Punk,party-starter
+electronic,Around the World,Daft Punk,party-starter
+electronic,Strobe,deadmau5,3am-drive
+electronic,Levels,Avicii,main-character
+electronic,Language,Porter Robinson,sunday-reset
+electronic,Midnight City,M83,bus-window
+electronic,Sandstorm,Darude,chaos-goblin
+dnb,Propane Nightmares,Pendulum,gym-delusion
+dnb,Tarantula,Pendulum,chaos-goblin
+dnb,Hold Your Colour,Pendulum,dramatic-entrance
+dnb,End Credits,Chase & Status & Plan B,3am-drive
+dnb,Afterglow,Wilkinson,slow-burn
+dnb,Feel the Love,Rudimental & John Newman,party-starter
+lofi,Aruarian Dance,Nujabes,study-mode
+lofi,Feather,Nujabes,rainy-window
+lofi,Luv(sic) pt3,Nujabes,sunday-reset
+lofi,Time: The Donut of the Heart,J Dilla,slow-burn
+lofi,Affection,Jinsang,study-mode
+lofi,Monday Loop,Tomppabeats,study-mode
+ambient,Weightless,Marconi Union,sunday-reset
+ambient,An Ending (Ascent),Brian Eno,existential
+ambient,1/1,Brian Eno,existential
+ambient,Svefn-g-englar,Sigur Rós,rainy-window
+ambient,A Walk,Tycho,study-mode
+ambient,Avril 14th,Aphex Twin,rainy-window
+jazz,Take Five,The Dave Brubeck Quartet,study-mode
+jazz,So What,Miles Davis,3am-brain
+jazz,Blue in Green,Miles Davis,rainy-window
+jazz,Summertime,Ella Fitzgerald & Louis Armstrong,slow-burn
+jazz,Fly Me to the Moon,Frank Sinatra,soft-launch
+jazz,The Girl from Ipanema,Stan Getz & João Gilberto,sunday-reset
+jazz,My Favorite Things,John Coltrane,existential
+classical,Clair de Lune,Claude Debussy,3am-brain
+classical,Gymnopédie No. 1,Erik Satie,rainy-window
+classical,Moonlight Sonata,Ludwig van Beethoven,existential
+classical,O Fortuna,Carl Orff,dramatic-entrance
+classical,In the Hall of the Mountain King,Edvard Grieg,chaos-goblin
+classical,Flight of the Bumblebee,Nikolai Rimsky-Korsakov,running-late-sprint
+classical,Experience,Ludovico Einaudi,3am-drive
+country,Jolene,Dolly Parton,karaoke-felony
+country,"Take Me Home, Country Roads",John Denver,road-trip
+country,Ring of Fire,Johnny Cash,nostalgia-hit
+country,Tennessee Whiskey,Chris Stapleton,slow-burn
+country,Friends in Low Places,Garth Brooks,karaoke-felony
+country,Before He Cheats,Carrie Underwood,villain-era
+country,Man! I Feel Like a Woman!,Shania Twain,main-character
+folk,Fast Car,Tracy Chapman,bus-window
+folk,The Boxer,Simon & Garfunkel,nostalgia-hit
+folk,Hallelujah,Jeff Buckley,cry-in-shower
+folk,Landslide,Fleetwood Mac,existential
+folk,Blowin' in the Wind,Bob Dylan,sunday-reset
+folk,Ho Hey,The Lumineers,road-trip
+folk,Holocene,Bon Iver,rainy-window
+latin,Gasolina,Daddy Yankee,party-starter
+latin,Hips Don't Lie,Shakira & Wyclef Jean,party-starter
+latin,Despacito,Luis Fonsi & Daddy Yankee,nostalgia-hit
+latin,Tití Me Preguntó,Bad Bunny,chaos-goblin
+latin,Danza Kuduro,Don Omar & Lucenzo,party-starter
+latin,Vivir Mi Vida,Marc Anthony,main-character
+latin,La Bachata,Manuel Turizo,slow-burn
+kpop,Gangnam Style,PSY,party-starter
+kpop,Dynamite,BTS,main-character
+kpop,DDU-DU DDU-DU,BLACKPINK,villain-era
+kpop,Hype Boy,NewJeans,soft-launch
+kpop,Fancy,TWICE,main-character
+kpop,God's Menu,Stray Kids,gym-delusion
+kpop,Love Dive,IVE,dramatic-entrance
+citypop,Plastic Love,Mariya Takeuchi,3am-drive
+citypop,Mayonaka no Door (Stay With Me),Miki Matsubara,3am-drive
+citypop,Ride on Time,Tatsuro Yamashita,road-trip
+citypop,Lemon,Kenshi Yonezu,cry-in-shower
+citypop,Idol,YOASOBI,main-character
+citypop,Gurenge,LiSA,gym-delusion
+bollywood,Tum Hi Ho,Arijit Singh,slow-burn
+bollywood,Kal Ho Naa Ho,Sonu Nigam,cry-in-shower
+bollywood,Tujhe Dekha To,Kumar Sanu & Lata Mangeshkar,soft-launch
+bollywood,Chaiyya Chaiyya,Sukhwinder Singh & Sapna Awasthi,road-trip
+bollywood,Kun Faya Kun,"A. R. Rahman, Javed Ali & Mohit Chauhan",existential
+bollywood,Channa Mereya,Arijit Singh,cry-in-shower
+bollywood,Kesariya,Arijit Singh,slow-burn
+bollywood,Jai Ho,A. R. Rahman,dramatic-entrance
+afrobeats,Essence,WizKid & Tems,slow-burn
+afrobeats,Calm Down,Rema,party-starter
+afrobeats,Love Nwantiti,CKay,soft-launch
+afrobeats,Last Last,Burna Boy,villain-era
+afrobeats,Ye,Burna Boy,road-trip
+afrobeats,Water,Tyla,main-character
+afrobeats,Peru,Fireboy DML & Ed Sheeran,party-starter
+reggae,Three Little Birds,Bob Marley & The Wailers,sunday-reset
+reggae,Could You Be Loved,Bob Marley & The Wailers,road-trip
+reggae,Is This Love,Bob Marley & The Wailers,soft-launch
+reggae,Redemption Song,Bob Marley & The Wailers,existential
+reggae,Many Rivers to Cross,Jimmy Cliff,rainy-window
+reggae,Welcome to Jamrock,Damian Marley,dramatic-entrance
+hyperpop,Money Machine,100 gecs,chaos-goblin
+hyperpop,Ringtone,100 gecs,chaos-goblin
+hyperpop,Immaterial,SOPHIE,dramatic-entrance
+hyperpop,It's Okay to Cry,SOPHIE,cry-in-shower
+hyperpop,360,Charli xcx,party-starter
+hyperpop,Apple,Charli xcx,party-starter
+synthwave,Nightcall,Kavinsky,3am-drive
+synthwave,A Real Hero,College & Electric Youth,bus-window
+synthwave,Resonance,HOME,3am-drive
+synthwave,Tech Noir,Gunship,villain-era
+synthwave,Turbo Killer,Carpenter Brut,gym-delusion
+synthwave,Miami Disco,Perturbator,dramatic-entrance
+sadcore,Someone Like You,Adele,cry-in-shower
+sadcore,Liability,Lorde,cry-in-shower
+sadcore,Motion Sickness,Phoebe Bridgers,rainy-window
+sadcore,The Night We Met,Lord Huron,3am-brain
+sadcore,Mad World,Gary Jules,existential
+sadcore,Fake Plastic Trees,Radiohead,existential
+sadcore,Slow Dancing in the Dark,Joji,3am-brain
+workout,Eye of the Tiger,Survivor,gym-delusion
+workout,Till I Collapse,Eminem,gym-delusion
+workout,Stronger,Kanye West,gym-delusion
+workout,Can't Hold Us,Macklemore & Ryan Lewis,main-character
+workout,Thunderstruck,AC/DC,gym-delusion
+workout,Remember the Name,Fort Minor,gym-delusion
+workout,Gonna Fly Now,Bill Conti,dramatic-entrance
+showtunes,Defying Gravity,Idina Menzel & Kristin Chenoweth,dramatic-entrance
+showtunes,My Shot,Lin-Manuel Miranda & Original Broadway Cast,main-character
+showtunes,Seasons of Love,Rent Original Broadway Cast,nostalgia-hit
+showtunes,Don't Rain on My Parade,Barbra Streisand,main-character
+showtunes,One Day More,Les Misérables Original Cast,dramatic-entrance
+showtunes,Waving Through a Window,Ben Platt,existential
+ost,Time,Hans Zimmer,existential
+ost,Cornfield Chase,Hans Zimmer,3am-drive
+ost,Megalovania,Toby Fox,chaos-goblin
+ost,Sweden,C418,rainy-window
+ost,To Zanarkand,Nobuo Uematsu,cry-in-shower
+ost,Concerning Hobbits,Howard Shore,sunday-reset
+ost,Gerudo Valley,Koji Kondo,road-trip
+phonk,Murder In My Mind,Kordhell,villain-era
+phonk,Close Eyes,DVRST,3am-drive
+phonk,Metamorphosis,INTERWORLD,villain-era
+phonk,Sahara,Hensonn,3am-drive
+phonk,Neon Blade,MoonDeity,villain-era
+soul,Respect,Aretha Franklin,main-character
+soul,Let's Stay Together,Al Green,soft-launch
+soul,What's Going On,Marvin Gaye,existential
+soul,Ain't No Sunshine,Bill Withers,rainy-window
+soul,September,"Earth, Wind & Fire",party-starter
+soul,Superstition,Stevie Wonder,party-starter
+soul,Back to Black,Amy Winehouse,villain-era
+disco,Stayin' Alive,Bee Gees,main-character
+disco,Dancing Queen,ABBA,karaoke-felony
+disco,I Will Survive,Gloria Gaynor,villain-era
+disco,Le Freak,Chic,party-starter
+disco,Boogie Wonderland,"Earth, Wind & Fire",party-starter
+disco,Don't Stop 'Til You Get Enough,Michael Jackson,main-character
