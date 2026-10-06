@@ -1,6 +1,10 @@
 // @ts-nocheck
 /* The original seam is intentionally isolated while screens are migrated one at a time. */
 
+/* The Cold Open lives in src/motion/timeline.ts, outside this file, so the
+   seam does not grow. It is the only new dependency onboarding takes. */
+import { playColdOpen } from './motion/timeline';
+
 (()=>{
 'use strict';
 /* ================= helpers ================= */
@@ -147,7 +151,7 @@ const DEF=()=>({
   react:{},comments:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
     prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[]},
-  set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,activity:'all',remind:false},
+  set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
   pulse:{duel:false,seen:0},duel:{picks:{},done:false,score:null,ts:0}
 });
 const BASE_THREADS=()=>{const n=Date.now();return{
@@ -1088,6 +1092,7 @@ function drawSet(tab){
     <div class="group">
       <div class="row"><div class="tx"><b>Reduce motion</b><span>Calms animations across the app.</span></div>${swHTML('tog','calm',s.calm,'Reduce motion')}</div>
       <div class="row"><div class="tx"><b>Haptics</b><span>Small taps when you pass or resonate.</span></div>${swHTML('tog','haptics',s.haptics,'Haptics')}</div>
+      <div class="row"><div class="tx"><b>Sound</b><span>A quiet tick on the things worth confirming.</span></div>${swHTML('tog','sound',s.sound!==false,'Sound')}</div>
     </div>
     <div class="blk"><h2>Trust and data</h2><p class="hint" style="margin-top:6px">Your safety tools are always close. Legal copy is a draft and needs lawyer review.</p></div>
     <div class="group">
@@ -1134,7 +1139,26 @@ const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.cal
 /* ================= onboarding ================= */
 const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false};
 function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,memeSignals:[],audioSignals:[],name:'',permissions:false});$('#onboard').classList.add('on');drawOb()}
+/* ---------------- the Cold Open: onboarding scene 0 ----------------
+   Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
+   intro from src/motion/timeline.ts, which ends by advancing to step 1. */
+let COLD=null;
+function drawColdOpen(){
+  if(COLD){try{COLD.destroy()}catch(e){}COLD=null}
+  const host=$('#onboard');host.classList.add('on');
+  track('intro_start',{v:4});
+  COLD=playColdOpen({
+    host,
+    sound:S.set.sound!==false&&CFG.flags.sound!==false,
+    haptics:S.set.haptics!==false,
+    heroVideo:(window.CulturedAssets&&window.CulturedAssets.heroVideo)||null,
+    haptic,
+    onDone:()=>{COLD=null;OB.step=1;drawOb();track('intro_complete',{v:4})}
+  });
+}
 function drawOb(){
+  if(OB.step===0){drawColdOpen();return}
+  if(COLD){try{COLD.destroy()}catch(e){}COLD=null}
   const o=$('#onboard');let body='';
   const prog=`<div class="ob-prog">${Array.from({length:9},(_,i)=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
   const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;

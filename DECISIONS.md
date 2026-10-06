@@ -193,3 +193,51 @@ afterwards measured the fixtures too.
 
 **Added.** `npm run db:seed` (regenerate) and `npm run test:db` (throwaway
 database + all migrations + all SQL tests).
+
+## 2026-10-06 — the Cold Open (onboarding scene 0)
+
+**What.** `src/motion/timeline.ts` — an ~10.6s scripted intro that replaces the
+static hero card that used to be onboarding step 0. Beats: grain and a
+self-drawing ring; the ring becomes a vinyl whose grooves resolve into the
+Fingerprint contours; the vinyl splits and each half carries an original
+typographic meme card while "Match on your humor." / "Not your headshot." type
+out word by word; the halves drift back together as coral and yellow sound
+ribbons weave; a heart pulse and a slow 1→1.04 push-in; then the lockup and CTA.
+
+**Decisions.**
+
+1. **The reduce-motion gate has to live in JavaScript, not CSS.** The global
+   `.calm` and `prefers-reduced-motion` rules in app.css work by forcing
+   `animation-duration:.001ms`, which only affects CSS animations and
+   transitions. Everything here is Web Animations API, which runs on the
+   compositor and ignores those rules entirely — an `element.animate()` call
+   keeps playing at full speed inside Calm Mode. `src/motion/reduce.ts` is now
+   the single gate: when motion is off the timeline renders the *settled final
+   frame* directly, with no rAF loop, no particles and no audio.
+2. **`#onboard>*{position:relative}` beats `.co`.** The rule that lays out the
+   ordinary onboarding steps outranks a bare class selector, and a
+   relatively-positioned layer whose children are all absolute collapses to zero
+   height — so the intro was present in the DOM and invisible. The appended
+   block scopes the rule to `#onboard .co`. Caught by the Playwright test, not
+   by typecheck or lint.
+3. **No video file required.** The whole intro is DOM + one canvas (grain, 34-54
+   motes, and the ribbons), 12.2 KB minified / 4.9 KB gzipped, measured with
+   esbuild. `manifest.heroVideo.file` is honoured as a slot underneath the live
+   text when the asset pipeline supplies one.
+4. **Sound is opt-in and synthesised, not shipped.** A 55Hz filtered hum and a
+   two-note chime built with Web Audio, gated on the new Settings → Sound
+   toggle (default on, mirroring how Haptics behaves). Nothing is downloaded and
+   there is no licence to clear. Haptics route through the seam's existing
+   `haptic()`, so the setting cannot be bypassed.
+5. **No population claims.** The intro promises what the product does and says
+   nothing about how many people are on it. There is no counter, no "people near
+   you", no implied user base.
+
+**Added.** `src/motion/reduce.ts` (the gate, motion tokens, a visibility helper),
+`src/motion/timeline.ts` (the intro), `tests/visual/playwright.config.ts` (a
+config with no `webServer`, so it reuses the managed preview instead of
+competing for port 4173), `tests/visual/cold-open.spec.ts` (4 tests: play/skip/
+advance, 360x800 fit, reduced motion, Calm Mode).
+
+**Baselines.** `tests/visual/updated/cold-open-{start,settled}-390x844.png`,
+`cold-open-settled-360x800.png`, `cold-open-reduced-motion-390x844.png`.
