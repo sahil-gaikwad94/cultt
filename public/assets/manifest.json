@@ -27,6 +27,10 @@
     "file": "/assets/profile-header-v2.webp",
     "fallback": "procedural:shelf"
   },
+  "tomorrowBg": {
+    "file": "/assets/tomorrow-night.webp",
+    "fallback": "procedural:night-drive"
+  },
   "matchMoment": {
     "file": null,
     "fallback": "procedural:confetti-rings"

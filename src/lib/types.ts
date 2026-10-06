@@ -282,6 +282,13 @@ export interface Repo {
   getMeme(id: string): Promise<Meme | null>;
   getTrack(id: string): Promise<Track | null>;
   recordReaction(targetId: string, reaction: Reaction, targetType?: 'meme' | 'track'): Promise<void>;
+  /**
+   * Log a taste event to the permanent event log.
+   *
+   * Every meme view, reaction and skip is persisted here because Phases 1 and 2
+   * (humor types + receipts) and the briefing's event catalog both depend on it.
+   * `recordReaction` still fires this, so callers do not log twice.
+   */
   recordEvent(kind: EventKind, targetType: 'meme' | 'track', targetId: string, meta?: Record<string, unknown>): Promise<void>;
 
   /* ---- fingerprint + matching --------------------------------------- */
@@ -309,11 +316,11 @@ export interface Repo {
 
   /* ---- safety -------------------------------------------------------- */
   /**
- * The three flows are separate on purpose. `note` is the flow's own reason
- * string: a Report uses REPORT_REASONS, a vibe-report uses VIBE_REPORT_REASONS
- * (both from src/lib/safety.ts), and the server validates it against the flow.
- */
-submitSafetyAction(targetId: string, reason: SafetyReason, note?: string): Promise<SafetyReportResult>;
+   * The three flows are separate on purpose. `note` is the flow's own reason
+   * string: a Report uses REPORT_REASONS, a vibe-report uses VIBE_REPORT_REASONS
+   * (both from src/lib/safety.ts), and the server validates it against the flow.
+   */
+  submitSafetyAction(targetId: string, reason: SafetyReason, note?: string): Promise<SafetyReportResult>;
   listBlocks(): Promise<string[]>;
   unblock(userId: string): Promise<void>;
 
@@ -333,7 +340,12 @@ submitSafetyAction(targetId: string, reason: SafetyReason, note?: string): Promi
   requestDataExport(): Promise<DataExportResult>;
   requestAccountDeletion(): Promise<DeletionRequest>;
   cancelAccountDeletion(): Promise<DeletionRequest>;
-}
+
+  /* ---- phase-0 event seam ------------------------------------------- */
+  /** Log a raw taste event that was not already captured by recordReaction. */
+  logTasteEvent(kind: string, targetType: 'meme' | 'track', targetId: string, meta?: Record<string, unknown>): Promise<void>;
+  /** Returns the date-ordered event rows for the signed-in user, newest first. */
+  listTasteEvents(limit?: number): Promise<Array<{ id: string; kind: string; targetType: 'meme' | 'track'; targetId: string; meta?: Record<string, unknown>; createdAt: string }>>;}
 
 /** Shared adapter config, read once from the seam. */
 export interface RepoConfig {

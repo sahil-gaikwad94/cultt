@@ -396,12 +396,22 @@ const BEAT = {
   heart: 7050,
   pushIn: 7100,
   lockup: 8400,
-  cta: 9500,
+  tagline: 9000,
+  cta: 10100,
 } as const;
 
-const TOTAL = 10600;
+const TOTAL = 11400;
 
 const FINE_GRAIN = `<div class="co-scan" aria-hidden="true"></div>`;
+
+/**
+ * Studio dressing that the DOM beats reference: a warm key light, a slow fog
+ * band and a framing vignette. All are pure CSS layers — no new canvas work,
+ * no layout properties animated — and all sit under the stage (z-index 0 vs
+ * the canvas z-index). Reduced motion freezes the fog via the CSS block in
+ * app.css; the light simply stays on at its settled opacity.
+ */
+const SET_DRESSING = `<div class="co-spot" aria-hidden="true"></div><div class="co-fog" aria-hidden="true"></div><div class="co-vignette" aria-hidden="true"></div>`;
 
 const MEME_CARDS: ReadonlyArray<{ text: string; bg: string; fg: string; ac: string }> = [
   { text: 'me: i’ll just fix this one bug', bg: '#F2D45C', fg: '#141413', ac: '#ff5d7a' },
@@ -443,7 +453,6 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
   });
   ring.classList.add('co-ring');
   svg.appendChild(ring);
-
   const grooveGroup = svgEl('g', {});
   grooveGroup.classList.add('co-grooves');
   for (let i = 0; i < 7; i++) {
@@ -517,7 +526,7 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
   type.append(lineOne, lineTwo);
   root.appendChild(type);
 
-  // Heart + lockup + CTA.
+  // Heart + lockup + tagline + CTA.
   const heart = el('div', 'co-heart');
   heart.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.7-9.3-9A5.6 5.6 0 0 1 12 6.4 5.6 5.6 0 0 1 21.3 12C19.5 16.3 12 21 12 21Z" fill="currentColor"/></svg>';
@@ -534,11 +543,20 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
   }
   root.appendChild(lockupWrap);
 
+  // The one-line title under the lockup: the promise, in gradient type.
+  const tagline = el('p', 'co-tagline co-title-grad', 'humor first. chemistry always.');
+  root.appendChild(tagline);
+
   const cta = el('button', 'cta co-cta', 'Start with the good stuff');
   cta.type = 'button';
   root.appendChild(cta);
   const skipHint = el('p', 'co-skip', 'Tap to skip');
   root.appendChild(skipHint);
+
+  /** The stage dressing nodes, wired up after the DOM is built. */
+  const spot = root.querySelector('.co-spot') as HTMLDivElement | null;
+  const fog = root.querySelector('.co-fog') as HTMLDivElement | null;
+  root.insertAdjacentHTML('beforeend', SET_DRESSING);
   root.insertAdjacentHTML('beforeend', FINE_GRAIN);
 
   if (options.capture) root.classList.add('co-capture');
@@ -634,6 +652,10 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
       BEAT.grain,
       520,
     );
+    // Studio dressing: the warm key blooms as the vinyl resolves and the
+    // fog fades in with it. The vignette is present from the first frame.
+    if (spot) keyframe(spot, [{ opacity: 0 }, { opacity: 1 }], BEAT.grooves, 1400, EASE.ease);
+    if (fog) keyframe(fog, [{ opacity: 0 }, { opacity: 1 }], BEAT.merge, 1800, EASE.ease);
 
     // 1. the ring draws itself
     const ringLength = ring.getTotalLength?.() ?? 465;
@@ -746,6 +768,16 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
         EASE.spring,
       ),
     );
+    keyframe(
+      tagline,
+      [
+        { opacity: 0, transform: 'translate3d(0,14px,0)', letterSpacing: '0.2em' },
+        { opacity: 1, transform: 'translate3d(0,0,0)', letterSpacing: '-0.01em' },
+      ],
+      BEAT.tagline,
+      700,
+      EASE.ease,
+    );
     keyframe(cta, [{ opacity: 0, transform: 'translate3d(0,16px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], BEAT.cta, 520, EASE.spring);
     keyframe(skipHint, [{ opacity: 1 }, { opacity: 0 }], BEAT.cta, 400);
   } else {
@@ -761,6 +793,8 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
     canvas.style.opacity = '0';
     stage.style.opacity = '0.25';
     silhouettes.forEach((node) => (node.style.opacity = '0'));
+    if (spot) spot.style.opacity = '0.55';
+    if (fog) fog.style.opacity = '1';
     fpPaths.forEach((path) => {
       path.style.strokeDasharray = 'none';
       path.style.strokeDashoffset = '0';
@@ -769,6 +803,7 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
     for (const word of wordNodes) word.style.opacity = '1';
     lockupWrap.querySelectorAll('i').forEach((inner) => ((inner as HTMLElement).style.opacity = '1'));
     heart.style.opacity = '1';
+    tagline.style.opacity = '1';
     skipHint.style.display = 'none';
   }
 
@@ -805,6 +840,7 @@ export const playColdOpen = (options: ColdOpenOptions): ColdOpenHandle => {
       }
     }
     cta.style.opacity = '1';
+    tagline.style.opacity = '1';
     root.classList.add('co-settled');
     root.removeAttribute('aria-label');
   };

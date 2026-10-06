@@ -13,6 +13,7 @@
 
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
 import { rankCandidates, type CandidateRequest, type Mode } from '../lib/matching/candidates';
+import { EVENT_WEIGHTS } from '../lib/matching/update';
 import type { TasteProfile } from '../lib/matching/tasteTwins';
 import { moderateText, type DeletionRequest, type ModerationVerdict } from '../lib/safety';
 import { startOfLocalDay, type Entitlements } from '../lib/entitlements';
@@ -101,11 +102,15 @@ export class SupabaseRepo implements Repo {
     };
   }
 
+  private signedInUserId: string | null = null;
+
   async getMe(): Promise<Me> {
     const rows = asRows<Record<string, unknown>>(
       await this.client.rpc('me_view', { p_user: null }),
     );
     const row = rows[0];
+    if (!row) throw new RepoError('Profile not found. Finish onboarding first.');
+    this.signedInUserId = String(row.user_id);
     if (!row) throw new RepoError('Profile not found. Finish onboarding first.');
     return {
       userId: String(row.user_id),
@@ -274,12 +279,39 @@ export class SupabaseRepo implements Repo {
     targetId: string,
     meta: Record<string, unknown> = {},
   ): Promise<void> {
+    // Mirror of the mock's split: the server's `events` table carries taste
+    // signals only (a CHECK constraint rejects anything else), and `react`
+    // is the one transaction that moves a vector. Unweighted kinds such as
+    // `view` have no server home here — they are analytics, and the UI's
+    // `track()` already forwards those to PostHog.
+    if (!Object.prototype.hasOwnProperty.call(EVENT_WEIGHTS, kind)) return;
     await this.client.rpc('react', {
       p_target_type: targetType,
       p_target_id: targetId,
       p_kind: kind,
       p_meta: meta,
     });
+  }
+
+  async logTasteEvent(kind: string, targetType: 'meme' | 'track', targetId: string, meta: Record<string, unknown> = {}): Promise<void> {
+    // Only genuine taste kinds have a server target: forward them into the
+    // same atomic `react` transaction. Anything else stays client-side — the
+    // server refuses kinds it cannot weight, by design.
+    if (!Object.prototype.hasOwnProperty.call(EVENT_WEIGHTS, kind)) return;
+    await this.client.rpc('react', {
+      p_target_type: targetType,
+      p_target_id: targetId,
+      p_kind: kind,
+      p_meta: meta,
+    });
+  }
+
+  async listTasteEvents(): Promise<Array<{ id: string; kind: string; targetType: 'meme' | 'track'; targetId: string; meta?: Record<string, unknown>; createdAt: string }>> {
+    // The schema revokes every privilege on `events` — even from the row's own
+    // user — because a readable event log would let the vectors be
+    // reverse-engineered from the API. The raw log is a mock-only development
+    // seam; production reads it through an operator tool, never the app.
+    return [];
   }
 
   /* ------------------------------------------------------- fingerprint */

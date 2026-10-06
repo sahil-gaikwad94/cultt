@@ -24,10 +24,14 @@ test.describe('honesty', () => {
     const grid = page.locator('.mm');
     await expect(grid).toBeVisible();
 
-    // 13 hand-written cards plus the 122-card generated corpus.
-    await expect(page.locator('.mm-n')).toHaveText(/^\d+ in-house$/);
-    const count = Number(((await page.locator('.mm-n').textContent()) ?? '0').split(' ')[0]);
-    expect(count).toBeGreaterThan(120);
+    // The row is capped at six cards; the label says so against the full corpus.
+    const label = /^([\d]+) of ([\d]+) in-house$/.exec((await page.locator('.mm-n').textContent()) ?? '');
+    expect(label).not.toBeNull();
+    const shown = Number(label?.[1] ?? 0);
+    const total = Number(label?.[2] ?? 0);
+    expect(total).toBeGreaterThan(120);
+    expect(shown).toBe(Math.min(6, total));
+    await expect(page.locator('.mm-card')).toHaveCount(shown);
 
     // Not one of the web-searched images may be in the tree.
     await expect(page.locator('img[src*="/memes/meme-"]')).toHaveCount(0);
@@ -55,7 +59,8 @@ test.describe('honesty', () => {
     await expect(page.locator('#phone')).not.toContainText('12 people around you');
     await expect(page.locator('#phone')).not.toContainText('Everyone is saving the bridge');
 
-    await page.locator('[data-act="tab"][data-t="pulse"]').click();
+    // Pulse was renamed to Arena; the honest local-signal card stays.
+    await page.locator('[data-act="tab"][data-t="arena"]').click();
     await expect(page.locator('.field-card')).toContainText('would rather show you nothing');
     await page.screenshot({ path: `${SHOTS}/pulse-honest-empty-state-390x844.png` });
   });

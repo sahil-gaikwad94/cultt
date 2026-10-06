@@ -324,16 +324,16 @@ function layoutTabs(root){
 ACT.ftab=b=>{const el=b.closest('.ftabs');$$('.ft',el).forEach(x=>x.classList.toggle('on',x===b));layoutTabs(el.parentNode);haptic(5);if(FT[el.dataset.k])FT[el.dataset.k](b.dataset.v)};
 
 /* ================= nav ================= */
-const NAVI=[['feed','Home',I.home],['pulse','Pulse',I.star],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
+const NAVI=[['feed','Home',I.home],['arena','Arena',I.star],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
 const TABS=NAVI.map(n=>n[0]);
 function buildNav(){$('#nav').innerHTML=NAVI.map(n=>`<button class="nv ${n[0]===cur?'on':''}" data-act="tab" data-t="${n[0]}" aria-label="${n[1]}">${n[2]}<span class="l">${n[1]}</span></button>`).join('')}
 function go(t){
   if(t!==cur)stopPlay();
-  if(t!=='pulse')stopPulseFX();
+  if(t!=='arena')stopPulseFX();
   cur=t;
   TABS.forEach(x=>$('#s-'+x).classList.toggle('on',x===t));
   $$('.nv').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')});
-  if(t==='pulse')renderPulse();
+  if(t==='arena')renderArena();
   if(t==='people')renderPeople();
   if(t==='you')renderYou();
   if(t==='match'&&fpDirty){renderDeck();fpDirty=false}
@@ -369,12 +369,14 @@ function reactions(p,col){
 }
 function dcardHTML(p){
   const r=refOf(p),isM=p.kind==='music',by=p.by&&person(p.by);
-  return `<div class="dcard" data-id="${p.id}">
+  const id=p.id;
+  return `<div class="dcard" data-id="${id}">
     ${artOf(p)}${isM?'<div class="shade"></div>':''}
     <div class="dc-top"><span class="chipg">${isM?'Song':'Meme'}</span><span class="chipg">${isM?esc(r.genre):(by?'From '+esc(by.name):'Today’s meme')}</span><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
     ${isM?`<div class="dc-bot"><h3>${esc(r.title)}</h3><p>${esc(r.artist)}</p><button class="playp" data-act="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button></div>`:''}
     <div class="acol">${reactions(p,true)}</div>
     <div class="prog"><i></i></div>
+    ${isM?'':`<div class="mm-foot"><button class="mm-l" data-act="mm-open" data-id="${id}" aria-label="Open this meme">${I.chevr}</button></div>`}
   </div>`;
 }
 function ccardHTML(p,i){
@@ -386,15 +388,22 @@ function ccardHTML(p,i){
     <div class="arow">${reactions(p,false)}</div></article>`;
 }
 function tomorrowHTML(){
+  /* The locked day is a scene, not an empty stub: the night-drive slot sits
+     behind a scrim with a slow ken-burns push, the tease cards float on top,
+     and the countdown reads left-aligned like the rest of the drop. If the
+     manifest leaves the slot empty the procedural gradient still carries it. */
   return `<div class="drow stg">${bigDateHTML(1)}<span class="cnt">Locked</span></div>
-  <div class="tm"><div class="tm-cards stg" style="--d:1"><div class="tmc" style="--r:-8deg;--x:-34px;--dl:-1s">?</div><div class="tmc" style="--r:7deg;--x:34px;--dl:-2.5s">?</div><div class="tmc" style="--r:0deg;--x:0px">?</div></div>
-  <h2 class="stg" style="--d:2">Drops at 9:00 AM</h2><p class="hint stg" style="--d:3">Tomorrow’s song and meme unlock together. Tonight’s hint: <b>late-night drive</b>.</p>
-  <div class="cd stg" style="--d:4" id="cd">00:00:00</div>
-  <div class="group stg" style="--d:5;margin:0"><div class="row"><div class="tx" style="text-align:left"><b>Remind me</b><span>A quiet nudge when it lands.</span></div>${swHTML('tog','remind',S.set.remind,'Remind me')}</div></div></div>`;
+  <div class="tm stg" style="--d:1"><div class="tm-art"><div class="tm-media${ASSETS.tomorrowBg?'':' tm-media-fallback'}" aria-hidden="true"></div><div class="tm-inner">
+    <span class="tm-kicker">Tomorrow’s drop</span>
+    <div class="tm-cards" aria-hidden="true"><div class="tmc" style="--r:-8deg;--x:-34px;--dl:-1s">?</div><div class="tmc" style="--r:7deg;--x:34px;--dl:-2.5s">?</div><div class="tmc" style="--r:0deg;--x:0px;--dl:-4s">?</div></div>
+    <h2>Drops at 9:00 AM</h2><p class="hint">Tomorrow’s song and meme unlock together. Tonight’s hint: <b>late-night drive</b>.</p>
+    <div class="cd" id="cd">00:00:00</div>
+    <div class="group"><div class="row"><div class="tx" style="text-align:left"><b>Remind me</b><span>A quiet nudge when it lands.</span></div>${swHTML('tog','remind',S.set.remind,'Remind me')}</div></div>
+  </div></div></div>`;
 }
 function homeBodyHTML(){
   if(DK.day===1){DK.items=[];DK.order=[];return tomorrowHTML()}
-  DK.items=deckItems();DK.order=DK.items.map(p=>p.id);
+  const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
@@ -476,15 +485,12 @@ let cdIv;function startCountdown(){
   const tick=()=>{const el=$('#cd');if(!el){clearInterval(cdIv);return}const n=new Date(),t=new Date();t.setDate(t.getDate()+(n.getHours()>=9?1:0));t.setHours(9,0,0,0);const s=Math.max(0,Math.floor((t-n)/1000));el.textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(v=>String(v).padStart(2,'0')).join(':')};
   tick();cdIv=setInterval(tick,1000);
 }
-/* reactions: one state, every surface */
 function syncPost(id){
   const p=POSTS[id],st=rs(id);
   $$(`[data-id="${id}"]`).forEach(el=>{
-    const l=$('.like',el),h=$('.laugh',el),s=$('.save',el),c=$('.cmt',el);if(!l)return;
+    const l=$('.like',el),h=$('.laugh',el),s=$('.save',el);if(!l)return;
     l.classList.toggle('on',!!st.l);l.setAttribute('aria-pressed',!!st.l);$('.n',l).textContent=p.likes+st.l;
-    
     s.classList.toggle('on',!!st.s);s.setAttribute('aria-pressed',!!st.s);
-    
   });
 }
 const idOf=b=>b.closest('[data-id]').dataset.id;
@@ -492,7 +498,7 @@ ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCa
 ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');if(st.h){burst(b,'#ffd166');haptic([8,30,8])}};
 ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');toast(st.s?'Saved to your Fingerprint':'Removed from saved');haptic(8)};
 ACT.share=b=>openShare(idOf(b));
-ACT['open-d']=b=>openDetail(b.dataset.id,b);
+ACT['open-d']=b=>{openDetail(b.dataset.id,b);trackView(b.dataset.id)};
 /* previews */
 let PL={id:null,t:0,iv:null};
 function stopPlay(){
@@ -558,6 +564,10 @@ ACT.back=closePage;
 /* Rooms are off (FEATURE_ROOMS). Until they ship, the affordance is the honest
    one: send the song to the match as a message with a 30-second clip. */
 const ROOM_OFFER_LABEL=FEATURE_ROOMS?'Listen together':'Send this song';
+/* Phase 0 event seam: log every meme view, reaction and skip so Phases 1–2 and
+   the briefing's event catalog have the data they depend on. `recordReaction`
+   already calls `recordEvent`, so we only log views and skips explicitly. */
+async function trackEvent(kind, targetType, targetId, extra){try{if(window.Cultured&&Cultured.repo&&typeof Cultured.repo.recordEvent==='function')await Cultured.repo.recordEvent(kind,targetType,targetId,extra||{})}catch(e){}}
 ACT['to-room']=b=>{
   const th=$('.page[data-thread]:not([data-closing])');
   const withId=b.dataset.with||(th?th.dataset.thread:null);
@@ -586,7 +596,12 @@ ACT.sharego=async b=>{
 ACT.closesheet=closeSheet;
 
 /* ================= matrix ================= */
-function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius).sort((a,b)=>b.score-a.score)}
+const MATCH_MIN_SCORE=CFG.matchMinScore??60;
+function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius&&p.score>=MATCH_MIN_SCORE).sort((a,b)=>b.score-a.score)}
+/* How many in-range people the score gate is holding back. Used only to tell
+   "nobody is here" apart from "nobody clears your bar yet" — a deck that goes
+   empty should say which one it is. */
+function gatedCount(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius&&p.score<MATCH_MIN_SCORE).length}
 const labelFor=s=>s>=90?'Taste twin':s>=80?'Strong overlap':'Worth a listen';
 function renderMatchShell(){
   $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}${mediaLayer('matrixVideo','matrix-video')}</div>
@@ -612,17 +627,20 @@ function pcardHTML(p,k){
     <div class="dc-bot"><h3>${esc(p.name)}, ${p.age}</h3><p>${esc(p.bio)}</p><div class="covrow">${p.shared.slice(0,3).map(id=>`<div class="cov">${poster(TRACKS[id],true)}</div>`).join('')}<span>${p.shared.length} in common</span></div></div>
   </div>`;
 }
-function endHTML(){
+function endHTML(gated){
   const passed=S.history.filter(id=>S.decided[id]==='pass').length;
-  return `<div class="endq"><div class="pair">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:12,w:1.3})}</div>
+  const pair=`<div class="pair">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:12,w:1.3})}</div>`;
+  const actions=`<div class="row2">${passed?`<button class="cta sm" style="width:auto;padding:0 22px" data-act="revisit">Revisit ${passed} passed</button>`:''}<button class="cta sm ghostb" style="width:auto;padding:0 22px;margin:0" data-act="open-settings">Widen radius</button></div>`;
+  if(gated)return `<div class="endq">${pair}<h2>Still calibrating</h2><p>Nobody nearby clears your resonance bar yet. React to a few more memes and songs — your deck refills as the scores move.</p>${actions}</div>`;
+  return `<div class="endq">${pair}
     <h2>That’s everyone nearby, for now</h2>
-    <p>New people show up as they join within ${S.set.radius} km. Widen your radius, or take another look at the ones you passed.</p>
-    <div class="row2">${passed?`<button class="cta sm" style="width:auto;padding:0 22px" data-act="revisit">Revisit ${passed} passed</button>`:''}<button class="cta sm ghostb" style="width:auto;padding:0 22px;margin:0" data-act="open-settings">Widen radius</button></div></div>`;
+    <p>New people show up as they join within ${S.set.radius} km. Widen your radius, or take another look at the ones you passed.</p>${actions}</div>`;
 }
 function renderDeck(enter){
   const q=queue(),p=q[0],deck=$('#deck');if(!deck)return;
-  deck.innerHTML=p?q.slice(0,3).map((x,i)=>pcardHTML(x,i)).reverse().join(''):endHTML();
-  $('#msSub').textContent=p?`${q.length} nearby`:'Nobody in range';$('#msLabel').textContent=p?labelFor(p.score):'All caught up';
+  const gated=!p&&gatedCount()>0;
+  deck.innerHTML=p?q.slice(0,3).map((x,i)=>pcardHTML(x,i)).reverse().join(''):endHTML(gated);
+  $('#msSub').textContent=p?`${q.length} nearby`:(gated?'No strong overlap yet':'Nobody in range');$('#msLabel').textContent=p?labelFor(p.score):(gated?'Still calibrating':'All caught up');
   if(p)countTo($('#bigScore'),p.score,900);else $('#bigScore').textContent='--';
   ['pass','res','cmp'].forEach(x=>$('#b-'+x).disabled=!p);$('#b-rw').disabled=!S.history.length;
   const card=$('.pcard.top',deck);
@@ -692,18 +710,47 @@ ACT['prof-res']=b=>{
 function showMutual(p){
   const o=$('#overlay');
   const sparks=Array.from({length:28},(_,i)=>`<i style="--i:${i};--a:${(i/28*360).toFixed(1)}deg;--d:${34+(i%5)*12}px">${['✦','•','♪','♡'][i%4]}</i>`).join('');
-  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-sparks" aria-hidden="true">${sparks}</div><div class="mut-fp">${pairFP(p)}</div><span class="eyebrow">A rare overlap</span><h2>You two resonate.</h2><p>${p.score}% overlap. You both play ${esc(sharedTitles(p))}.</p><button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button></div>`;
+  /* Confetti: 26 shards in brand colors plus 12 glyphs. Pure CSS animation,
+     transform/opacity only, self-removing via `forwards`; calm mode shows the
+     settled rain instead of the fall (the .calm rules in app.css). */
+  const COLORS=['#ff5d7a','#ffd166','#EFE9DA'];
+  const confetti=Array.from({length:26},(_,i)=>{const x=Math.round(Math.random()*100),dl=(Math.random()*1.1).toFixed(2),t=(2.1+Math.random()*1.4).toFixed(2),dx=`${Math.round(-60+Math.random()*120)}px`;return `<i style="--x:${x}%;--c:${COLORS[i%3]};--r:${Math.round(Math.random()*360)}deg;--dl:${dl}s;--t:${t}s;--dx:${dx}"></i>`}).join('')
+    +Array.from({length:12},(_,i)=>{const x=Math.round(Math.random()*100),dl=(Math.random()*1.2).toFixed(2);return `<i class="glyph" style="--x:${x}%;--c:${i%2?'#ffd166':'#ff5d7a'};--r:${Math.round(Math.random()*360)}deg;--dl:${dl}s;--t:${(2.4+Math.random()).toFixed(2)}s;--dx:${Math.round(-60+Math.random()*120)}px">${['♪','✦','♡'][i%3]}</i>`}).join('');
+  o.innerHTML=`<div class="mut" style="--mc:${p.pal[0]}"><div class="mut-confetti" aria-hidden="true">${confetti}</div><div class="mut-sparks" aria-hidden="true">${sparks}</div><div class="mut-fp">${pairFP(p)}</div><span class="eyebrow">A rare overlap</span><h2>You two resonate.</h2><p>${p.score}% overlap. You both play ${esc(sharedTitles(p))}.</p><button class="cta" data-act="mut-hi" data-id="${p.id}">Say hi to ${esc(p.name)}</button><button class="cta ghostb" data-act="mut-close">Keep browsing</button></div>`;
   o.classList.add('on');haptic([20,60,20,60,30]);track('match_created',{source:'matrix',score:p.score});
 }
 ACT['mut-close']=()=>{const o=$('#overlay');o.classList.remove('on');o.innerHTML=''};
-ACT['mut-hi']=b=>{ACT['mut-close']();go('people');setTimeout(()=>openThread(b.dataset.id),250)};
-
-/* ================= culture pulse ================= */
+ACT['mut-hi']=b=>{ACT['mut-close']();go('people');setTimeout(()=>openThread(b.dataset.id),250)};  /* ================= culture arena ================= */
 let PFX=null;
 function stopPulseFX(){if(PFX){clearInterval(PFX.r);PFX=null}}
-function startPulseFX(){
-  const c=$('#pulsefx');if(!c||S.set.calm)return;
-  stopPulseFX();const ctx=c.getContext('2d');const st={r:null,d:[]};
+
+/* Arena shell (Pulse renamed). The duplicate vibe-zone rows and the fabricated
+   Pulse stats strip are removed in this phase; the card row, the local-signal card,
+   the note rail and the duel entry all remain as the Phase-3 fill-in point. */
+function renderArena(){
+  const joined=!!S.pulse?.duel;
+  /* The week badge is the real ISO week of "now", not a hard-coded number.
+     Thursday rule: the week owns the year of its Thursday. */
+  const now=new Date(),thu=new Date(now);thu.setDate(now.getDate()+3-((now.getDay()+6)%7));
+  const week=`WEEK ${1+Math.round(((thu.getTime()-new Date(thu.getFullYear(),0,1).getTime())/864e5-3+((new Date(thu.getFullYear(),0,1).getDay()+6)%7))/7)}`;
+  $('#s-arena').innerHTML=`<div class="tint pulse-tint"><div class="pulse-glow glow-a"></div><div class="pulse-glow glow-b"></div>${PFX&&!S.set.calm?'':'<canvas id="arena-fx" class="pulsefx" aria-hidden="true"></canvas>'}</div>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}Arena</div><div class="hr"><button class="ibtn" data-act="arena-refresh" aria-label="Refresh arena">${I.refresh}</button></div></header>
+    <div class="pulse-wrap">
+      <section class="pulse-hero stg" style="--d:1"><div class="pulse-kicker"><span class="live-dot"></span> CULTURE IS MOVING</div><h1>What the room<br>is feeling <em>now.</em></h1><p>Small signals from the people, sounds and jokes shaping your week.</p><div class="pulse-orbit" aria-hidden="true"><div class="orbit-ring r1"></div><div class="orbit-ring r2"></div><div class="orbit-core">${I.star}</div><i class="orbit-dot d1">♪</i><i class="orbit-dot d2">♡</i><i class="orbit-dot d3">✦</i></div></section>
+      <div class="pulse-section-head stg" style="--d:2"><div><span class="eyebrow">Your weekly ritual</span><h2>Pick a little culture</h2></div><span class="pulse-week">${week}</span></div>
+      <section class="games-row stg" style="--d:3">
+        <article class="g-card duel-card"><div class="g-art duel-art"><span style="--dl:-1s">😂</span><span style="--dl:-2.6s">📝</span><span class="g-glyph">${I.pair}</span></div><div class="g-copy"><span class="chipg">MEME DUEL · 3 MIN</span><h3>Same meme.<br>Different damage.</h3><p>Caption five prompts. See who gets your exact flavor of funny.</p><button class="cta sm ${joined?'done':''}" data-act="pulse-duel">${joined?'Duel joined':'Enter the duel'} ${joined?I.check:I.chevr}</button></div></article>
+        <article class="g-card nhi-card"><div class="g-art nhi-art"><span style="--dl:-.6s">🙈</span><span style="--dl:-3.2s">👀</span><span class="g-glyph">${I.star}</span></div><div class="g-copy"><span class="chipg">NEVER HAVE I EVER · 2 MIN</span><h3>Confess<br>carefully.</h3><p>Ten cards. Own it or deny it — your answers redraw your humor map.</p><button class="cta sm ${S.nhi?.done?'done':''}" data-act="nhi-open">${S.nhi?.done?'Round played':'Play a round'} ${S.nhi?.done?I.check:I.chevr}</button></div></article>
+        <article class="g-card ice-card-game"><div class="g-art ice-art"><span style="--dl:-1.8s">🫂</span><span class="g-glyph">${I.chat}</span></div><div class="g-copy"><span class="chipg">ICEBREAKER ROULETTE</span><h3>An opener,<br>not “hey”.</h3><p>A question built from what you two actually share. Spin, then send.</p><button class="cta sm ghostb" data-act="nhi-icebreaker">Spin the wheel ${I.chevr}</button></div></article>
+      </section>
+      <section class="pulse-grid stg" style="--d:4">
+        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Your city<br>is still quiet.</h3><p>Local signal switches on once enough people in one area are here. We would rather show you nothing than invent a number.</p><button class="cta sm ghostb" data-act="arena-explore">How this works ${I.chevr}</button></div></article>
+      </section>
+      <section class="pulse-note stg" style="--d:5"><div class="note-icon">${I.note}</div><div><b>Your Fingerprint gets sharper in public.</b><span>React, save, listen. We’ll keep the useful parts.</span></div><button class="ibtn" data-act="tab" data-t="feed" aria-label="Open Culture Feed">${I.chevr}</button></section>
+    </div>`;
+  layoutTabs($('#s-arena'));loadArenaFX();
+}
+function loadArenaFX(){const c=$('#arena-fx');if(!c||S.set.calm)return;PFX=null;stopPulseFX();const ctx=c.getContext('2d');const st={r:null,d:[]};
   const fit=()=>{const r=c.getBoundingClientRect();const w=r.width>10?r.width:390,h=r.height>10?r.height:430;const dp=Math.min(2,window.devicePixelRatio||1);if(c.width!==Math.round(w*dp)||c.height!==Math.round(h*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);st.d.length=0;for(let i=0;i<26;i++)st.d.push({x:Math.random()*c.width,y:Math.random()*c.height,r:1+Math.random()*2.6,v:.18+Math.random()*.6,a:.06+Math.random()*.26,g:['\u266A','\u2726','\u2661'][i%3]})}};
   fit();setTimeout(fit,420);
   st.r=setInterval(()=>{fit();ctx.clearRect(0,0,c.width,c.height);const dp=Math.min(2,window.devicePixelRatio||1);
@@ -712,28 +759,6 @@ function startPulseFX(){
       if(q.g){ctx.font=`${11*dp}px serif`;ctx.fillStyle=`rgba(255,209,102,${q.a+.12})`;ctx.fillText(q.g,q.x+9,q.y)}}},33);
   PFX=st;
 }
-const ZONES=[['Feral Hours','\uD83D\uDE08','life','23:00\u201302:00'],['Golden Hour','\uD83C\uDF07','music','17:30\u201319:30'],['3AM Brain','\uD83E\uDDE0','screen','02:00\u201304:00'],['Soft Sunday','\uD83E\uDDF8','love','all day'],['Ramen Budget','\uD83C\uDF5C','money','payday \u22121']];
-
-function renderPulse(){
-  const joined=!!S.pulse?.duel;
-  $('#s-pulse').innerHTML=`<div class="tint pulse-tint"><div class="pulse-glow glow-a"></div><div class="pulse-glow glow-b"></div><canvas id="pulsefx" class="pulsefx" aria-hidden="true"></canvas></div>
-    <header class="topbar"><div class="wordmark">${RING_GLYPH}Pulse</div><div class="hr"><button class="ibtn" data-act="pulse-refresh" aria-label="Refresh pulse">${I.refresh}</button></div></header>
-    <div class="pulse-wrap">
-      <section class="pulse-hero stg" style="--d:1"><div class="pulse-kicker"><span class="live-dot"></span> CULTURE IS MOVING</div><h1>What the room<br>is feeling <em>now.</em></h1><p>Small signals from the people, sounds and jokes shaping your week.</p><div class="pulse-orbit" aria-hidden="true"><div class="orbit-ring r1"></div><div class="orbit-ring r2"></div><div class="orbit-core">${I.star}</div><i class="orbit-dot d1">♪</i><i class="orbit-dot d2">♡</i><i class="orbit-dot d3">✦</i></div></section>
-      <section class="pulse-stats stg" style="--d:2"><div><b>12</b><span>signals today</span></div><div><b>87%</b><span>taste twins nearby</span></div><div><b>4</b><span>new sparks</span></div></section>
-      <div class="pulse-section-head stg" style="--d:3"><div><span class="eyebrow">Vibe zones</span><h2>Pick your weather</h2></div><span class="pulse-week">LIVE</span></div>
-      <section class="zone-row stg" style="--d:4">${ZONES.map(z=>`<button class="zone" data-act="zone-go" data-k="${z[2]}" data-n="${z[0]}"><span class="z-e">${z[1]}</span><b>${z[0]}</b><span class="z-t">${z[3]}</span><i class="z-live"></i></button>`).join('')}</section>
-      <div class="pulse-section-head stg" style="--d:5"><div><span class="eyebrow">Your weekly ritual</span><h2>Pick a little culture</h2></div><span class="pulse-week">WEEK 41</span></div>
-      <section class="pulse-grid stg" style="--d:6">
-        <article class="pulse-card duel-card"><div class="pulse-card-art duel-art"><span>😂</span><span>📝</span><i>+</i></div><div class="pulse-card-copy"><span class="chipg">MEME DUEL · 3 MIN</span><h3>Same meme.<br>Different damage.</h3><p>Caption five prompts. See who gets your exact flavor of funny.</p><button class="cta sm ${joined?'done':''}" data-act="pulse-duel">${joined?'Duel joined':'Enter the duel'} ${joined?I.check:I.chevr}</button></div></article>
-        <article class="pulse-card field-card"><div class="pulse-card-art field-art"><div class="mini-fp">${fpSVG(fpParams(42),'#EFE9DA','#ff5d7a',{n:9,w:1.2})}</div></div><div class="pulse-card-copy"><span class="chipg">LOCAL SIGNAL</span><h3>Your city<br>is still quiet.</h3><p>Local signal switches on once enough people in one area are here. We would rather show you nothing than invent a number.</p><button class="cta sm ghostb" data-act="pulse-explore">How this works ${I.chevr}</button></div></article>
-      </section>
-      <section class="pulse-note stg" style="--d:7"><div class="note-icon">${I.note}</div><div><b>Your Fingerprint gets sharper in public.</b><span>React, save, listen. We’ll keep the useful parts.</span></div><button class="ibtn" data-act="tab" data-t="feed" aria-label="Open Culture Feed">${I.chevr}</button></section>
-    </div>`;
-}
-ACT['pulse-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderPulse();toast('Pulse refreshed · new signals found');haptic(8)};
-ACT['zone-go']=b=>{mmTab=b.dataset.k;go('feed');renderFeed();toast('Vibe zone: '+b.dataset.n);haptic(8)};
-const _renderPulse=renderPulse;renderPulse=function(){_renderPulse();requestAnimationFrame(startPulseFX)};
 const DUEL=[
  {id:'d1',e:'🚪',q:'What the club door says at 1am',a:['“you shall not pass until 2am”','capacity is a suggestion']},
  {id:'d2',e:'🎧',q:'Your 3am playlist is…',a:['a love letter with no recipient','a war crime against genres']},
@@ -743,6 +768,9 @@ const DUEL=[
 ];
 const duelPartner=()=>person((S.matchedIds&&S.matchedIds[0])||'ines');
 const duelPartnerPick=qid=>{const p=duelPartner();return hash((p?p.seed:3)+'|'+qid)%2?'b':'a'};
+/* Duel v3: prompt cards, a stepping progress bar and a ring verdict. The
+   scoring is unchanged — the same deterministic partner picks, so a replay is
+   still honest — only the presentation moved. */
 function duelBody(){
   const D=S.duel,step=Object.keys(D.picks).length;
   if(step>=DUEL.length&&!D.done){
@@ -753,19 +781,85 @@ function duelBody(){
     const p=duelPartner(),sc=D.score||0;
     const verdicts=[[5,'Same damage. Suspiciously aligned.'],[4,'Mostly same damage. Concerning.'],[3,'Adjacent chaos. Respectable.'],[2,'Different damage. Send a meme anyway.'],[1,'Different damage. Opposites attract?'],[0,'Different damage. A whole cultural gap to explore.']];
     const v=(verdicts.find(x=>sc>=x[0])||verdicts[4])[1];
-    return `<span class="chipg">Meme Duel · verdict</span><div class="duel-verdict"><div class="duel-emoji">${['🙈','😅','🙂','😈','🔥','🔥'][sc]||'🔥'}</div><div class="duel-score">${sc}<small>/5</small></div><b>${v}</b><span class="hint">You and ${esc(p?p.name:'your match')} captioned five prompts without peeking.</span></div>${p?`<button class="cta" data-act="duel-send">Send the verdict to ${esc(p.name)}</button>`:''}<button class="cta ghostb" data-act="duel-again">Replay the duel</button>`;
+    const de=['🙈','😅','🙂','😈','🔥','🔥'][sc]||'🔥';
+    const C=2*Math.PI*74,off=C*(1-sc/DUEL.length);
+    return `<div class="duel2-verdict">
+      <div class="duel2-ring" role="img" aria-label="${sc} of ${DUEL.length} answers matched">
+        <svg viewBox="0 0 168 168" aria-hidden="true"><circle class="track" cx="84" cy="84" r="74" stroke-width="7"/><circle class="fill" cx="84" cy="84" r="74" stroke-width="7" style="--len:${C.toFixed(1)};--to:${off.toFixed(1)}"/></svg>
+        <span class="dv-wrap"><span class="dv">${sc}<small>/${DUEL.length}</small></span><span class="de">${de}</span></span>
+      </div>
+      <b>${v}</b><span class="hint">You and ${esc(p?p.name:'your match')} captioned five prompts without peeking.</span>
+    </div>
+    <div class="game-cta-row">${p?`<button class="cta" data-act="duel-send">Send to ${esc(p.name)}</button>`:''}<button class="cta ghostb" data-act="duel-again">Replay</button></div>`;
   }
   const cur=DUEL[step];
-  return `<span class="chipg">Meme Duel · ${step+1} of ${DUEL.length}</span><div class="duel-prog">${DUEL.map((x,i)=>`<i class="${i<step?'done':i===step?'cur':''}"></i>`).join('')}</div><div class="duel-emoji">${cur.e}</div><h3 class="sh-t" style="text-align:center">${esc(cur.q)}</h3><div class="duel-opts">${cur.a.map((t,i)=>`<button class="duel-opt" data-act="duel-pick" data-v="${i?'b':'a'}"><b>${i?'B':'A'}</b><span>${esc(t)}</span></button>`).join('')}</div>`;
+  return `<div class="duel2-head"><span class="chipg">Meme Duel</span><span class="duel2-step">${step+1} / ${DUEL.length}</span></div>
+    <div class="duel2-prog" aria-hidden="true">${DUEL.map((x,i)=>`<i class="${i<step?'done':i===step?'cur':''}"></i>`).join('')}</div>
+    <div class="duel2-stage"><span class="duel2-emoji">${cur.e}</span><h3 class="duel2-q">${esc(cur.q)}</h3><span class="duel2-vs">pick your caption</span></div>
+    <div class="duel2-opts">${cur.a.map((t,i)=>`<button class="duel2-opt ${i?'opt-b':'opt-a'}" data-act="duel-pick" data-v="${i?'b':'a'}"><b>${i?'B':'A'}</b><span>${esc(t)}</span></button>`).join('')}</div>`;
 }
 function duelOpen(){S.pulse.duel=true;save();openSheet(duelBody())}
 function duelRefresh(){const sh=$('#sheetwrap .sheet');if(sh)sh.innerHTML=duelBody()}
-ACT['pulse-duel']=()=>{duelOpen();haptic([8,25,8])};
+
+/* ================= never have i ever ================= */
+/* Ten confession cards. Answering honestly is the point: every “guilty” is a
+   real humor-style signal, so the round feeds the same event seam the feed
+   uses — but only the participant's own answers, nothing invented. */
+const NHI_CARDS=[
+ {e:'🎧',q:'…replayed one song so many times it got embarrassing',hint:'The replay count is between you and the algorithm.'},
+ {e:'🚕',q:'…cried on night transport to a song I chose',hint:'The night bus claims all of us eventually.'},
+ {e:'📕',q:'…pretended to have read the book for the group chat',hint:'The group chat suspects already.'},
+ {e:'🎬',q:'…watched the same film five-plus times in one year',hint:'Comfort is a legitimate genre.'},
+ {e:'🎤',q:'…performed a full concert alone in my room',hint:'Sold out. Every night.'},
+ {e:'📱',q:'…stalked an artist’s page at 3am instead of sleeping',hint:'The 3am brain wants what it wants.'},
+ {e:'💸',q:'…bought concert tickets I could not really afford',hint:'Rent is temporary. The setlist is forever.'},
+ {e:'🫥',q:'…left someone on read because the vibe was too good to ruin',hint:'A masterpiece needs the right silence.'},
+ {e:'🛍️',q:'…bought merch from an artist I discovered that same week',hint:'Commitment speedrun.'},
+ {e:'🌀',q:'…made an entire playlist for a person I never sent it to',hint:'The saddest art form of our generation.'}
+];
+function nhiBody(){
+  const N=S.nhi||(S.nhi={i:0,hits:0,done:false});
+  if(N.done){
+    const honest=Math.round((N.hits/Math.max(1,N.i))*100);
+    const line=honest>=70?'Chaotic. Excellent. Your Fingerprint just got much sharper.':honest>=40?'A healthy amount of damage. The engine thanks you.':'A person of mystery. The engine will ask again someday.';
+    return `<div class="game-sheet-head"><span class="chipg">Never Have I Ever</span><span class="duel2-step">done</span></div>
+      <div class="duel2-verdict"><div class="duel2-ring" role="img" aria-label="${N.hits} of ${N.i} confessions">
+        <svg viewBox="0 0 168 168" aria-hidden="true"><circle class="track" cx="84" cy="84" r="74" stroke-width="7"/><circle class="fill" cx="84" cy="84" r="74" stroke-width="7" style="--len:${(2*Math.PI*74).toFixed(1)};--to:${(2*Math.PI*74*(1-N.hits/Math.max(1,N.i))).toFixed(1)}"/></svg>
+        <span class="dv-wrap"><span class="dv">${N.hits}<small>/${N.i}</small></span><span class="de">🙈</span></span>
+      </div><b>${line}</b><span class="hint">Confessions stay on your device. Only the humor signal is kept.</span></div>
+      <div class="game-cta-row"><button class="cta" data-act="nhi-again">Play again</button><button class="cta ghostb" data-act="closesheet">Done</button></div>`;
+  }
+  const cur=NHI_CARDS[N.i];
+  return `<div class="game-sheet-head"><span class="chipg">Never Have I Ever</span><span class="duel2-step">${N.i+1} / ${NHI_CARDS.length}</span></div>
+    <div class="nhi-stage"><span class="nhi-count">card ${N.i+1} of ${NHI_CARDS.length}</span><h3 class="nhi-q">Never have I ever…</h3><p class="nhi-q">${cur.e} ${esc(cur.q)}</p><p class="nhi-hint">${esc(cur.hint)}</p></div>
+    <div class="nhi-opts">
+      <button class="nhi-opt opt-yes" data-act="nhi-answer" data-v="1"><span>${I.heart} Guilty</span></button>
+      <button class="nhi-opt opt-no" data-act="nhi-answer" data-v="0"><span>${I.check} Clean</span></button>
+    </div>
+    <div class="nhi-meter" aria-hidden="true">${NHI_CARDS.map((_,k)=>`<i class="${k<N.i?'hit':''}"></i>`).join('')}</div>`;
+}
+function nhiOpen(){openSheet(nhiBody())}
+function nhiRefresh(){const sh=$('#sheetwrap .sheet');if(sh)sh.innerHTML=nhiBody()}
+ACT['nhi-open']=()=>{nhiOpen();haptic([8,25,8])};
+ACT['nhi-answer']=b=>{
+  const N=S.nhi;if(!N||N.done)return;
+  const guilty=b.dataset.v==='1';
+  if(guilty){N.hits++;burst(b,'#ff5d7a');haptic(12)}else haptic(6);
+  N.i++;
+  if(N.i>=NHI_CARDS.length){N.done=true;track('nhi_round_done',{source:DEMO_DATA?'demo':'live'})}
+  save();nhiRefresh();
+};
+ACT['nhi-again']=()=>{S.nhi={i:0,hits:0,done:false};save();nhiRefresh();haptic(8)};
+/* Icebreaker straight from the arena — same honest prompts as the chat one. */
+ACT['nhi-icebreaker']=b=>{const p=duelPartner();if(p)ACT.icebreaker({dataset:{id:p.id}})};
+ACT['pulse-duel']=()=>{duelOpen();haptic([8,25,8]);if(DEMO_DATA)track('duel_ghost_fallback',{source:'demo'});
+};
 ACT['duel-start']=duelOpen;
 ACT['duel-pick']=b=>{const D=S.duel,step=Object.keys(D.picks).length;if(step>=DUEL.length)return;D.picks[DUEL[step].id]=b.dataset.v;save();haptic(6);duelRefresh()};
 ACT['duel-again']=()=>{S.duel={picks:{},done:false,score:null,ts:0};save();duelRefresh();haptic(8)};
-ACT['duel-send']=()=>{const p=duelPartner();if(!p)return;ensureThread(p.id);S.threads[p.id].msgs.push({f:'me',t:`Meme Duel verdict: ${S.duel.score||0}/5 same damage`,ts:Date.now()});save();closeSheet();toast('Verdict sent to '+p.name);haptic(10)};
-ACT['pulse-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
+ACT['duel-send']=()=>{const p=duelPartner();if(!p)return;ensureThread(p.id);S.threads[p.id].msgs.push({f:'me',t:`Meme Duel verdict: ${S.duel.score||0}/5 same damage`,ts:Date.now()});save();closeSheet();toast('Verdict sent to '+p.name);haptic(10);track('duel_completed',{source:DEMO_DATA?'demo':'live'})};
+ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Arena refreshed · new signals found');haptic(8)};
+ACT['arena-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
 
 /* ================= people + chat ================= */
 let PV='chats';
@@ -797,8 +891,12 @@ const TYPING={};
 function renderMsgs(id){
   const pg=$(`.page[data-thread="${id}"]`);if(!pg)return;
   const p=person(id),t=S.threads[id],box=$('#msgs',pg);
+  /* Day chips group the history the way a real conversation reads. The chip
+     only renders when the day actually changes, so old threads stay calm. */
+  let lastDay='';
+  const dayChip=ts=>{const d=new Date(ts).toDateString();if(d===lastDay)return '';lastDay=d;const today=new Date().toDateString();return `<div class="daychip">${d===today?'today':d}</div>`};
   box.innerHTML=`<div class="ctxcard"><div class="top"><div class="ctx-fp">${pairFP(p,false)}</div><div><b>You and ${esc(p.name)} resonate at ${p.score}%</b><span class="t">You both play ${esc(sharedTitles(p))}.</span></div></div><div class="ctx-actions"><button class="cta sm" data-act="icebreaker" data-id="${id}">Give me an opener</button>${FEATURE_ROOMS?`<button class="cta sm ghostb" data-act="to-room" data-id="${p.shared[0]}" data-with="${id}">${ROOM_OFFER_LABEL}</button>`:''}</div></div>`
-    +t.msgs.map(m=>m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div>${FEATURE_ROOMS?`<button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button>`:''}</div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
+    +t.msgs.map(m=>dayChip(m.ts)+(m.kind==='meme'?memeBub(m):m.kind==='track'?`<div class="bub-t ${m.f}"><div class="cv">${poster(TRACKS[m.ref],true)}</div><div><b>${esc(TRACKS[m.ref].title)}</b><span>${esc(TRACKS[m.ref].artist)}</span></div>${FEATURE_ROOMS?`<button class="lp" data-act="to-room" data-id="${m.ref}" data-with="${id}">Listen</button>`:''}</div>`:`<div class="bub ${m.f}">${esc(m.t)}</div>`)).join('')+(TYPING[id]?'<div class="typing"><i></i><i></i><i></i></div>':'');
   box.scrollTop=box.scrollHeight;
   $('#starters',pg).innerHTML=t.msgs.length<=1?`<div class="starters">${STARTERS.map(s=>`<button class="chip" data-act="starter" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:'';
 }
@@ -1061,8 +1159,10 @@ ACT['saved-open']=b=>{
   const id=b.dataset.id,p=POSTS[id],r=refOf(p);
   openSheet(`<div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div><button class="cta" data-act="open-saved" data-id="${id}">Open</button><button class="cta ghostb" data-act="unsave" data-id="${id}">Remove from saved</button>`);
 };
-ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),300)};
+ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),300);trackEvent('view','meme',b.dataset.id)};
 ACT.unsave=b=>{rs(b.dataset.id).s=0;save();syncPost(b.dataset.id);closeSheet();renderYou()};
+function trackView(id,type){const p=POSTS[id];if(!p)return;trackEvent('view',type||(p.kind==='music'?'track':'meme'),id,{label:p.kind==='music'?TRACKS[p.ref].title:p.text.split('\n')[0]})};
+ACT['mm-open']=b=>{trackView(b.dataset.id);openDetail(b.dataset.id,b)};
 SEG.vis=v=>{S.prof.vis=v;save();toast({all:'Everyone can see your Fingerprint',matches:'Only matches can see it',me:'Your Fingerprint is private'}[v])};
 ACT['share-fp']=()=>{
   const saved=Object.keys(mmS().s).filter(k=>mmS().s[k]).map(k=>mmOf(k)).filter(Boolean).slice(0,3);
@@ -1236,7 +1336,6 @@ ACT['ob-done']=()=>{
 
 /* ================= v3: today's memes ================= */
 const STK='<div class="stks" aria-hidden="true">'+['😂','🎧','🔥','💀','✨','🫠'].map((e,i)=>`<i style="--i:${i};--x:${[6,80,14,74,44,90][i]}%;--y:${[2,8,66,60,90,36][i]}%">${e}</i>`).join('')+'</div>';
-const MM_TABS=[['all','For You'],['work','9–5 Cyber'],['music','Main Character Audio'],['screen','Couch Canon'],['life','Third Space'],['love','Situationship HQ'],['money','Ramen Budget']];
 const WEB_MEMES=[
  {id:'web01',k:'life',e:'🫠',t:'Hydration, but make it suspicious',img:'/memes/meme-01.webp',alt:'Relatable gym and hydration meme'},
  {id:'web02',k:'life',e:'🚿',t:'A family group chat classic',img:'/memes/meme-02.webp',alt:'Family and shower waiting meme'},
@@ -1289,19 +1388,19 @@ const mmTxt=t=>esc(t).replace(/\n/g,'<br>');
 function mmVisual(m){return m.img?`<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy"></div>`:`<span class="mm-e">${m.e}</span>`}
 function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}">${m.img?`<img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy">`:`<span>${m.e}</span>`}<i>${esc(m.t.split('\n')[0])}</i></div>`}
 function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${MM.length} in-house</span></div><div class="mm-tabs" role="tablist">${MM_TABS.map(t=>`<button class="chip ${t[0]===mmTab?'on':''}" data-act="mm-tab" data-v="${t[0]}" aria-pressed="${t[0]===mmTab}">${t[1]}</button>`).join('')}</div><div class="mm-row" id="mmrow">${mmList().map(mmCard).join('')}</div></section>`}
-ACT['mm-tab']=b=>{mmTab=b.dataset.v;$$('.mm-tabs .chip').forEach(c=>{const on=c===b;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)});const r=$('#mmrow');r.innerHTML=mmList().map(mmCard).join('');r.scrollLeft=0;haptic(5)};
+function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in-house</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
+ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
-ACT['mm-like']=b=>{const id=mmId(b),st=mmS();st.l[id]=st.l[id]?0:1;b.classList.toggle('on',!!st.l[id]);b.setAttribute('aria-pressed',!!st.l[id]);save();if(st.l[id]){burst(b,'#ff5d7a');haptic(10)}};
-ACT['mm-save']=b=>{const id=mmId(b),st=mmS();st.s[id]=st.s[id]?0:1;b.classList.toggle('on',!!st.s[id]);b.setAttribute('aria-pressed',!!st.s[id]);save();renderYou();toast(st.s[id]?'Pinned to your meme shelf':'Removed from shelf');haptic(8)};
+ACT['mm-like']=b=>{const id=mmId(b),st=mmS();st.l[id]=st.l[id]?0:1;b.classList.toggle('on',!!st.l[id]);b.setAttribute('aria-pressed',!!st.l[id]);save();repoCall('recordReaction',id,'like');if(st.l[id]){burst(b,'#ff5d7a');haptic(10)}};
+ACT['mm-save']=b=>{const id=mmId(b),st=mmS();st.s[id]=st.s[id]?0:1;b.classList.toggle('on',!!st.s[id]);b.setAttribute('aria-pressed',!!st.s[id]);save();repoCall('recordReaction',id,'save');renderYou();toast(st.s[id]?'Pinned to your meme shelf':'Removed from shelf');haptic(8)};
 ACT['mm-share']=b=>{
   const id=mmId(b),ids=Object.keys(S.threads||{});
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
 };
-ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid)};
+ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
 function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
 ACT['meme-pick']=()=>openSheet(`<h3 class="sh-t">Send a meme</h3><div class="mm-grid">${MM.map(m=>`<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`).join('')}</div>`);
-ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();renderMsgs(id);haptic(8);reply(id)};
+ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();renderMsgs(id);haptic(8);reply(id);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
 function mmShelf(){const st=mmS(),ids=MM.filter(m=>st.s[m.id]);return `<div class="blk stg" style="--d:5"><h2>Meme shelf</h2><div class="mm-shelf">${ids.length?ids.map(m=>mmMini(m,'sh')).join(''):'<p class="hint">Save memes from Today’s memes and they pin here.</p>'}</div></div>`}
 /* ================= boot ================= */
 function initMicroInteractions(){
@@ -1313,9 +1412,19 @@ function initMicroInteractions(){
   document.addEventListener('pointerdown',e=>{
     const b=e.target.closest?.('button');if(!b||b.disabled||b.closest('.dcard')&&!b.matches('.glassb'))return;
     const r=b.getBoundingClientRect(),i=document.createElement('i');i.className='ripple';i.style.left=`${e.clientX-r.left}px`;i.style.top=`${e.clientY-r.top}px`;b.appendChild(i);setTimeout(()=>i.remove(),600);
+    /* The global press feel: springy shrink on press, release on up/leave.
+       Every interactive surface gets it for free; calm mode is honoured by
+       the CSS transition duration, and the transform is compositor-only. */
+    if(b.matches('.cta,.chip,.duel2-opt,.nhi-opt,.g-card,.mm-b,.ibtn,.pillb,.rpill,.trk,.slot,.seat')){
+      b.classList.add('pressable','pressing');
+      const lift=()=>b.classList.remove('pressing');
+      b.addEventListener('pointerup',lift,{once:true});
+      b.addEventListener('pointerleave',lift,{once:true});
+      b.addEventListener('pointercancel',lift,{once:true});
+    }
   },{passive:true});
 }
-function renderAll(){renderFeed();renderPulse();renderMatchShell();renderPeople();renderYou();updateBadge();mediaKick()}
+function renderAll(){renderFeed();renderArena();renderMatchShell();renderPeople();renderYou();updateBadge();mediaKick()}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;const f=ACT[a.dataset.act];if(f)f(a,e)});
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.cc-art')){e.preventDefault();ACT['open-d'](e.target)}});
 function splashInit(){

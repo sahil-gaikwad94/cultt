@@ -16,6 +16,7 @@ import {
   emptyFingerprint,
   eventFor,
   domainOf,
+  EVENT_WEIGHTS,
   type EventKind,
   type FingerprintVectors,
 } from '../lib/matching/update';
@@ -151,7 +152,7 @@ interface MockState {
   resonateUsed: number;
   triviaUsed: number;
   /** Append-only event log; `rebuildHumorVector` replays it. */
-  eventLog: Array<{ kind: EventKind; targetType: 'meme' | 'track'; targetId: string; at: number }>;
+  eventLog: Array<{ kind: string; targetType: 'meme' | 'track'; targetId: string; at: number; meta?: Record<string, unknown> }>;
   createdAt: number;
 }
 
@@ -512,7 +513,37 @@ export class MockRepo implements Repo {
     targetId: string,
     meta: Record<string, unknown> = {},
   ): Promise<void> {
-    await this.applyContentEvent(kind, true, Boolean(meta.dailyDrop), targetType, targetId);
+    // Every event is logged — that is the Phase-0 promise. Only real taste
+    // signals move the vector: a `view` must not decay the humor block or
+    // inflate the calibration count (an unweighted event still applied decay
+    // and eventCount+1 before this split).
+    const isTasteSignal = Object.prototype.hasOwnProperty.call(EVENT_WEIGHTS, kind);
+    if (!isTasteSignal) {
+      this.state.eventLog.push({ kind, targetType, targetId, at: this.now, ...(meta ? { meta } : {}) });
+      this.persist();
+      this.trace({ type: 'event', kind, targetType, targetId });
+      return;
+    }
+    await this.applyContentEvent(kind, true, true, targetType, targetId, Boolean(meta.dailyDrop), meta);
+  }
+
+  async logTasteEvent(kind: string, targetType: 'meme' | 'track', targetId: string, meta?: Record<string, unknown>): Promise<void> {
+    this.state.eventLog.push({ kind, targetType, targetId, at: this.now, ...(meta ? { meta } : {}) });
+    this.persist();
+    this.trace({ type: 'taste_event', kind, targetType, targetId });
+  }
+
+  async listTasteEvents(limit?: number): Promise<Array<{ id: string; kind: string; targetType: 'meme' | 'track'; targetId: string; meta?: Record<string, unknown>; createdAt: string }>> {
+    const effectiveLimit = limit ?? this.state.eventLog.length;
+    const sliced = this.state.eventLog.slice(-effectiveLimit).reverse();
+    return sliced.map((event) => ({
+      id: `evt_${hashString(event.kind + event.targetType + event.targetId + event.at)}`,
+      kind: event.kind,
+      targetType: event.targetType,
+      targetId: event.targetId,
+      meta: { at: event.at, ...(event.meta ?? {}) } as Record<string, unknown>,
+      createdAt: new Date(event.at).toISOString(),
+    }));
   }
 
   private async applyContentEvent(
@@ -522,6 +553,7 @@ export class MockRepo implements Repo {
     targetType: 'meme' | 'track',
     targetId: string,
     dailyDrop = false,
+    meta?: Record<string, unknown>,
   ): Promise<void> {
     const eventKind: EventKind = positive ? kind : kind === 'laugh' ? 'meh' : 'skip';
     const vector = targetType === 'meme' ? this.memeVector(targetId) : this.trackVector(targetId);
@@ -536,7 +568,7 @@ export class MockRepo implements Repo {
 
     if (result.applied) this.state.fingerprint = result.fingerprint;
     if (active) {
-      this.state.eventLog.push({ kind: eventKind, targetType, targetId, at: this.now });
+      this.state.eventLog.push({ kind: eventKind, targetType, targetId, at: this.now, ...(meta ? { meta } : {}) });
       this.recountTopTaste(targetType, targetId, result.weight);
     }
     this.persist();

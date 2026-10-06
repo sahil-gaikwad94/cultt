@@ -32,7 +32,7 @@ const HEIGHT = 960;
 const MAX_BYTES = 1024 * 1024;
 
 /** Must match COLD_OPEN_DURATION in src/motion/timeline.ts. */
-const TIMELINE_MS = 10_600;
+const TIMELINE_MS = 11_400;
 /** How long the settled frame is held after the timeline, before the take ends. */
 const TAIL_MS = 1_000;
 /** Kept to TIMELINE_MS so the clip and the code timeline are the same length. */
