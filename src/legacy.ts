@@ -641,7 +641,11 @@ function decide(kind){
   card.style.transition='transform .55s var(--ease),opacity .5s';
   card.style.transform=`translate3d(${kind==='res'?140:-140}%,0,0) rotate(${kind==='res'?20:-20}deg)`;card.style.opacity='0';
   S.decided[p.id]=kind;S.history.push(p.id);
-  const mutual=kind==='res'&&p.likesYou;
+  /* A mutual is only real if the other person actually acted. The seeded
+     `likesYou` flag is a demo affordance, so a production build can never
+     manufacture one from it — and it is never rendered as a who-liked-me badge,
+     which would be the paywall this product deliberately does not have. */
+  const mutual=kind==='res'&&DEMO_DATA&&p.likesYou===true;
   if(mutual&&S.matchedIds.indexOf(p.id)<0){S.matchedIds.push(p.id);ensureThread(p.id)}
   save();
   setTimeout(()=>{busy=false;renderDeck();if(mutual)showMutual(p)},400);

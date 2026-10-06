@@ -323,3 +323,12 @@ the last `TIMELINE_MS + TAIL_MS` of the take. Deterministic, and it cannot drift
 **Enabled.** `manifest.heroVideo.file` now points at `/assets/intro.mp4`, so the
 slot is live. `tests/visual/hero-video.spec.ts` skips itself when the manifest
 leaves the slot empty, so it cannot pass against a configuration nobody runs.
+
+### follow-up: the guardrail test caught my own comment
+
+Gating the seeded `likesYou` behind `DEMO_DATA` means a production build can no
+longer manufacture a mutual out of demo scaffolding. The first attempt at the
+comment explaining it contained the phrase "liked you", which tripped
+`guardrails.test.ts` — that suite scans `legacy.ts` for paywall copy, and it
+cannot tell a comment from UI text. The test is the correct one here, so the
+comment was reworded rather than the assertion relaxed.
