@@ -286,3 +286,22 @@ callers that cannot await.
 | v5 flags on | 124.08 KiB gz | +55.92 |
 
 Tests still 14 files / 304 passing; tsc, eslint and the production build green.
+
+## Honesty — controls that reported success without acting
+
+Follow-up audit after the invented-population fix (D-30). Three more:
+
+- The share sheet offered four buttons and one worked. `Messages` and
+  `Your story` toasted success with nothing behind them, and the fallthrough
+  toasted "Share sheet opened" on browsers with no OS sheet. Now only Copy link,
+  plus Share where `navigator.share` exists.
+- `arena-refresh` toasted "new signals found" after a re-render that fetches
+  nothing. Now says it is up to date.
+- `mm-share` was a live crash, not a lie: it listed persisted thread keys and
+  dereferenced `person(pid)`, which returns undefined now that the invented
+  population is gated. Guarded in `mm-share` and `mm-send`.
+
+Also added `vercel.json` (SPA rewrite for `/d/:id`, cache headers, `/api/*`
+excluded from the rewrite).
+
+Tests still 14 files / 304 passing; tsc, eslint and the production build green.

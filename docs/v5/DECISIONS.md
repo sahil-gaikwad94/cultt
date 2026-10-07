@@ -386,3 +386,62 @@ precache array at the top of every entry, which made the transitive closure
 swallow all 18 chunks and reported two different configurations as identical at
 226.16 KiB. Anyone re-measuring this should expect a wrong number if they grep
 instead of parsing.
+
+
+### D-30 · Audit for actions that lie, after the audit for people that lie
+D-27 removed invented people. Auditing the rest of the app for the same class of
+dishonesty — a control that reports success without doing the thing — turned up
+three more, all in `legacy.ts`:
+
+**The share sheet.** It offered four buttons and one of them worked. `copy`
+copied the link; `more` opened the OS sheet where one existed. `msg` toasted
+*"Sent to Messages"* and `story` toasted *"Added to your story"* with no
+implementation behind either, and the fallthrough toasted *"Share sheet opened"*
+when the OS sheet was missing — so on a desktop browser, three of four buttons
+claimed a share that never happened. A button that lies is worse than no button,
+because the user walks away believing a message was sent.
+
+The sheet now offers only Copy link, plus Share where `navigator.share` exists,
+and states plainly that the link is the only way out where it does not. A
+dismissed OS sheet no longer toasts (cancelling is not a failure), and the copy
+path reports failure instead of assuming the clipboard worked. The native sheet
+already covers every real target, so nothing the user could actually do was
+lost.
+
+**`arena-refresh`.** It increments a counter and re-renders from state already
+on the device, then toasted *"Arena refreshed · new signals found"*. It fetches
+nothing. The Arena screen around it was already honest — the duel status is read
+from the real localStorage record and the week badge is computed from the actual
+ISO date — so the button was the only dishonest part of it. It now says it is up
+to date.
+
+**`mm-share` was a crash, not a lie.** It listed `Object.keys(S.threads)`, and
+thread keys are persisted while the people behind them are not. With the
+invented population gated off, `person(pid)` returns `undefined`, so `orb(p)`
+and `p.name` threw on a list that used to be populated. This is the blast radius
+D-27 opened and the reason that change needed a follow-up pass rather than a
+commit on its own. `mm-share` now filters to people who resolve; `mm-send` bails
+with a message rather than dereferencing `undefined`.
+
+Threads are left on disk. These are view-level guards: nothing the user created
+is deleted, and a thread becomes visible again the moment its person exists.
+
+The three remaining `person(...).name` dereferences are all inside the listening
+room and are covered by the `openRoom` guard — `R.w` is seeded from the
+validated `withWho`, and `room-who` only cycles `R.friends`, which is
+empty-checked before `ROOM` is ever created.
+
+### D-31 · `vercel.json`, and why the build gate has to fail a deploy
+Added the missing deployment config: one rewrite of everything except `/api/*`
+to `index.html` (the `/d/:id` duel deep link parses `location.pathname`, so it
+needs the SPA fallback), immutable caching on Vite's content-hashed `/assets/*`
+and the generated media, and `must-revalidate` on `index.html` so a deploy is
+never stale. The rewrite regex is compiled and checked; `/api/preview` keeps
+serving from the function rather than falling through to the SPA.
+
+`npm run build` begins with `content:gate`, which fails on the 20 unlicensed
+memes unless `ALLOW_UNLICENSED=1` is set. That is the brief's build gate working
+as specified, so the override is deliberately **not** baked into `vercel.json` —
+it has to be set as a deployment env var by someone choosing to ship
+unlicensed placeholder art. Defaulting it on would have defeated the gate that
+exists to prevent exactly that.
