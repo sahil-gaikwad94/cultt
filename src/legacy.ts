@@ -640,7 +640,6 @@ function renderFeed(){
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      <div id="stories-rail">${storiesRailHTML()}</div>
       ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
@@ -1405,6 +1404,7 @@ function renderPeople(){
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
   $('#s-people').innerHTML=`<div class="tint"><i class="aur a1"></i><i class="aur a2"></i><i class="aur a3"></i></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
+    <div id="stories-rail">${storiesRailHTML()}</div>
     ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
     ${!fresh.length&&!chats.length?`<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🫥</span><p class="hint">No conversations yet. A thread opens when you and someone both Resonate — cultured won’t write the first message for you.</p></div></div>`:''}
