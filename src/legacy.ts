@@ -1304,7 +1304,12 @@ const SEATROWS=[8,'s','s','s','s',0,'s','s'];
 function openRoom(o){
   const t=TRACKS[o.trackId]||TRACKS.moons;
   const friends=PEOPLE.filter(p=>p.matched||S.matchedIds.indexOf(p.id)>-1);
-  const R=ROOM={t:t,w:(o.withId&&person(o.withId))?o.withId:friends[0].id,friends:friends.map(f=>f.id),n:2,slot:'Now',day:0,room:0,sel:[],live:{},iv:null};
+  /* A room needs somebody to listen with. With the invented population gated
+     off this array is legitimately empty, and `friends[0].id` used to throw
+     before the page opened. Ask instead of crashing. */
+  const withWho=(o.withId&&person(o.withId))?o.withId:(friends[0]&&friends[0].id);
+  if(!withWho){toast('Nobody to listen with yet — match with someone first.');haptic(6);return}
+  const R=ROOM={t:t,w:withWho,friends:friends.map(f=>f.id),n:2,slot:'Now',day:0,room:0,sel:[],live:{},iv:null};
   const pg=openPage(`<div class="rm-top"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button><div class="rm-t"><b>${esc(t.title)}</b><button data-act="room-who" aria-label="Change who you listen with"><span id="rWith"></span>${I.chevd}</button></div><span style="width:42px"></span></div>
     <div class="page-body" style="padding-bottom:110px">
     <div class="rm-pills stg"><button class="rpill" data-act="room-day" aria-label="Change day"><span id="rDay">Today</span>${I.chevd}</button><div class="rpill sel2"><button class="stp" data-act="seats-dec" aria-label="Fewer seats">${I.minus}</button><span id="rN">2 Seats</span><button class="stp" data-act="seats-inc" aria-label="More seats">${I.plus}</button></div></div>
