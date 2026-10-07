@@ -131,3 +131,62 @@ and `api.deezer.com` are **not** reachable here, and neither is
 (categories, genres, archetypes, reaction names). Components never hard-code
 strings. "signal confidence" is renamed **Fingerprint clarity** in the two
 places the seam still prints it (`src/legacy.ts:1509`, `:1792`, `:1794`).
+
+
+### D-12 · The text-meme corpus is deleted, not deprecated
+`scripts/generate-meme-corpus.mjs` (277 lines), `src/data/seed/memes.json`
+(122 generated typographic cards) and the generated `memes.ts` are gone.
+`src/data/seed/memes.ts` is now a hand-written adapter that maps the real image
+manifest to the shape the feed, `MockRepo` and the seed SQL consume, so there is
+exactly one source of truth: `src/content/memes.manifest.json`.
+
+Three consequences were accepted deliberately:
+- **The feed shrank from 122 cards to 20.** That is the honest size of the
+  corpus. The Deck says so (`"N in the gallery"`), and the empty state is real
+  rather than padded with generated cards.
+- **Seeded like/laugh counts are gone.** They were fabricated
+  (`likes: 208, laughs: 212`) and rule 6 forbids fake stats. A meme now starts
+  at 0 and only the user's own taps move it. `supabaseRepo` reads `image_url`
+  (a column that has existed since `0003_content.sql`) and unlicensed rows seed
+  as `status = 'pending'` rather than `'live'`.
+- **The legacy card markup lost its text branch.** `mmVisual`, `mmMini` and both
+  `memeBub` variants rendered `<span class="mm-e">` plus `mmTxt(...)` when a
+  card had no image. No card can lack an image now, so those branches are dead
+  code and were removed rather than left to rot.
+
+*Alt*: keep the generator behind a flag. Rejected — the brief says delete it,
+and a flag would leave 122 fabricated cards one config value away from
+production.
+
+### D-13 · v5 screens live behind `v5config.v5`, opt-in via `?v5=1`
+`readV5Config()` gained a `v5: { intro, home, vault }` block. All three default
+to `false`; `?v5=1` turns the whole shell on and `window.CULTURED_CONFIG.v5` can
+opt a single screen in or out. `main.ts` reaches `src/v5/mount.ts` only through
+a dynamic import, and `legacy.ts` reads the same flag to bail out of
+`renderFeed()`, so a build without the flag renders byte-for-byte the pre-v5
+app. That is what keeps `main` deployable while Phase 2 lands.
+
+### D-14 · The intro never invents a card
+`renderIntro(t, memes)` dealt `Math.max(1, …)` cards, so an empty catalog still
+showed one blank card — a placeholder standing in for content that does not
+exist. It now deals `min(5, floor(memes))`, and with nothing servable the
+ember, the contours and the wordmark carry the 5.5 s on their own. This matters
+because every shipped meme is currently `rightsCleared: false`, so
+`servableMemes()` returns `[]` in a production build.
+
+### D-15 · Deck ordering scans the whole pool each pick
+`orderDeck`'s meme picker kept a monotonic cursor and searched forward from it.
+Any meme skipped because its category was over-used at that moment was never
+revisited, so a 24-meme + 8-song catalog dealt **30** of its 32 items and the
+missing two were invisible. The picker now scans every unused meme and orders
+by (category use, affinity score). O(n) per pick, n ≤ ~250 — well inside a
+frame. The test that caught it pins the invariant: every catalog item reaches
+the deck exactly once.
+
+### D-16 · Placard overrides replace the `Exhibit №n` template
+The copy deck specifies `Exhibit №{n} · {category} · Mood: {mood}`, and
+`placardFor()` still composes exactly that at render time. The `placard` field
+in the manifest is the *hand-written* line for that specific image
+(`memes.meta.json` overrides), which is what `alt` is built from
+(`title. placard`). Two different jobs, deliberately: the template is the
+museum furniture, the override is the real alt text.

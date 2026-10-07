@@ -101,7 +101,7 @@ What was **not** executed: anything needing a real browser. See below.
   garbled reveal name, and the "0%" flash. They live on screens Phase 1–3
   replace; fixing them twice is waste. Recorded here so nothing is silently
   dropped.
-- `src/data/seed/memes.{ts,json}` and `scripts/generate-meme-corpus.mjs` are
-  still in the tree. Deleting them is blocked on having a real licensed meme
-  folder to scan — removing them now would leave the Deck with zero content and
-  a half-built screen, which rule 4 forbids.
+- **Resolved since Phase 0.1:** `scripts/generate-meme-corpus.mjs` and
+  `src/data/seed/memes.json` are deleted, and `src/data/seed/memes.ts` is now a
+  70-line adapter over `src/content/memes.manifest.json`. The Deck is not
+  empty: it renders the 20 real images in `public/memes/`.
