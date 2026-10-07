@@ -44,8 +44,8 @@ loads Home.
 
 | configuration | first-paint JS | JS + CSS | headroom vs 180 KiB |
 |---|---:|---:|---:|
-| v5 flags off (main today) | **87.94 KiB gz** | 113.91 KiB | +92.06 |
-| v5 flags on (`?v5=1`) | **125.07 KiB gz** | 151.05 KiB | +54.93 |
+| v5 flags off (main today) | **88.04 KiB gz** | 114.01 KiB | +91.96 |
+| v5 flags on (`?v5=1`) | **125.22 KiB gz** | 151.20 KiB | +54.78 |
 
 Budget is initial JS ≤ 180 KiB gz. Both configurations pass.
 
@@ -81,8 +81,9 @@ Everything below is a dynamic edge and is fetched after first content:
 | `page-D6aQvK0I.js` | 2,768 | duel deep link |
 | `profile-BW2ydbcU.js` | 2,495 | Profile tab |
 | `vault-Czbu7DT1.js` | 2,491 | Vault |
-| `matrix-*.js` | 2,101 | Matrix tab |
-| `people-*.js` | 1,391 | People tab |
+| `matrix-*.js` | 2,104 | Matrix tab |
+| `people-*.js` | 1,395 | People tab |
+| `arena-*.js` | 1,302 | Arena tab |
 | `nhie-screen-f5qHLxHX.js` | 2,012 | NHIE arena |
 
 ## The regression that was found and fixed

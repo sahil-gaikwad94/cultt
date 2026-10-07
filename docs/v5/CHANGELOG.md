@@ -330,3 +330,23 @@ Tests 18 files / **345 passing** (was 316). Two bugs found while writing them:
 the People preview keyed off the hydrated `last.meme` object rather than the
 declared `last.kind`, so a content-only message described itself as the match
 banner; and `last.body` is nullable, which would have rendered "null".
+
+## Phase 4 — Arena launcher, behind a flag
+
+The Arena is now a v5 screen (`v5.arena`), a launcher for the three games that
+already exist rather than a fourth game. 1.30 kB gz, lazy.
+
+Each tile reports real state. There is deliberately no refresh control: there is
+nothing to fetch, and D-30 had already removed the legacy button that toasted
+"new signals found" after a plain re-render.
+
+Duel state is read live through a getter rather than snapshotted at mount —
+legacy.ts now publishes `duelState` over `S.duelLink`, which is reassigned when a
+duel is created and again when its verdict lands, so a copied value would report
+a revealed duel as still waiting. A waiting duel shows no score at all, since
+`verdict` only exists once both sides have submitted.
+
+First-paint JS with all five v5 tabs on: 125.22 KiB gz against the 180 KiB
+budget. All five tabs now have a v5 screen.
+
+Tests 19 files / **361 passing** (was 345).
