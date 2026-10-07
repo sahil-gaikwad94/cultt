@@ -497,3 +497,16 @@ Build clean; 395 tests / 24 files green; tsc/eslint clean.
 - Loads the scoped v5 stylesheet globally (~8KB gz) to style both.
 
 Build clean; 395 tests / 24 files green; tsc/eslint clean.
+
+## Preview population + reaction blank-screen hardening
+
+- **Demo content now shows in the dev preview by default.** `DEMO_DATA` is
+  `DEV && (?demo=1 || flags.demoData !== false)` — in the dev preview the seeded
+  profiles, chat and stories are on so the screens are populated; `DEV` still
+  folds to `false` in a production build, so nothing fabricated ever ships
+  (no-fake-people.test.ts still green: 4/4).
+- **Reaction tray can no longer trap the screen.** The tray only closed on
+  `pointerup`; if that event raced the open or was swallowed (an iframe), the
+  dark scrim lingered and read as a blank screen. Added a 12 s auto-cancel to
+  `openReactionTray`, plus try/catch + forced `.tray-scrim`/`.reaction-tray`
+  cleanup in the legacy trigger and the `micro:react` handler.

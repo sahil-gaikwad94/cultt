@@ -484,10 +484,12 @@ export const openReactionTray = (options: OpenTrayOptions): Promise<TrayResult> 
   return new Promise<TrayResult>((resolve) => {
     let settled = false;
     let focused: number | null = null;
+    let safety: ReturnType<typeof setTimeout> | null = null;
 
     const finish = (result: TrayResult) => {
       if (settled) return;
       settled = true;
+      if (safety) clearTimeout(safety);
       doc.removeEventListener('pointerup', onUp, true);
       doc.removeEventListener('pointermove', onMove, true);
       doc.removeEventListener('pointercancel', onCancel, true);
@@ -537,6 +539,11 @@ export const openReactionTray = (options: OpenTrayOptions): Promise<TrayResult> 
     doc.addEventListener('pointerup', onUp, true);
     doc.addEventListener('pointermove', onMove, true);
     doc.addEventListener('pointercancel', onCancel, true);
+
+    // Safety net: if a pointerup never lands (an iframe that swallows it, a
+    // released press that raced the open), the tray must not trap the user
+    // behind its scrim forever. Auto-cancel after 12 s.
+    safety = setTimeout(() => finish({ emoji: null, at: options.anchor, cancelled: true }), 12000);
 
     // A plain tap (no drag) still selects whatever is under the finger.
     applyFisheye(options.anchor.x);

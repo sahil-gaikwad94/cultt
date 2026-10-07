@@ -287,34 +287,40 @@ const loadRxn = (): Promise<typeof import('../v5/reactions.ts')> =>
   rxnPromise ?? (rxnPromise = import('../v5/reactions.ts'));
 
 const fanFor = (btn: HTMLElement): void => {
-  const card =
-    (btn.closest('[data-rxn-kind], [data-m], [data-id], article, .dcard') as HTMLElement | null) ?? null;
-  const kind: 'meme' | 'song' = card?.dataset?.rxnKind === 'song' ? 'song' : 'meme';
-  const rect = btn.getBoundingClientRect();
-  const anchor = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  void loadRxn()
-    .then((mod) => {
-      if (!fxLayer) {
-        const canvas = document.createElement('canvas');
-        canvas.setAttribute('aria-hidden', 'true');
-        canvas.style.cssText =
-          'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:120';
-        document.body.appendChild(canvas);
-        fxLayer = mod.createFxLayer({ canvas });
-      }
-      return mod.openReactionTray({ kind, anchor, target: card ?? btn });
-    })
-    .then((res) => {
-      if (!res.emoji) return;
-      void fxLayer?.play(res.emoji, res.at);
-      btn.dispatchEvent(
-        new CustomEvent('micro:react', { detail: { emoji: res.emoji, at: res.at, kind }, bubbles: true }),
-      );
-    })
-    .catch(() => {
-      /* The tray is decoration; if the chunk fails to load the like button
-         still works as a plain tap. */
-    });
+  try {
+    const card = (btn.closest('.mm-card, .dcard, .cc, article') as HTMLElement | null) ?? null;
+    const kind: 'meme' | 'song' = card?.dataset?.rxnKind === 'song' ? 'song' : 'meme';
+    const rect = btn.getBoundingClientRect();
+    const anchor = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    // Belt-and-braces: never leave the tray or its scrim on screen, whatever
+    // happens — a stuck scrim reads as a blank screen.
+    const cleanup = (): void => {
+      document.querySelectorAll('.tray-scrim, .reaction-tray').forEach((n) => n.remove());
+    };
+    void loadRxn()
+      .then((mod) => {
+        if (!fxLayer) {
+          const canvas = document.createElement('canvas');
+          canvas.setAttribute('aria-hidden', 'true');
+          canvas.style.cssText =
+            'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:120';
+          document.body.appendChild(canvas);
+          fxLayer = mod.createFxLayer({ canvas });
+        }
+        return mod.openReactionTray({ kind, anchor, target: card ?? btn });
+      })
+      .then((res) => {
+        cleanup();
+        if (!res.emoji) return;
+        void fxLayer?.play(res.emoji, res.at);
+        btn.dispatchEvent(
+          new CustomEvent('micro:react', { detail: { emoji: res.emoji, at: res.at, kind }, bubbles: true }),
+        );
+      })
+      .catch(cleanup);
+  } catch {
+    /* The tray is decoration; it must never be able to take the screen down. */
+  }
 };
 
 /* ------------------------------------------------------- delegated fx */

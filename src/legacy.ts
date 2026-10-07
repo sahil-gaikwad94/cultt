@@ -113,12 +113,13 @@ const DEV=import.meta.env.DEV===true;
    someone who did not ask for it. Now it costs one query param. */
 const DEMO_PARAM=(()=>{try{return typeof location!=='undefined'&&/[?&]demo=1\b/.test(location.search)}catch(_){return false}})();
 /* The `DEV &&` prefix must stay: it is what folds DEMO_DATA to the constant
-   `false` in a production build, so the 48 seeded personas, the circle posts
-   and the transcripts tree-shake out of the shipped bundle (asserted by
-   no-fake-people.test.ts). Dropping it would gate them at runtime but still
-   ship them. In dev the personas now cost `?demo=1`, or an explicit
-   `flags.demoData = true`, instead of being on by default. */
-const DEMO_DATA=DEV&&(DEMO_PARAM||CFG.flags.demoData===true);
+   `false` in a production build, so the seeded personas, the circle posts, the
+   demo stories and the transcripts tree-shake out of the shipped bundle
+   (asserted by no-fake-people.test.ts). In production nothing fabricated ever
+   shows. In the DEV preview the demo population is ON by default so the screens
+   are populated and testable; pass `flags.demoData = false` (or build for prod)
+   to see the honest empty states. */
+const DEMO_DATA=DEV&&(DEMO_PARAM||CFG.flags.demoData!==false);
 const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
 /* Merge, never replace: `main.ts` installs `Cultured.repo` before this file is
@@ -801,13 +802,14 @@ document.addEventListener('micro:laugh',e=>{
    records the chosen emoji against the meme/song and floats it off the finger.
    Works on both deck cards ([data-id]) and meme-shelf cards ([data-m]). */
 document.addEventListener('micro:react',e=>{
+ try{
   const btn=e.target,d=e.detail||{},emoji=d.emoji;
   if(!btn||!btn.closest||!emoji)return;
   const memeCard=btn.closest('[data-m]');
   if(memeCard){
     const id=memeCard.dataset.m,st=mmS();st.l[id]=1;
     V5.react({kind:'meme',itemId:id,emoji,surface:'deck'});
-    save();renderYou();repoCall('recordReaction',id,'react');
+    save();renderYou();repoCall('recordReaction',id,'like');
     const lb=memeCard.querySelector('[data-act="mm-like"]');
     if(lb){lb.classList.add('on');lb.setAttribute('aria-pressed','true')}
     floatFromEl(btn,emoji,3);haptic(10);
@@ -817,8 +819,9 @@ document.addEventListener('micro:react',e=>{
   const id=host.dataset.id,st=rs(id),k=(d.kind==='song'||kindOf(id)==='song')?'song':'meme';
   st.l=1;
   V5.react({kind:k,itemId:id,emoji,surface:'deck'});
-  save();syncPost(id);renderYou();repoCall('recordReaction',id,'react');bumpCal(true);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(true);
   floatFromEl(btn,emoji,3);haptic(10);
+ }catch(_){/* a reaction is decoration; it must never blank the screen */}
 });
 ACT['open-stories']=()=>openStories();
 ACT['open-story']=()=>openStories();
