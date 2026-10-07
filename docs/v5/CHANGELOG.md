@@ -305,3 +305,28 @@ Also added `vercel.json` (SPA rewrite for `/d/:id`, cache headers, `/api/*`
 excluded from the rewrite).
 
 Tests still 14 files / 304 passing; tsc, eslint and the production build green.
+
+## Phase 3 complete — Matrix and People, both flag-gated
+
+Two new screens, each behind its own flag (`v5.matrix`, `v5.people`), each
+mounted into the existing tab host so the nav rail and deep links keep working.
+Both chunks are lazy: 2,101 B gz and 1,391 B gz, reachable only via
+`await import`.
+
+Both were designed around the consequence of D-27. With the invented population
+gated off, `getCandidates()` and `getThreads()` return empty lists in
+production, so the empty state is the primary path rather than an edge case — it
+explains the density gate instead of apologising for a bug, and it never fills
+the space with invented faces or conversations. A failed fetch is its own state
+in both, because an error must not read as an empty city or as having no friends.
+
+The Matrix shows a percentage only when `tasteTwins.calibrating` is false; while
+calibrating it says so. Mutual reveal stays the only reveal path.
+
+First-paint JS after both: 87.94 KiB gz with the flags off, 125.07 KiB gz with
+them on, against the 180 KiB budget.
+
+Tests 18 files / **345 passing** (was 316). Two bugs found while writing them:
+the People preview keyed off the hydrated `last.meme` object rather than the
+declared `last.kind`, so a content-only message described itself as the match
+banner; and `last.body` is nullable, which would have rendered "null".
