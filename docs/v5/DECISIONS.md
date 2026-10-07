@@ -347,3 +347,42 @@ unit run does not require one.
 The room seat map still carries ten first names behind `FEATURE_ROOMS`, which is
 off by default and reachable from no shipping surface. That is dead code, not a
 visible fake, so it is left alone rather than half-gated.
+
+
+### D-29 · The Supabase client is imported lazily
+Measuring the real first-paint graph (static imports only, from `dist/index.html`
+inward) put the v5-enabled critical path at **184.81 KiB gz — 4.81 KiB over the
+§10 budget of 180**. The figure recorded earlier in these notes (150.9 KB) was
+wrong: it summed two chunks and missed `card`, the v5 chain, and the fact that
+`main.ts` awaits `import('./legacy')` before any content renders, which puts
+legacy on the critical path even though the import is dynamic.
+
+The cause was `src/data/index.ts` statically importing `SupabaseRepo`, whose
+`@supabase/supabase-js` import put **63.03 KiB gz** in the entry chunk. Supabase
+is the *optional* backend — it is only constructed when the host page sets
+`CULTURED_CONFIG.backend === 'supabase'` — so the default install paid for a
+client it never used.
+
+`createRepo()` is now `async` and imports `supabaseRepo` dynamically. `main.ts`
+awaits it once at the top of `boot()`; `installRepoBridge` moved inside `boot()`
+with it. A sync `createMockRepo()` remains for callers that cannot await.
+
+Result, measured from the rebuilt graph:
+
+| configuration | first-paint JS | JS+CSS | vs 180 KiB |
+|---|---|---|---|
+| v5 flags off (main today) | 87.57 KiB | 113.55 KiB | +92.43 headroom |
+| v5 flags on (`?v5=1`) | 124.08 KiB | 150.06 KiB | +55.92 headroom |
+
+`supabaseRepo-*.js` now appears in the graph only as a dynamic edge off the
+entry, so it is fetched after first content and only for the backend that needs
+it.
+
+**How these numbers are taken.** Chunk membership is resolved by parsing only
+real `import` statements out of the built files — `import"./x.js"`,
+`import{…}from"./x.js"` and `import("./x.js")` — never by scanning for string
+literals. The naive version of that scan also matched the `__vite__mapDeps`
+precache array at the top of every entry, which made the transitive closure
+swallow all 18 chunks and reported two different configurations as identical at
+226.16 KiB. Anyone re-measuring this should expect a wrong number if they grep
+instead of parsing.

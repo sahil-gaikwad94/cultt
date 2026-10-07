@@ -266,3 +266,23 @@ your circles`, `from 38 circles` and `crept up the charts` are all absent from
 Tests: 14 files, **304 passing** (was 297). `repo.test.ts` gained four specs for
 the opt-in default; `no-fake-people.test.ts` checks the production bundle and
 skips itself when `dist/` is absent.
+
+## Perf — back inside the §10 first-paint JS budget
+
+Re-measuring the real import graph showed the v5-enabled first paint at
+**184.81 KiB gz, 4.81 KiB over the 180 KiB budget**. The earlier 150.9 KB figure
+in STATUS was wrong — it summed two chunks and missed `card`, the v5 chain, and
+that `main.ts` awaits `import('./legacy')` before content renders.
+
+`src/data/index.ts` statically imported `SupabaseRepo`, putting 63.03 KiB gz of
+`@supabase/supabase-js` in the entry chunk for a backend the default install
+never constructs. `createRepo()` is now async and imports it dynamically;
+`main.ts` awaits it at the top of `boot()`. A sync `createMockRepo()` stays for
+callers that cannot await.
+
+| configuration | first-paint JS | headroom vs 180 KiB |
+|---|---|---|
+| v5 flags off | 87.57 KiB gz | +92.43 |
+| v5 flags on | 124.08 KiB gz | +55.92 |
+
+Tests still 14 files / 304 passing; tsc, eslint and the production build green.

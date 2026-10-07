@@ -5,8 +5,9 @@ import { installRepoBridge } from './components/phase1';
 import { getStore } from './store';
 import { v5config } from './store/config';
 
-const repo = createRepo();
-installRepoBridge(repo);
+/* `createRepo` is async: the Supabase client is imported lazily so it never
+   lands on the first-paint critical path. See src/data/index.ts. */
+const repoPromise = createRepo();
 
 /* The v5 store loads + migrates before the first screen paints, so the very
    first render already has the user's real reactions, saves and pins instead
@@ -23,6 +24,8 @@ const duelMatch =
   location.pathname.match(/^\/d\/([A-Za-z0-9]+)/) || location.search.match(/[?&]d=([A-Za-z0-9]+)/);
 
 const boot = async () => {
+  const repo = await repoPromise;
+  installRepoBridge(repo);
   try {
     const response = await fetch('/assets/manifest.json');
     const manifest = (await response.json()) as Record<string, { file?: string | null }>;
