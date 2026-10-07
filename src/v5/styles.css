@@ -2127,3 +2127,128 @@
     transition: none !important;
   }
 }
+
+/* ---------------------------------------------------------------- People */
+/* Real threads only. The empty state is the primary path in production (D-27),
+   so it is built to be read rather than to look broken. */
+.v5-people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  padding: calc(var(--sp-3, 12px) + env(safe-area-inset-top, 0px)) var(--sp-4, 16px)
+    calc(var(--sp-5, 24px) + env(safe-area-inset-bottom, 0px));
+  min-height: 100%;
+}
+.v5-people-head h2 {
+  font-size: 19px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+  color: var(--bone, #efe9da);
+}
+.v5-people-count {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bone, #efe9da) 48%, transparent);
+}
+.v5-people-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: var(--sp-6, 32px) var(--sp-2, 8px);
+  text-align: center;
+}
+.v5-people-glyph {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--flame, #ff8a5b);
+}
+.v5-people-empty p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--bone, #efe9da) 74%, transparent);
+}
+.v5-people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v5-people-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.v5-people-row:active {
+  background: color-mix(in srgb, var(--bone, #efe9da) 8%, transparent);
+}
+.v5-people-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--gallery-bg, #0a0a09);
+  background: var(--flame, #ff8a5b);
+}
+.v5-people-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.v5-people-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bone, #efe9da);
+}
+.v5-people-name time {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--bone, #efe9da) 46%, transparent);
+}
+.v5-people-preview {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--bone, #efe9da) 70%, transparent);
+}
+.v5-people-shared {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--bone, #efe9da) 44%, transparent);
+}
+.v5-people-unread {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gallery-bg, #0a0a09);
+  background: var(--flame, #ff8a5b);
+  font-variant-numeric: tabular-nums;
+}

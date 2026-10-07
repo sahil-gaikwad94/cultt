@@ -72,13 +72,20 @@ const boot = async () => {
     }
   }
 
-  /* Same seam for the Matrix: `renderMatchShell()` bails out when this flag is
-     on, and this owns `#s-match` instead. */
+  /* Same seam for the Matrix and People: the legacy render bails out when the
+     flag is on, and this owns the host instead. */
   if (v5config.v5.matrix) {
     const host = document.getElementById('s-match');
     if (host) {
       const { mountMatrix } = await import('./v5/matrix');
       mountMatrix(host);
+    }
+  }
+  if (v5config.v5.people) {
+    const host = document.getElementById('s-people');
+    if (host) {
+      const { mountPeople } = await import('./v5/people');
+      mountPeople(host);
     }
   }
 };

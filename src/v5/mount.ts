@@ -25,6 +25,7 @@ export const isV5Intro = (): boolean => v5config.v5.intro;
 export const isV5Profile = (): boolean => v5config.v5.profile;
 export const isV5Stories = (): boolean => v5config.v5.stories;
 export const isV5Matrix = (): boolean => v5config.v5.matrix;
+export const isV5People = (): boolean => v5config.v5.people;
 
 /** Opens Stories as its own layer. */
 export const mountV5Stories = async (options: { onClose?: () => void } = {}): Promise<void> => {

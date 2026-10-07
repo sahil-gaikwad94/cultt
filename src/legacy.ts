@@ -45,6 +45,7 @@ const V5 = getStore();
 const V5_HOME=v5config.v5.home;
 const V5_VAULT=v5config.v5.vault;
 const V5_MATRIX=v5config.v5.matrix;
+const V5_PEOPLE=v5config.v5.people;
 let v5VaultHandle=null;
 const openV5Vault=async()=>{
   if(v5VaultHandle)return;
@@ -1203,6 +1204,9 @@ ACT['arena-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local si
 /* ================= people + chat ================= */
 let PV='chats';
 function renderPeople(){
+  /* The v5 People screen owns #s-people when its flag is on. main.ts mounts
+     into the same host, so the tab rail and deep links keep working. */
+  if(V5_PEOPLE)return;
   const items=Object.keys(S.threads).map(id=>({p:person(id),t:S.threads[id]})).filter(x=>x.p);
   const fresh=items.filter(x=>!x.t.msgs.length),chats=items.filter(x=>x.t.msgs.length).sort((a,b)=>b.t.msgs[b.t.msgs.length-1].ts-a.t.msgs[a.t.msgs.length-1].ts);
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
