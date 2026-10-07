@@ -758,6 +758,11 @@ const renderToday = (context: CardContext): HTMLElement => {
       <button type="button" class="v5-game" data-game="duel"><b>Meme Duel</b><span>${esc(copy.arena.duelTile)}</span></button>
       <button type="button" class="v5-game" data-game="nhie"><b>Never Have I Ever</b><span>${esc(copy.arena.nhieTile)}</span></button>
       <button type="button" class="v5-game" data-game="vault"><b>Your Vault</b><span>${esc(copy.vault.title)}</span></button>
+      ${
+        v5config.v5.profile
+          ? `<button type="button" class="v5-game" data-game="profile"><b>Your wall</b><span>${esc(copy.fingerprintClarity)}</span></button>`
+          : ''
+      }
     </div>`;
   node.appendChild(games);
 

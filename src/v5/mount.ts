@@ -17,11 +17,32 @@ import { servableMemes } from '../content/index.ts';
 import './styles.css';
 
 /** Reads the live config, so a test that flips `window.CULTURED_CONFIG` is seen. */
-export const v5Flags = (): { intro: boolean; home: boolean; vault: boolean } => v5config.v5;
+export const v5Flags = () => v5config.v5;
 
 export const isV5Home = (): boolean => v5config.v5.home;
 export const isV5Vault = (): boolean => v5config.v5.vault;
 export const isV5Intro = (): boolean => v5config.v5.intro;
+export const isV5Profile = (): boolean => v5config.v5.profile;
+
+/** Opens the profile-as-a-wall as its own layer. */
+export const mountV5Profile = async (options: { onClose?: () => void } = {}): Promise<void> => {
+  const { mountProfile } = await import('./profile.ts');
+
+  const layer = document.createElement('div');
+  layer.id = 'v5-profile-layer';
+  document.body.appendChild(layer);
+
+  let handle: { destroy(): void } | null = null;
+  handle = mountProfile(layer, {
+    ...options,
+    onClose: () => {
+      handle?.destroy();
+      handle = null;
+      layer.remove();
+      options.onClose?.();
+    },
+  });
+};
 
 export interface V5HomeHandle {
   destroy(): void;
@@ -85,6 +106,10 @@ export const mountV5Home = async (host: HTMLElement): Promise<V5HomeHandle> => {
       }
       if (game === 'vault') {
         openVault();
+        return;
+      }
+      if (game === 'profile') {
+        void mountV5Profile();
         return;
       }
       // Duels are still the legacy screen in Phase 2.

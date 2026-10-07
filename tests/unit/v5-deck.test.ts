@@ -24,6 +24,9 @@ import { fisheye, layoutTray, trayFor } from '../../src/v5/reactions';
 import { waveformFor } from '../../src/v5/audio';
 import { createStore } from '../../src/store';
 import { forecastIndex, verdictFor } from '../../src/v5/home';
+import { canPinMore, readWall } from '../../src/v5/profile';
+import { memes, songs } from '../../src/content';
+import { savedItemKeys } from '../../src/store/selectors';
 import { HUMOR_AXES, MEME_CATEGORY_SLUGS } from '../../src/copy/taxonomy';
 import type { MemeEntry, SongEntry } from '../../src/content/types';
 
@@ -442,5 +445,78 @@ describe('the Forecast sub-page', () => {
   it('never divides by zero on a degenerate option count', () => {
     expect(forecastIndex('20261007', 0)).toBe(0);
     expect(forecastIndex('20261007', 1)).toBe(0);
+  });
+});
+
+describe('the profile wall', () => {
+  const store = () => createStore({ storage: null, legacy: null, now: () => Date.parse('2026-10-07T12:00:00Z') });
+
+  it('starts completely empty and says how much room is left', () => {
+    const wall = readWall(store().getState());
+    expect(wall.anthem).toBe(null);
+    expect(wall.memes).toEqual([]);
+    expect(wall.songs).toEqual([]);
+    expect(wall.room).toEqual({ meme: 6, song: 6, anthem: 1 });
+    expect(wall.fingerprint.archetype).toBe(null);
+    expect(wall.fingerprint.sample).toBe(0);
+  });
+
+  it('hangs a pinned meme on the wall with its real placard fields', () => {
+    const s = store();
+    const id = memes.items[0]!.id;
+    s.pin('meme', id);
+    const wall = readWall(s.getState());
+    expect(wall.memes).toHaveLength(1);
+    expect(wall.memes[0]).toMatchObject({ kind: 'meme', id, title: memes.items[0]!.title });
+    expect(wall.memes[0]!.alt).toBe(memes.items[0]!.alt);
+    expect(wall.room.meme).toBe(5);
+  });
+
+  it('keeps the anthem to exactly one', () => {
+    const s = store();
+    s.pin('anthem', songs.items[0]!.id);
+    s.pin('anthem', songs.items[1]!.id);
+    const wall = readWall(s.getState());
+    expect(wall.anthem?.id).toBe(songs.items[0]!.id);
+    expect(wall.room.anthem).toBe(0);
+    expect(canPinMore(s.getState(), 'anthem')).toBe(false);
+    expect(canPinMore(s.getState(), 'meme')).toBe(true);
+  });
+
+  it('drops pins that point at content which is not in the manifest', () => {
+    const s = store();
+    s.pin('meme', 'meme-does-not-exist');
+    const wall = readWall(s.getState());
+    // The store keeps the pin; the wall simply cannot render what is not there.
+    expect(s.getState().pins).toHaveLength(1);
+    expect(wall.memes).toEqual([]);
+  });
+
+  it('orders slots by their stored position', () => {
+    const s = store();
+    const ids = memes.items.slice(0, 3).map((meme) => meme.id);
+    for (const id of ids) s.pin('meme', id);
+    s.reorderPins('meme', [ids[2]!, ids[1]!, ids[0]!]);
+    expect(readWall(s.getState()).memes.map((slot) => slot.id)).toEqual([ids[2]!, ids[1]!, ids[0]!]);
+  });
+
+  it('resolves an archetype from the reactions, not from the pins', () => {
+    const s = store();
+    s.react({ kind: 'meme', itemId: 'a', emoji: '🗿' });
+    s.react({ kind: 'meme', itemId: 'b', emoji: '🫠' });
+    const wall = readWall(s.getState());
+    expect(wall.fingerprint.sample).toBe(2);
+    expect(wall.fingerprint.archetype?.name).toBeTruthy();
+    expect(wall.fingerprint.axes[0]!.share).toBeCloseTo(0.5, 6);
+    expect(wall.fingerprint.axes[0]!.label).not.toContain('_');
+  });
+
+  it('reads the same store the Vault reads, so the counts agree', () => {
+    const s = store();
+    s.setSaved('meme', memes.items[0]!.id, true);
+    s.pin('meme', memes.items[0]!.id);
+    const state = s.getState();
+    expect(savedItemKeys(state)).toHaveLength(1);
+    expect(readWall(state).memes).toHaveLength(1);
   });
 });

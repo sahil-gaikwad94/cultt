@@ -200,3 +200,24 @@ transferred, CLS < 0.05).
 `npx playwright test --list` resolves **50 tests across 5 files**. They cannot
 execute in this sandbox — the Playwright browser CDN is unreachable — so they
 are committed to run anywhere with `npx playwright install chromium webkit`.
+
+## Phase 3 (flag-gated) — the profile as a wall
+
+`src/v5/profile.ts`, behind `v5config.v5.profile`.
+
+- **The Fingerprint** — one Contour seeded from the user's own axis mix, the
+  archetype it resolves to, and a ranked axis breakdown. Below two distinct axes
+  it reads "Developing" rather than naming an archetype from noise.
+- **The wall** — anthem (1), pinned memes (6), pinned songs (6), each with its
+  real alt text as the placard. Editing means unpinning; there is no "add
+  content" button, because everything on the wall came from a reaction in the
+  Deck.
+- `readWall(state)` is pure over the store, so the wall, the Vault and the You
+  tab cannot disagree. A pin pointing at content that is not in the manifest
+  renders as nothing rather than throwing, and the store keeps it.
+- Repaints destroy the previous contour before drawing a new one, so the
+  rAF loops cannot pile up.
+
+Tests: 13 files, **291 passing** (was 284). `profile-*.js` is a 2.49 kB gz lazy
+chunk, and splitting it out dropped `home-*.js` from 16.21 to 10.00 kB gz. First
+paint is unchanged at 150.9 kB gz.

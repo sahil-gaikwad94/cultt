@@ -244,3 +244,34 @@ Both are reachable only by setting `window.CULTURED_CONFIG.homeYesterdaySubPage`
 asserts no rendered label contains an underscore. The helper lives in the copy
 layer, not inline in the screen, so the next surface that shows an axis gets the
 same words.
+
+
+### D-21 · The profile is a projection, never a second copy
+`readWall(state)` derives the whole wall — anthem, pinned memes, pinned songs,
+remaining room per slot, and the Fingerprint — from the store on every call. It
+stores nothing. That is the only way the wall, the Vault and the You tab can
+show the same numbers, which is the class of bug §4.1.1 was: two stores, two
+truths.
+
+Two consequences worth naming:
+- **A pin to content that is not in the manifest renders as nothing.** The store
+  keeps the pin (never wipe user data), the wall just cannot hang an image it
+  does not have. `readWall` filters rather than throwing, and a test pins it.
+- **Editing the wall means unpinning.** There is no "add content" button,
+  because everything on the wall arrived through a reaction in the Deck. That is
+  what makes it a fingerprint rather than a bio — you cannot write your way to a
+  personality here.
+
+### D-22 · The Fingerprint contour is seeded from the user's own axis mix
+`seed = round(clarity * 1000) + reactions.length`, so two people with different
+taste get different isolines and the same person's shape only moves as their
+reactions do. It is not random per render — a shape that changed on every
+repaint would be decoration, not a fingerprint.
+
+### D-23 · Repainting tears the previous contour down
+The Fingerprint canvas is rebuilt on every store change, and each `createContour`
+owns a `requestAnimationFrame` loop. Without an explicit `destroy()` on repaint
+the loops pile up: pin six memes and you have six live loops redrawing one
+canvas. The screen keeps a list and destroys it before each paint and on
+unmount. This is the §10 "≤ 2 heavy effects at once" rule enforced structurally
+rather than by counting.
