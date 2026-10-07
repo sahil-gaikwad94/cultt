@@ -2252,3 +2252,97 @@
   background: var(--flame, #ff8a5b);
   font-variant-numeric: tabular-nums;
 }
+
+/* ----------------------------------------------------------------- Arena */
+/* A launcher for three games that already exist, not a fourth game. Every tile
+   reports real state, so there is nothing here to refresh. */
+.v5-arena {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  padding: calc(var(--sp-3, 12px) + env(safe-area-inset-top, 0px)) var(--sp-4, 16px)
+    calc(var(--sp-5, 24px) + env(safe-area-inset-bottom, 0px));
+  min-height: 100%;
+}
+.v5-arena-head h2 {
+  font-size: 19px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+  color: var(--bone, #efe9da);
+}
+.v5-arena-head p {
+  margin-top: 2px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--bone, #efe9da) 62%, transparent);
+}
+.v5-arena-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v5-arena-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bone, #efe9da) 14%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--bone, #efe9da) 5%, transparent);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.v5-arena-tile:active {
+  background: color-mix(in srgb, var(--bone, #efe9da) 10%, transparent);
+}
+.v5-arena-glyph {
+  flex: none;
+  font-size: 24px;
+  line-height: 1.2;
+}
+.v5-arena-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.v5-arena-copy strong {
+  font-size: 16px;
+  font-weight: 800;
+  font-stretch: 85%;
+  letter-spacing: -0.01em;
+  color: var(--bone, #efe9da);
+}
+.v5-arena-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--bone, #efe9da) 68%, transparent);
+}
+.v5-arena-cta {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--flame, #ff8a5b);
+}
+.v5-arena-cta.is-done {
+  color: color-mix(in srgb, var(--bone, #efe9da) 58%, transparent);
+}
+.v5-arena-verdict,
+.v5-arena-waiting {
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--bone, #efe9da) 82%, transparent);
+  background: color-mix(in srgb, var(--bone, #efe9da) 7%, transparent);
+}
+.v5-arena-waiting {
+  color: color-mix(in srgb, var(--bone, #efe9da) 62%, transparent);
+}
+.v5-arena-note {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--bone, #efe9da) 44%, transparent);
+}

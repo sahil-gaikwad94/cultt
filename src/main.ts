@@ -88,6 +88,13 @@ const boot = async () => {
       mountPeople(host);
     }
   }
+  if (v5config.v5.arena) {
+    const host = document.getElementById('s-arena');
+    if (host) {
+      const { mountArena } = await import('./v5/arena');
+      mountArena(host);
+    }
+  }
 };
 
 void boot();

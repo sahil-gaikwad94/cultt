@@ -46,6 +46,7 @@ const V5_HOME=v5config.v5.home;
 const V5_VAULT=v5config.v5.vault;
 const V5_MATRIX=v5config.v5.matrix;
 const V5_PEOPLE=v5config.v5.people;
+const V5_ARENA=v5config.v5.arena;
 let v5VaultHandle=null;
 const openV5Vault=async()=>{
   if(v5VaultHandle)return;
@@ -106,7 +107,11 @@ const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.postho
 /* Merge, never replace: `main.ts` installs `Cultured.repo` before this file is
    evaluated, and an assignment here used to wipe the bridge — every repoCall
    silently no-op'd. The seam adds config/track/store to whatever exists. */
-window.Cultured=Object.assign(window.Cultured||{},{config:CFG,track,store});
+/* `duelState` is a getter rather than a snapshot: S.duelLink is reassigned when
+   a duel is created and when its verdict lands, and the v5 Arena reads it
+   through the same bridge the repo uses. A copied value would go stale and the
+   tile would report a duel as waiting after it had been revealed. */
+window.Cultured=Object.assign(window.Cultured||{},{config:CFG,track,store,duelState:()=>(S.duelLink&&S.duelLink.id?S.duelLink:null)});
 const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
 const merge=(a,b)=>{for(const k in b){a[k]=isObj(a[k])&&isObj(b[k])?merge(a[k],b[k]):b[k]}return a};
 function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -954,6 +959,9 @@ function stopPulseFX(){if(PFX){clearInterval(PFX.r);PFX=null}}
    Pulse stats strip are removed in this phase; the card row, the local-signal card,
    the note rail and the duel entry all remain as the Phase-3 fill-in point. */
 function renderArena(){
+  /* The v5 Arena owns #s-arena when its flag is on. main.ts mounts into the
+     same host, so the tab rail and deep links keep working. */
+  if(V5_ARENA)return;
   /* The arena tells the truth about a duel: live, waiting, or revealed — read
      from the same localStorage record the /d/:id tab writes to. */
   const dl=S.duelLink&&S.duelLink.id?S.duelLink:null;
