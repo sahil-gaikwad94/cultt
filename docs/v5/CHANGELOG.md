@@ -510,3 +510,14 @@ Build clean; 395 tests / 24 files green; tsc/eslint clean.
   dark scrim lingered and read as a blank screen. Added a 12 s auto-cancel to
   `openReactionTray`, plus try/catch + forced `.tray-scrim`/`.reaction-tray`
   cleanup in the legacy trigger and the `micro:react` handler.
+
+## Demo population actually reaches the preview
+
+The previous "demo on by default" change was inert: `CFG.flags.demoData`
+defaulted to **`false`**, so `demoData !== false` was still false. Flipped the
+default to `true` (production still folds `DEMO_DATA` to `false` via the `DEV &&`
+prefix — no-fake-people 4/4). Also fixed demo chat threads: they only seeded
+when `S.threads` was *absent*, but a prior non-demo load persists an empty `{}`,
+so the guard skipped them. Now they seed whenever demo is on and threads are
+empty. Net effect in the dev preview: 5 profiles (Noor + Saoirse in the Matrix
+queue, Ines/Kai/Dev as matches), the Ines chat, and 3 seeded stories.

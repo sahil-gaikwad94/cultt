@@ -82,7 +82,7 @@ const store={
   clear(){try{Object.keys(localStorage).filter(k=>k.indexOf('cultured2:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 };
 /* ===== v4 production seam: the ONLY places the real backend/analytics plug in ===== */
-const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:false,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
+const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
 /* ------------------------------------------------------------------ honesty
    Two flags decide how much of this build is a demonstration rather than a
    product, and a production build refuses to be a demonstration at all.
@@ -280,7 +280,11 @@ const BASE_THREADS=()=>{const n=Date.now();return{
 let S=merge(DEF(),store.get('state',{}));
 /* Demo people come with demo transcripts. A real account starts with zero
    threads — the People tab then shows its empty state, not invented chats. */
-if(!S.threads)S.threads=DEMO_DATA?BASE_THREADS():{};
+/* Demo threads seed whenever the demo population is on and there is nothing
+   there yet — including when a previous (non-demo) load persisted an empty
+   `{}`, which the old `if(!S.threads)` guard treated as "already set". */
+if(DEMO_DATA&&(!S.threads||!Object.keys(S.threads).length))S.threads=BASE_THREADS();
+else if(!S.threads)S.threads={};
 if(!S.pulse)S.pulse=DEF().pulse;
 if(S.duelLink===undefined)S.duelLink=null;
 if(S.duel)delete S.duel;
