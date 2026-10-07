@@ -44,6 +44,7 @@ const V5 = getStore();
    `window.CULTURED_CONFIG.v5`) renders exactly the pre-v5 app. */
 const V5_HOME=v5config.v5.home;
 const V5_VAULT=v5config.v5.vault;
+const V5_MATRIX=v5config.v5.matrix;
 let v5VaultHandle=null;
 const openV5Vault=async()=>{
   if(v5VaultHandle)return;
@@ -770,6 +771,9 @@ function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1
 function gatedCount(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius&&p.score<MATCH_MIN_SCORE).length}
 const labelFor=s=>s>=90?'Taste twin':s>=80?'Strong overlap':'Worth a listen';
 function renderMatchShell(){
+  /* The v5 Matrix owns #s-match when its flag is on. main.ts mounts into the
+     same host, so the tab rail, nav and deep links keep working untouched. */
+  if(V5_MATRIX)return;
   $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}${mediaLayer('matrixVideo','matrix-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}Matrix</div><div class="hr"><button class="ibtn" data-act="open-settings" aria-label="Discovery settings">${I.sliders}</button></div></header>
     ${ftabsHTML('lens',[['dating','Dating'],['friends','Friends']],S.lens)}

@@ -1978,3 +1978,152 @@
   opacity: 0.4;
   pointer-events: none;
 }
+
+/* ---------------------------------------------------------------- Matrix */
+/* One card at a time, museum placard styling. The empty state is the primary
+   path in production (D-27 gates the invented population), so it is built to be
+   read, not to look broken. */
+.v5-matrix {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet, 80);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4, 16px);
+  padding: calc(var(--sp-3, 12px) + env(safe-area-inset-top, 0px)) var(--sp-4, 16px)
+    calc(var(--sp-5, 24px) + env(safe-area-inset-bottom, 0px));
+  background: var(--gallery-bg, #0a0a09);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.v5-matrix-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.v5-matrix-head h2 {
+  flex: 1;
+  font-size: 19px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+  color: var(--bone, #efe9da);
+}
+.v5-matrix-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--sp-6, 32px) var(--sp-2, 8px);
+  text-align: center;
+}
+.v5-matrix-glyph {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--flame, #ff8a5b);
+}
+.v5-matrix-empty h2 {
+  font-size: 21px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+  color: var(--bone, #efe9da);
+}
+.v5-matrix-empty p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--bone, #efe9da) 74%, transparent);
+}
+.v5-matrix-hint {
+  font-size: 12.5px !important;
+  color: color-mix(in srgb, var(--bone, #efe9da) 52%, transparent) !important;
+}
+.v5-matrix-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--sp-4, 16px);
+  border: 1px solid color-mix(in srgb, var(--bone, #efe9da) 14%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--bone, #efe9da) 5%, transparent);
+}
+.v5-matrix-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.v5-matrix-count {
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--bone, #efe9da) 48%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.v5-matrix-card h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+  color: var(--bone, #efe9da);
+}
+.v5-matrix-age {
+  font-size: 15px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--bone, #efe9da) 60%, transparent);
+}
+.v5-matrix-compat {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--flame, #ff8a5b);
+}
+.v5-matrix-compat.is-calibrating {
+  color: color-mix(in srgb, var(--bone, #efe9da) 56%, transparent);
+  font-weight: 600;
+}
+.v5-matrix-bio {
+  font-size: 14px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--bone, #efe9da) 78%, transparent);
+}
+.v5-matrix-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v5-matrix-chips li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--bone, #efe9da);
+  background: color-mix(in srgb, var(--bone, #efe9da) 10%, transparent);
+}
+.v5-matrix-mutual {
+  padding: 10px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gallery-bg, #0a0a09);
+  background: var(--flame, #ff8a5b);
+}
+.v5-matrix-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: var(--sp-3, 12px);
+}
+.v5-matrix-actions .v5-btn {
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v5-matrix-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}

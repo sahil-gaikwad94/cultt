@@ -71,6 +71,16 @@ const boot = async () => {
       await mountV5Home(host);
     }
   }
+
+  /* Same seam for the Matrix: `renderMatchShell()` bails out when this flag is
+     on, and this owns `#s-match` instead. */
+  if (v5config.v5.matrix) {
+    const host = document.getElementById('s-match');
+    if (host) {
+      const { mountMatrix } = await import('./v5/matrix');
+      mountMatrix(host);
+    }
+  }
 };
 
 void boot();

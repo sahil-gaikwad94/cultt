@@ -24,6 +24,7 @@ export const isV5Vault = (): boolean => v5config.v5.vault;
 export const isV5Intro = (): boolean => v5config.v5.intro;
 export const isV5Profile = (): boolean => v5config.v5.profile;
 export const isV5Stories = (): boolean => v5config.v5.stories;
+export const isV5Matrix = (): boolean => v5config.v5.matrix;
 
 /** Opens Stories as its own layer. */
 export const mountV5Stories = async (options: { onClose?: () => void } = {}): Promise<void> => {
@@ -35,6 +36,26 @@ export const mountV5Stories = async (options: { onClose?: () => void } = {}): Pr
 
   let handle: { destroy(): void } | null = null;
   handle = mountStories(layer, {
+    ...options,
+    onClose: () => {
+      handle?.destroy();
+      handle = null;
+      layer.remove();
+      options.onClose?.();
+    },
+  });
+};
+
+/** Opens the Match Matrix as its own layer. */
+export const mountV5Matrix = async (options: { onClose?: () => void } = {}): Promise<void> => {
+  const { mountMatrix } = await import('./matrix.ts');
+
+  const layer = document.createElement('div');
+  layer.id = 'v5-matrix-layer';
+  document.body.appendChild(layer);
+
+  let handle: { destroy(): void } | null = null;
+  handle = mountMatrix(layer, {
     ...options,
     onClose: () => {
       handle?.destroy();
@@ -135,6 +156,10 @@ export const mountV5Home = async (host: HTMLElement): Promise<V5HomeHandle> => {
       }
       if (game === 'stories') {
         void mountV5Stories();
+        return;
+      }
+      if (game === 'matrix') {
+        void mountV5Matrix();
         return;
       }
       // Duels are still the legacy screen in Phase 2.
