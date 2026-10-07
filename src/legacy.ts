@@ -1214,7 +1214,13 @@ function renderPeople(){
 FT.pv=v=>{PV=v;renderPeople();const el=$('#s-people');el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');setTimeout(()=>el.classList.remove('enter'),1500)};
 ACT['open-thread']=b=>openThread(b.dataset.id);
 function openThread(id){
-  const p=person(id),t=S.threads[id];if(!t)return;t.unread=0;save();updateBadge();
+  const p=person(id),t=S.threads[id];if(!t)return;
+  /* Threads are persisted; the people behind them are not (D-27). Lines 910 and
+     944 pass an id straight out of S.threads, so `p` can be undefined even
+     though the thread exists, and `orb(p)` / `p.name` would throw. Say so
+     rather than opening a broken page. The thread stays on disk. */
+  if(!p){toast('That match is no longer here');return}
+  t.unread=0;save();updateBadge();
   const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${calibrating()?'calibrating':p.score+'% resonance'}, ${p.km} km away</span></div>${FEATURE_ROOMS?`<button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="${ROOM_OFFER_LABEL}">${I.headphones}</button>`:'<span style="width:42px"></span>'}</div>
     <div class="msgs" id="msgs"></div><div id="starters"></div>
     <div class="composer"><span id="repochip"></span><button class="send alt" data-act="song-pick" aria-label="Send a song">${I.note}</button><button class="send alt" data-act="meme-pick" aria-label="Send a meme">😂</button><input id="msg-in" placeholder="Say something about a song" maxlength="280" autocomplete="off" aria-label="Message"><button class="send" data-act="send" data-fx="send" aria-label="Send">${I.send}</button></div>`);
