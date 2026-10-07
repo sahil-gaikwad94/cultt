@@ -59,6 +59,11 @@ export interface Meme {
   saved: boolean;
   /** Local Discovery card: how many people near you reacted to this. */
   nearbyCount: number | null;
+  /**
+   * The rendered image. Always present: cultured shows real image and video
+   * memes only, so there is no text-card fallback to render.
+   */
+  img: string;
 }
 
 export interface Track {

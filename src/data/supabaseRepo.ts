@@ -688,6 +688,8 @@ const toMeme = (row: Record<string, unknown>): Meme => ({
   laughed: Boolean(row.laughed),
   saved: Boolean(row.saved),
   nearbyCount: row.nearby_count === null || row.nearby_count === undefined ? null : Number(row.nearby_count),
+  // `memes.image_url` since 0003; empty only if a row predates the real corpus.
+  img: String(row.image_url ?? ''),
 });
 
 const toTrack = (row: Record<string, unknown>): Track => ({
@@ -737,6 +739,7 @@ const fallbackDrop = (): FeedPage['drop'] => ({
     topic: 'all',
     text: '',
     alt: '',
+    img: '',
     tags: [],
     bg: '#EFE9DA',
     fg: '#141413',

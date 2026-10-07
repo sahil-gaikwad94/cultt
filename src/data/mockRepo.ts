@@ -443,6 +443,7 @@ export class MockRepo implements Repo {
       saved: Boolean(state.save),
       // Local Discovery: never a face grid, never an inline swipe.
       nearbyCount: rng() > 0.55 ? 2 + Math.floor(rng() * 12) : null,
+      img: seed.img,
     };
   }
 
