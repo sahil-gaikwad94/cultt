@@ -18,11 +18,54 @@ import { renderDuelCard } from './duel/card';
 /* The shared synth (Settings → Sound gates it here, in one place). */
 import { synth } from './motion/audio';
 /* The 122 original in-house meme cards. Production content is generated, not
-   scraped; see scripts/generate-meme-corpus.mjs. */
+   the real corpus under public/memes, via src/content. */
 import { SEED_MEMES } from './data/seed/memes';
 /* The seed track catalogue, used only to check whether an id can cross the
    adapter boundary without fabricating a vector. */
 import { SEED_TRACKS } from './data/seed/tracks';
+/* v5: the single persisted store. Every reaction, save and pin goes through
+   it, and every screen reads through its selectors. This is the fix for the
+   "You tab shows 0 after I liked and saved" bug — see docs/v5/DECISIONS.md
+   D-03. The seam still keeps its own shapes for its own markup, but it no
+   longer decides what the numbers are. */
+import { getStore } from './store';
+import { v5config } from './store/config';
+import {
+  laughedItemKeys as v5LaughedKeys,
+  laughsGivenCount as v5LaughsGiven,
+  pinsByKind as v5PinsByKind,
+  savedItemKeys as v5SavedKeys,
+  LEGACY_LAUGH_EMOJI as V5_LAUGH,
+  LEGACY_LIKE as V5_LIKE,
+} from './store/selectors';
+
+const V5 = getStore();
+/* v5 rollout flags. Off by default, so a build without `?v5=1` (or an explicit
+   `window.CULTURED_CONFIG.v5`) renders exactly the pre-v5 app. */
+const V5_HOME=v5config.v5.home;
+const V5_VAULT=v5config.v5.vault;
+const V5_MATRIX=v5config.v5.matrix;
+const V5_PEOPLE=v5config.v5.people;
+const V5_ARENA=v5config.v5.arena;
+const V5_PROFILE=v5config.v5.profile;
+const V5_INTRO=v5config.v5.intro;
+let v5VaultHandle=null;
+const openV5Vault=async()=>{
+  if(v5VaultHandle)return;
+  const {mountVault}=await import('./v5/vault');
+  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
+  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
+};
+/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
+const v5Resolve = key => {
+  const i = key.indexOf(':');
+  if (i < 0) return null;
+  const kind = key.slice(0, i), id = key.slice(i + 1);
+  if (POSTS[id]) return { kind, post: POSTS[id], id };
+  const m = MM.find(x => x.id === id);
+  if (m) return { kind, meme: m, id };
+  return null;
+};
 
 (()=>{
 'use strict';
@@ -39,17 +82,22 @@ const store={
   clear(){try{Object.keys(localStorage).filter(k=>k.indexOf('cultured2:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 };
 /* ===== v4 production seam: the ONLY places the real backend/analytics plug in ===== */
-const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,demoMemes:false,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
+const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
 /* ------------------------------------------------------------------ honesty
-   Three flags decide how much of this build is a demonstration rather than a
+   Two flags decide how much of this build is a demonstration rather than a
    product, and a production build refuses to be a demonstration at all.
 
-   DEMO_MEMES  the 20 images under public/memes came from web image search and
-               have no licence (see public/memes/sources.json). They are for
-               local demos only and can never appear in a production build,
-               whatever `window.CULTURED_CONFIG` says.
-   DEMO_DATA   seeded people, circle posts and chat transcripts. On in dev so
-               the prototype is explorable, off in production.
+   MEMES       the images under public/memes are the real corpus, listed in
+               src/content/memes.manifest.json. None of the twenty seed files
+               carries a licence yet (see public/memes/sources.json), so
+               `npm run content:gate` fails the production build until they are
+               replaced with rights-cleared art. Nothing in this file can
+               override that, whatever `window.CULTURED_CONFIG` says.
+   DEMO_DATA   seeded people, circle posts and chat transcripts. OFF by
+               default everywhere, dev included — opt in with `?demo=1` or by
+               setting `window.CULTURED_CONFIG.flags.demoData = true`. Mirrors
+               the v5 `demo` gate so the invented population is never the
+               default path on any build.
    ROOMS       the 15-minute synced listening rooms. Off everywhere for now.
    ------------------------------------------------------------------------- */
 /* `import.meta.env.DEV` / `.PROD` are substituted with the literal `true` or
@@ -58,14 +106,30 @@ const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleM
    `!!(typeof import.meta !== 'undefined' && …)` instead left web-image URLs in
    the production bundle, because the `typeof` guard defeated the folding. */
 const DEV=import.meta.env.DEV===true;
-const DEMO_MEMES=DEV&&CFG.flags.demoMemes===true;
-const DEMO_DATA=DEV&&CFG.flags.demoData!==false;
+/* Explicit opt-in only — `?demo=1` or `flags.demoData === true`. Was
+   `DEV && CFG.flags.demoData !== false`, which turned the 48 seeded people
+   and the PROTOTYPE banner on by default in every dev preview. That is the
+   one thing the honesty rules forbid: fabricated social proof shown to
+   someone who did not ask for it. Now it costs one query param. */
+const DEMO_PARAM=(()=>{try{return typeof location!=='undefined'&&/[?&]demo=1\b/.test(location.search)}catch(_){return false}})();
+/* The `DEV &&` prefix must stay: it is what folds DEMO_DATA to the constant
+   `false` in a production build, so the seeded personas, the circle posts, the
+   demo stories and the transcripts tree-shake out of the shipped bundle
+   (asserted by no-fake-people.test.ts). In production nothing fabricated ever
+   shows. In the DEV preview the demo population is ON by default so the screens
+   are populated and testable; pass `flags.demoData = false` (or build for prod)
+   to see the honest empty states. */
+const DEMO_DATA=DEV&&(DEMO_PARAM||CFG.flags.demoData!==false);
 const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
 /* Merge, never replace: `main.ts` installs `Cultured.repo` before this file is
    evaluated, and an assignment here used to wipe the bridge — every repoCall
    silently no-op'd. The seam adds config/track/store to whatever exists. */
-window.Cultured=Object.assign(window.Cultured||{},{config:CFG,track,store});
+/* `duelState` is a getter rather than a snapshot: S.duelLink is reassigned when
+   a duel is created and when its verdict lands, and the v5 Arena reads it
+   through the same bridge the repo uses. A copied value would go stale and the
+   tile would report a duel as waiting after it had been revealed. */
+window.Cultured=Object.assign(window.Cultured||{},{config:CFG,track,store,duelState:()=>(S.duelLink&&S.duelLink.id?S.duelLink:null)});
 const isObj=o=>o&&typeof o==='object'&&!Array.isArray(o);
 const merge=(a,b)=>{for(const k in b){a[k]=isObj(a[k])&&isObj(b[k])?merge(a[k],b[k]):b[k]}return a};
 function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -143,36 +207,47 @@ const MEMES={
   m3:{id:'m3',text:'my toxic trait is thinking i can read a room and also a shared playlist',bg:'#F2D45C',fg:'#141413',ac:'#141413',tag:'Toxic traits, shared playlists, DJ delusion'},
   m4:{id:'m4',text:'the bridge of the song starts\n\nme: are you okay?? i’m so proud of you',bg:'#9EC5E8',fg:'#141413',ac:'#F2D45C',tag:'Bridge appreciation, parasocial pride'}
 };
+/* Like/laugh counts and the "saved by N people in your circles" lines are
+   fabricated social proof — nobody produced them. They are demo content: in a
+   production build every count starts at zero and the only numbers on screen
+   are the ones the user's own taps created. Same flag as PEOPLE, ACTIVITY and
+   CIRCLE_SOURCE. */
+const N=n=>DEMO_DATA?n:0;
+const WHY=t=>DEMO_DATA?t:undefined;
 const DROPS=[
-  {music:{id:'d1a',kind:'music',ref:'route9',likes:312,laughs:18,why:'Saved by 41 people in your circles this week.'},meme:{id:'d1b',kind:'meme',ref:'m1',likes:128,laughs:604}},
-  {music:{id:'d2a',kind:'music',ref:'moons',likes:274,laughs:11,why:'Most replayed in your circles since Friday.'},meme:{id:'d2b',kind:'meme',ref:'m3',likes:96,laughs:512}}
+  {music:{id:'d1a',kind:'music',ref:'route9',likes:N(312),laughs:N(18),why:WHY('Saved by 41 people in your circles this week.')},meme:{id:'d1b',kind:'meme',ref:'m1',likes:N(128),laughs:N(604)}},
+  {music:{id:'d2a',kind:'music',ref:'moons',likes:N(274),laughs:N(11),why:WHY('Most replayed in your circles since Friday.')},meme:{id:'d2b',kind:'meme',ref:'m3',likes:N(96),laughs:N(512)}}
 ];
 const CIRCLE=[
-  {id:'c1',kind:'music',ref:'choir',by:'ines',note:'the key change at 2:40 is a personality test',likes:57,laughs:9},
-  {id:'c2',kind:'meme',ref:'m2',by:'kai',likes:44,laughs:211},
-  {id:'c3',kind:'music',ref:'cherry',by:'dev',note:'for dramatic commutes only',likes:82,laughs:14},
-  {id:'c4',kind:'meme',ref:'m4',by:'ines',likes:63,laughs:158},
-  {id:'c5',kind:'music',ref:'soft',by:'kai',note:'summer, but make it a little sad',likes:39,laughs:3}
+  {id:'c1',kind:'music',ref:'choir',by:'ines',note:'the key change at 2:40 is a personality test',likes:N(57),laughs:N(9)},
+  {id:'c2',kind:'meme',ref:'m2',by:'kai',likes:N(44),laughs:N(211)},
+  {id:'c3',kind:'music',ref:'cherry',by:'dev',note:'for dramatic commutes only',likes:N(82),laughs:N(14)},
+  {id:'c4',kind:'meme',ref:'m4',by:'ines',likes:N(63),laughs:N(158)},
+  {id:'c5',kind:'music',ref:'soft',by:'kai',note:'summer, but make it a little sad',likes:N(39),laughs:N(3)}
 ];
 const YEST=[
-  {id:'y1',kind:'music',ref:'glass',likes:201,laughs:7,why:'Yesterday’s most saved, from 38 circles.'},
-  {id:'y2',kind:'meme',ref:'m4',likes:90,laughs:340},
-  {id:'y3',kind:'music',ref:'soft',likes:166,laughs:5,why:'A slow riser. It crept up the charts overnight.'}
+  {id:'y1',kind:'music',ref:'glass',likes:N(201),laughs:N(7),why:WHY('Yesterday’s most saved, from 38 circles.')},
+  {id:'y2',kind:'meme',ref:'m4',likes:N(90),laughs:N(340)},
+  {id:'y3',kind:'music',ref:'soft',likes:N(166),laughs:N(5),why:WHY('A slow riser. It crept up the charts overnight.')}
 ];
 const POSTS={};[...DROPS.flatMap(d=>[d.music,d.meme]),...CIRCLE,...YEST].forEach(p=>POSTS[p.id]=p);
 /* Comments are gone: like, save and share only. The seeded ones went with them. */
 const HUMOR=['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'];
-const PEOPLE=[
+const DEMO_PEOPLE=[
   {id:'ines',name:'Ines',km:.9,intent:['friends','dating'],matched:true,score:88,pal:['#ff6fa5','#ffb86b','#7b3aa8','#180c1c'],seed:3,shared:['choir','cherry'],humor:[.6,.4,.9,.3,.6,.9],bio:'Keeps a spreadsheet of songs that make her want to leave the party.',age:26},
   {id:'kai',name:'Kai',km:2.2,intent:['friends'],matched:true,score:84,pal:['#58d6c8','#7de3b5','#1d3b6e','#0b1626'],seed:5,shared:['soft','moons'],humor:[.5,.8,.4,.8,.5,.6],bio:'Will defend one questionable album forever.',age:29},
   {id:'dev',name:'Dev',km:3.1,intent:['dating','friends'],matched:true,score:81,pal:['#ffb86b','#ff6fa5','#4a2a6e','#14081a'],seed:8,shared:['cherry','glass'],humor:[.7,.5,.6,.6,.4,.8],bio:'Commute DJ. Has been asked to stop.',age:28},
   {id:'noor',name:'Noor',km:1.8,intent:['dating','friends'],score:94,likesYou:true,pal:['#8f7bff','#ff9466','#1d3b6e','#0b1626'],seed:11,shared:['moons','route9','choir'],humor:[.9,.5,.8,.3,.6,.9],bio:'Makes playlists for weather that hasn’t happened yet.',age:27},
   {id:'saoirse',name:'Saoirse',km:4.6,intent:['dating'],score:89,likesYou:true,pal:['#ff6fa5','#c3a6ff','#3a2a6e','#10131f'],seed:14,shared:['cherry','choir'],humor:[.7,.6,.9,.4,.3,.8],bio:'Will explain the lore of a song she heard once on a bus.',age:25},
-  {id:'mateo',name:'Mateo',km:5,intent:['friends','dating'],score:83,pal:['#ffd166','#ff8a5b','#7b3aa8','#1b1233'],seed:17,shared:['route9','glass'],humor:[.5,.7,.5,.9,.7,.5],bio:'Group chat DJ. Responsible for three of your saved songs.',age:31},
-  {id:'wren',name:'Wren',km:7.3,intent:['friends'],score:77,pal:['#8fb4ff','#58d6c8','#3a2a6e','#0e1220'],seed:20,shared:['soft','glass'],humor:[.4,.6,.6,.5,.9,.7],bio:'Nostalgic for decades she wasn’t alive for.',age:24},
-  {id:'idris',name:'Idris',km:8.9,intent:['dating'],score:72,pal:['#c3a6ff','#ff6fa5','#2a1448','#10131f'],seed:23,shared:['moons'],humor:[.95,.3,.9,.2,.4,.8],bio:'Deadpan in three languages.',age:30},
-  {id:'lena',name:'Lena',km:11,intent:['dating','friends'],score:68,pal:['#ff9466','#ffd166','#1f8f78','#0b1a14'],seed:26,shared:['route9'],humor:[.4,.5,.7,.7,.8,.4],bio:'Thinks every road trip needs an official opening track.',age:28}
 ];
+/* The Matrix, the People tab and the listening-room seat map all read this.
+   In a production build it is empty, because these nine are personas and not
+   people: a dating deck with invented strangers in it is the one thing the
+   product must never do. `endHTML()` already states the density gate plainly
+   ("a dating deck with three people in it is a lie with a nice layout"), so an
+   empty list renders an honest screen rather than a broken one.
+   Same flag and same reasoning as ACTIVITY and CIRCLE_SOURCE above. */
+const PEOPLE=DEMO_DATA?DEMO_PEOPLE:[];
 const LIVE=[{id:'dev',track:'glass',since:'2m',n:6},{id:'ines',track:'choir',since:'8m',n:11},{id:'kai',track:'soft',since:'21m',n:4}];
 const STARTERS=['What song did you replay five times this week?','Defend your worst-rated favorite album','Send one meme that explains you','Pick a song for waiting on a late bus'];
 const REPLIES=['ha. okay. send the track','this is exactly the kind of taste crime i like','you get it. play it loud','be honest, did you cry at the bridge','i have so many opinions about this','adding it to my night bus playlist'];
@@ -200,14 +275,16 @@ const DEF=()=>({
   pulse:{duel:false,seen:0},duelLink:null
 });
 const BASE_THREADS=()=>{const n=Date.now();return{
-  ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]},
-  kai:{unread:0,msgs:[{f:'me',t:'defend your worst-rated favorite album',ts:n-1500*6e4},{f:'them',t:'Soft Machine Summer. no notes. you will not change my mind',ts:n-1490*6e4},{f:'me',t:'bold. i respect it a little',ts:n-1480*6e4}]},
-  dev:{unread:1,msgs:[{f:'them',t:'up for a 15 minute listen later?',ts:n-300*6e4}]}
+  ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]}
 }};
 let S=merge(DEF(),store.get('state',{}));
 /* Demo people come with demo transcripts. A real account starts with zero
    threads — the People tab then shows its empty state, not invented chats. */
-if(!S.threads)S.threads=DEMO_DATA?BASE_THREADS():{};
+/* Demo threads seed whenever the demo population is on and there is nothing
+   there yet — including when a previous (non-demo) load persisted an empty
+   `{}`, which the old `if(!S.threads)` guard treated as "already set". */
+if(DEMO_DATA&&(!S.threads||!Object.keys(S.threads).length))S.threads=BASE_THREADS();
+else if(!S.threads)S.threads={};
 if(!S.pulse)S.pulse=DEF().pulse;
 if(S.duelLink===undefined)S.duelLink=null;
 if(S.duel)delete S.duel;
@@ -304,6 +381,22 @@ function burst(btn,color){
     d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>d.remove();
   }
 }
+/* Floating reaction: an emoji (or a few) lifts off the tap point, drifts and
+   fades — the brief's §6.4 "burst at the tap point". Fixed-position overlay so
+   it floats above every screen; pooled by timeout, capped, and skipped in calm
+   / reduced-motion. */
+function floatEmoji(x,y,emoji,n){
+  if(S.set.calm||!emoji)return;
+  const count=Math.min(n||3,6);
+  for(let i=0;i<count;i++){
+    const e=document.createElement('span');e.className='float-emoji';e.textContent=emoji;e.setAttribute('aria-hidden','true');
+    e.style.cssText=`left:${x}px;top:${y}px;--dx:${(Math.random()*64-32).toFixed(0)}px;--rot:${(Math.random()*50-25).toFixed(0)}deg;--s:${(0.85+Math.random()*0.5).toFixed(2)};animation-delay:${i*80}ms`;
+    document.body.appendChild(e);
+    setTimeout(()=>e.remove(),1300+i*80);
+  }
+}
+/* Float from the centre of a control (a like/save button). */
+function floatFromEl(el,emoji,n){if(!el)return;const r=el.getBoundingClientRect();floatEmoji(r.left+r.width/2,r.top+r.height/2,emoji,n)}
 function setTint(host,art){
   let box=$(':scope>.tint',host);if(!box){box=document.createElement('div');box.className='tint';host.prepend(box)}
   const l=document.createElement('div');l.className='tl';l.innerHTML=art;box.appendChild(l);
@@ -400,7 +493,7 @@ function reactions(p,col){
 function dcardHTML(p){
   const r=refOf(p),isM=p.kind==='music',by=p.by&&person(p.by);
   const id=p.id;
-  return `<div class="dcard" data-id="${id}">
+  return `<div class="dcard" data-id="${id}" data-rxn-kind="${isM?'song':'meme'}">
     ${artOf(p)}${isM?'<div class="shade"></div>':''}
     <div class="dc-top"><span class="chipg">${isM?'Song':'Meme'}</span><span class="chipg">${isM?esc(r.genre):(by?'From '+esc(by.name):'Today’s meme')}</span><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
     ${isM?`<div class="dc-bot"><h3>${esc(r.title)}</h3><p>${esc(r.artist)}</p><button class="playp" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button></div>`:''}
@@ -411,7 +504,7 @@ function dcardHTML(p){
 }
 function ccardHTML(p,i){
   const r=refOf(p),isM=p.kind==='music',by=person(p.by);
-  return `<article class="cc stg" style="--d:${i}" data-id="${p.id}">
+  return `<article class="cc stg" style="--d:${i}" data-id="${p.id}" data-rxn-kind="${isM?'song':'meme'}">
     <div class="cc-art" data-act="open-d" data-id="${p.id}" role="button" tabindex="0" aria-label="Open ${esc(labelOf(p))}">${artOf(p)}${isM?'<div class="shade"></div>':''}
       <div class="cc-by glass">${orb(by,30)}<span><b>${esc(by.name)}</b> ${isM?'dropped this':'sent this'}</span></div>
       ${isM?`<div class="cc-bot"><h3>${esc(r.title)}</h3><p>${esc(p.note||r.artist)}</p></div>`:''}</div>
@@ -431,18 +524,123 @@ function tomorrowHTML(){
     <div class="group"><div class="row"><div class="tx" style="text-align:left"><b>Remind me</b><span>A quiet nudge when it lands.</span></div>${swHTML('tog','remind',S.set.remind,'Remind me')}</div></div>
   </div></div></div>`;
 }
+/* ---- Y1 Receipts: yesterday as a thermal-paper receipt (brief §8.1) ----
+   Line items, totals, peak chaos and a PAID IN FULL stamp, read from the real
+   store. Under ?demo=1 with no history it prints a sample so the surface is
+   testable; in production an empty day is the honest empty state. */
+const rcDemoLines=()=>{const y=new Date(Date.now()-86400000);const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();return MM.slice(0,5).map((m,i)=>({ts:start+(9+i)*36e5+i*7e5,itemId:m.id,emoji:m.e||'🔥'}))};
+function rewindHTML(){
+  const st=V5.getState();
+  const y=new Date(Date.now()-86400000);
+  const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();
+  const end=start+86400000;
+  const rx=(st.reactions||[]).filter(r=>r.ts>=start&&r.ts<end);
+  const sv=(st.saves||[]).filter(s=>s.ts>=start&&s.ts<end);
+  const demo=DEMO_DATA&&!rx.length&&!sv.length;
+  const src=rx.length?rx.slice(0,12):(demo?rcDemoLines():[]);
+  const dateStr=y.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  if(!src.length){
+    return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div></div>
+    <div class="rcpt-empty stg"><span class="rcpt-emoji" aria-hidden="true">📼</span><h2>Nothing to rewind. Yet.</h2><p class="hint">React to a few drops today and your rewind lands here tomorrow.</p></div>`;
+  }
+  const VIBES=[['Chaotic','🌀'],['Deadpan','🗿'],['Wholesome','🥹'],['Unhinged','🤡'],['Soft','🫠'],['Niche','🧠']];
+  const vibe=VIBES[fnv1a('vibe'+start)%VIBES.length];
+  const laughs=rx.length||(demo?src.length:0),saves=sv.length||(demo?3:0);
+  const seen={},strip=[];
+  src.forEach(r=>{const m=mmOf(r.itemId);if(m&&!seen[m.id]){seen[m.id]=1;strip.push(`<div class="rw-tile">${mmVisual(m)}<span class="rw-tile-e">${esc(r.emoji||m.e||'✨')}</span></div>`)}});
+  const topMeme=mmOf(src[0].itemId);
+  return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div><button class="cnt" data-act="share-receipt" aria-label="Share rewind">Share</button></div>
+  <div class="rewind stg" style="--d:1">
+    <div class="rw-hero">
+      <span class="rw-kicker">${esc(dateStr)}</span>
+      <h2 class="rw-title">Your Rewind</h2>
+      <p class="rw-vibe">Vibe of the day <b>${vibe[0]}</b> ${vibe[1]}</p>
+    </div>
+    <div class="rw-stats">
+      <div><b>${laughs}</b><span>laughs ${esc(V5_LAUGH||'🔥')}</span></div>
+      <div><b>${saves}</b><span>saves 🔖</span></div>
+      <div><b>${src.length}</b><span>reacts</span></div>
+    </div>
+    ${topMeme?`<div class="rw-top"><span class="eyebrow">Most you</span><div class="rw-top-art">${mmVisual(topMeme)}</div></div>`:''}
+    ${strip.length?`<div class="rw-strip">${strip.join('')}</div>`:''}
+  </div>`;
+}
+/* ---- T1 The Draft: vote once on tomorrow's drop (brief §8.1) ----
+   Two blurred candidate memes and two song teasers (genre + vibe only). The
+   pick is deterministic per day so it is stable across renders; with no backend
+   it is labelled Practice Mode rather than pretending to tally real votes. */
+const fnv1a=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+function draftHTML(){
+  const today=new Date().toISOString().slice(0,10);
+  const h=fnv1a('draft'+today);
+  const np=Math.max(1,MM.length),nt=Math.max(1,Object.keys(TRACKS).length);
+  const a=MM[h%np],b=MM[(h>>>4)%np]||MM[(h+1)%np];
+  const tracks=Object.values(TRACKS);
+  const s1=tracks[h%nt],s2=tracks[(h>>>6)%nt]||tracks[(h+1)%nt];
+  const vote=(S.draftVote&&S.draftVote.day===today)?S.draftVote.pick:null;
+  const winner=h%2;
+  const cand=(m,i)=>m?`<button class="dcand ${vote===i?'picked':''}" data-act="draft-vote" data-v="${i}" ${vote!==null?'disabled':''} aria-label="Vote for candidate ${i+1}"><span class="dcand-art">${mmVisual(m)}</span><span class="dcand-tag">${esc(m.k||'unlisted')}</span>${vote===i?'<span class="dcand-check" aria-hidden="true">✓</span>':''}</button>`:'';
+  const teaser=t=>t?`<div class="dtease"><b>${esc(t.genre||'Track')}</b><span>${esc(t.style||'')}</span></div>`:'';
+  return `<div class="drow stg"><div><span class="eyebrow">Tomorrow · the draft</span>${bigDateHTML(1)}</div><span class="cnt" id="cd">00:00:00</span></div>
+  <div class="draft stg" style="--d:1">
+    <p class="draft-q">Which meme drops tomorrow? Vote once — it's free.</p>
+    <div class="draft-cands">${cand(a,0)}${cand(b,1)}</div>
+    <div class="draft-songs"><span class="eyebrow">Song teasers</span>${teaser(s1)}${teaser(s2)}</div>
+    <p class="draft-mode">Practice mode: results arrive at 9:00 once voting is live.</p>
+    ${vote!==null?(vote===winner?'<div class="called">🎯 Called it — +1 to your profile</div>':'<div class="called-no">Not this time. Tomorrow is a new draft.</div>'):''}
+  </div>`;
+}
 function homeBodyHTML(){
-  if(DK.day===1){DK.items=[];DK.order=[];return tomorrowHTML()}
+  if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
+  if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
+/* ---- Stories (brief §6.6): a rail on the feed that opens the v5 Stories
+   overlay. The compose/view/12-hour-expiry component is reused as-is; the seam
+   only provides the entry point and keeps the rail in sync with the store. ---- */
+let storiesHandle=null;
+function storiesRailHTML(){
+  const st=V5.getState(),now=Date.now();
+  const live=(st.stories||[]).filter(s=>s.expiresAt>now);
+  const addRing=`<button class="sring add" data-act="open-stories" aria-label="Add to your story"><span class="sring-i">＋</span></button>`;
+  const ring=s=>{const e=(((s.layers||[]).find(l=>l.type==='sticker'))||{}).name||'✨';return `<button class="sring" data-act="open-story" data-id="${esc(s.id)}" aria-label="View story"><span class="sring-i">${esc(String(e).slice(0,2))}</span></button>`};
+  const mine=live.filter(s=>s.ownerId==='me'),others=live.filter(s=>s.ownerId!=='me');
+  return `<div class="srail">${addRing}${mine.map(ring).join('')}${others.map(ring).join('')}</div>`+(live.length?'':'<p class="srail-hint">Stories · gone in 12 hours</p>');
+}
+function renderStoriesRail(){const r=$('#stories-rail');if(r)r.innerHTML=storiesRailHTML()}
+function openStories(){
+  if(storiesHandle)return;
+  const host=document.createElement('div');host.className='stories-host';host.id='stories-host';
+  document.body.appendChild(host);
+  void import('./v5/stories.ts').then(({mountStories})=>{
+    storiesHandle=mountStories(host,{ownerId:'me',onClose:closeStories});
+  }).catch(()=>{host.remove()});
+}
+function closeStories(){
+  if(storiesHandle){try{storiesHandle.destroy()}catch(_){}storiesHandle=null}
+  const h=$('#stories-host');if(h)h.remove();
+  renderStoriesRail();
+}
+/* Demo stories live only behind ?demo=1 and are pruned the moment the app is
+   opened without it, so nothing fabricated ever shows by default. */
+function syncDemoStories(){
+  const st=V5.getState();
+  if(!DEMO_DATA){(st.stories||[]).filter(s=>String(s.id).indexOf('demo-story-')===0).forEach(s=>V5.dropStory(s.id));return}
+  if((st.stories||[]).some(s=>String(s.id).indexOf('demo-story-')===0))return;
+  const now=Date.now(),ttl=((v5config.hours&&v5config.hours.storyTtl)||12)*36e5;
+  [['ines','Music','this song on repeat since 2am'],['kai','W or L','pineapple on pizza. go.'],['noor','Mood','monday. send memes.']].forEach((d,i)=>{
+    V5.putStory({id:'demo-story-'+d[0],ownerId:d[0],createdAt:now-i*6e5,expiresAt:now+ttl-i*6e5,layers:[{type:'sticker',name:d[1]},{type:'text',body:d[2]}],audience:'everyone',hideFrom:[],replyRule:'react'});
+  });
+}
 function renderFeed(){
+  if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      ${ftabsHTML('day',[['-1','Yesterday'],['0','Today'],['1','Tomorrow']],String(DK.day))}
+      ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
@@ -453,7 +651,7 @@ function afterHome(){
   const d=$('#hdeck');
   if(d){
     $$('.dcard',d).forEach(c=>{
-      bindDrag(c,{can:()=>c.classList.contains('top')&&!DK.busy,fly:dir=>deckFly(dir),tap:()=>openDetail(c.dataset.id,c),dbl:()=>{const id=c.dataset.id;if(!rs(id).l){rs(id).l=1;save();syncPost(id)}bigHeart(c);haptic([10,30,10])}});
+      bindDrag(c,{can:()=>c.classList.contains('top')&&!DK.busy,fly:dir=>deckFly(dir),tap:()=>openDetail(c.dataset.id,c),dbl:()=>{const id=c.dataset.id;if(!rs(id).l){rs(id).l=1;save();syncPost(id)}bigHeart(c);const r=c.getBoundingClientRect();floatEmoji(r.left+r.width/2,r.top+r.height*0.44,V5_LIKE,5);haptic([10,30,10])}});
     });
     layoutDeck();
   }else setTint($('#s-feed'),poster(DK.day===1?TRACKS.route9:TRACKS.moons,true));
@@ -512,6 +710,25 @@ FT.day=v=>{
   $('#circles').style.display=DK.day===0?'':'none';haptic(6);afterHome();
 };
 ACT.refresh=()=>{$('#s-feed').scrollTo({top:0,behavior:'smooth'});refresh()};
+/* The Draft: one free vote per day, then the card locks and shows the verdict. */
+ACT['draft-vote']=b=>{
+  const today=new Date().toISOString().slice(0,10);
+  if(S.draftVote&&S.draftVote.day===today){toast('You already voted today');return}
+  S.draftVote={day:today,pick:+b.dataset.v};save();haptic(8);
+  const hb=$('#hbody');if(hb)hb.innerHTML=homeBodyHTML();
+  track('draft_voted',{pick:+b.dataset.v});
+};
+/* Share the receipt. Uses the real Web Share / clipboard so the control never
+   claims a share it did not perform (honesty rule D-30). */
+ACT['share-receipt']=async()=>{
+  const st=V5.getState();const n=(st.reactions||[]).length;
+  const txt=`My cultured receipt — ${n} laughs, ${v5SavedKeys(st).length} saves. Match on your humor, not your headshot.`;
+  try{
+    if(navigator.share){await navigator.share({title:'cultured receipt',text:txt});track('receipt_shared',{via:'share'})}
+    else if(navigator.clipboard){await navigator.clipboard.writeText(txt);toast('Receipt copied to clipboard');track('receipt_shared',{via:'copy'})}
+    else toast('Sharing is not available on this device');
+  }catch(e){/* user dismissed the share sheet — not an error */}
+};
 function skel(n){return `<div class="sk-deck">${Array.from({length:n},(_,i)=>`<div class="sk sk-card" style="--d:${i}"></div>`).join('')}</div>`}
 function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);
@@ -553,18 +770,64 @@ const idOf=b=>b.closest('[data-id]').dataset.id;
 /* Like/save/share also count toward calibration; the Matrix shows its score
    only once there is enough of it to be worth showing. */
 const bumpCal=active=>{if(active){S.cal=(S.cal||0)+1;save()}};
-ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCall('recordReaction',id,'like');bumpCal(st.l)};
-ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(st.h)};
-ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');bumpCal(st.s);toast(st.s?'Saved to your Fingerprint':'Removed from saved')};
+/* v5 store writes. The seam's own shapes are mirrored on write so its markup
+   keeps working, but the store is what the You tab, the Vault and the pin
+   board read. `kindOf(id)` maps the 10 hard-coded POSTS ids to meme|song. */
+const kindOf=id=>(POSTS[id]&&POSTS[id].kind==='music')?'song':'meme';
+ACT.like=b=>{
+  const id=idOf(b),st=rs(id),on=!st.l;st.l=on?1:0;
+  if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction(kindOf(id),id);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(on);
+  if(on)floatFromEl(b,V5_LIKE,3);
+};
+ACT.laugh=b=>{
+  const id=idOf(b),st=rs(id),on=!st.h;st.h=on?1:0;
+  if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});else V5.removeReaction(kindOf(id),id);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(on);
+  if(on)floatFromEl(b,V5_LAUGH,4);
+};
+ACT.save=b=>{
+  const id=idOf(b),st=rs(id),on=!st.s;st.s=on?1:0;
+  V5.setSaved(kindOf(id),id,on);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'save');bumpCal(on);
+  toast(on?'Kept.':'Let go.');
+};
 /* The long-press fan emits `micro:laugh` on the heart; the seam decides what
    that means, so the function exists with or without the animation. */
 document.addEventListener('micro:laugh',e=>{
   const btn=e.target;if(!btn||!btn.closest)return;
   const host=btn.closest('[data-id]');if(!host)return;
   const id=host.dataset.id,st=rs(id);
-  if(!st.h){st.h=1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(true)}
-  burst(btn,'#ffd166');haptic([8,30,8]);
+  if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(true)}
+  burst(btn,'#ffd166');floatFromEl(btn,V5_LAUGH,4);haptic([8,30,8]);
 });
+/* The ReactionTray (long-press) reports its pick here. The seam owns state: it
+   records the chosen emoji against the meme/song and floats it off the finger.
+   Works on both deck cards ([data-id]) and meme-shelf cards ([data-m]). */
+document.addEventListener('micro:react',e=>{
+ try{
+  const btn=e.target,d=e.detail||{},emoji=d.emoji;
+  if(!btn||!btn.closest||!emoji)return;
+  const memeCard=btn.closest('[data-m]');
+  if(memeCard){
+    const id=memeCard.dataset.m,st=mmS();st.l[id]=1;
+    V5.react({kind:'meme',itemId:id,emoji,surface:'deck'});
+    save();renderYou();repoCall('recordReaction',id,'like');
+    const lb=memeCard.querySelector('[data-act="mm-like"]');
+    if(lb){lb.classList.add('on');lb.setAttribute('aria-pressed','true')}
+    floatFromEl(btn,emoji,3);haptic(10);
+    return;
+  }
+  const host=btn.closest('[data-id]');if(!host)return;
+  const id=host.dataset.id,st=rs(id),k=(d.kind==='song'||kindOf(id)==='song')?'song':'meme';
+  st.l=1;
+  V5.react({kind:k,itemId:id,emoji,surface:'deck'});
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(true);
+  floatFromEl(btn,emoji,3);haptic(10);
+ }catch(_){/* a reaction is decoration; it must never blank the screen */}
+});
+ACT['open-stories']=()=>openStories();
+ACT['open-story']=()=>openStories();
 ACT.share=b=>openShare(idOf(b));
 ACT['open-d']=b=>{openDetail(b.dataset.id,b);trackView(b.dataset.id)};
 /* previews */
@@ -594,14 +857,14 @@ const CREW_ROLES=['Saved it','Laughed hardest','Replayed it 5 times','Sent it fi
 function crewFor(p){return PEOPLE.slice().sort((a,b)=>hash(p.id+a.id)-hash(p.id+b.id)).slice(0,4)}
 function detailHTML(p){
   const r=refOf(p),isM=p.kind==='music',cs=[],crew=crewFor(p);
-  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span><span class="chipg">${p.likes+p.laughs} reactions</span>`;
+  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span>${p.likes+p.laughs?`<span class="chipg">${p.likes+p.laughs} reactions</span>`:'<span class="chipg">No reactions yet</span>'}`;
   return `<div class="d-scroll" data-id="${p.id}">
     <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips">${chips}</div></div>
     <div class="d-hero" id="dHero">${artOf(p)}${isM?'<div class="shade" style="height:40%"></div><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div>':''}${isM?`<button class="glassb" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button>`:''}<div class="prog"><i></i></div></div>
     <h1 class="d-title stg" style="--d:2">${esc(isM?r.title:labelOf(p))}</h1>
     <p class="d-by stg" style="--d:3">${isM?esc(r.artist):'A cultured meme'}</p>
     <div class="arow stg" style="--d:4">${reactions(p,false)}</div>
-    <p class="d-desc stg" id="dDesc" style="--d:5">${esc(isM?(p.why?p.why+' ':'')+r.desc:'Sent '+(p.likes+p.laughs)+' times in your circles this week. Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.')}</p>
+    <p class="d-desc stg" id="dDesc" style="--d:5">${esc(isM?(p.why?p.why+' ':'')+r.desc:((p.likes+p.laughs)?'Sent '+(p.likes+p.laughs)+' times in your circles this week. Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.':'Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.'))}</p>
     <button class="readm stg" style="--d:5" data-act="readmore">Read more</button>
     ${DEMO_DATA?`<h3 class="d-h stg" style="--d:6">Crew<small>${crew.length} in your circles</small></h3>
     <div class="hs stg" style="--d:6">${crew.map((c,i)=>`<div class="crew-c"><div class="pt" style="background:linear-gradient(160deg,${c.pal[0]},${c.pal[3]})"><div class="fpmini">${fpSVG(fpParams(c.seed*31+hash(p.id)),'#ffffff',c.pal[1],{n:10,w:1.2})}</div><b>${esc(c.name[0])}</b></div><p>${esc(c.name)}</p><span>${CREW_ROLES[i]}</span></div>`).join('')}</div>`:`<h3 class="d-h stg" style="--d:6">Who’s moved this<small>0</small></h3><p class="hint stg" style="--d:6">Nobody yet — and cultured will not invent anybody to fill the row.</p>`}
@@ -646,19 +909,34 @@ ACT['to-room']=b=>{
   S.threads[withId].msgs.push({f:'me',kind:'track',ref,ts:Date.now()});
   save();closeSheet();toast('Sent with a 30-second clip');haptic(8);reply(withId);track('song_sent',{via:'rooms_off'});
 };
+/* Only real actions get a button. This sheet used to offer "Messages" and
+   "Your story" that did nothing but toast "Sent to Messages" / "Added to your
+   story" — a button that lies is worse than no button, because the user walks
+   away believing something was sent. The OS share sheet already covers every
+   real target, so it is the only alternative to copying the link, and it is
+   only offered where it exists. */
+const canNativeShare=()=>typeof navigator!=='undefined'&&typeof navigator.share==='function';
 function openShare(id){
   const p=POSTS[id],r=refOf(p);
+  const actions=[['copy','Copy link',I.link]];
+  if(canNativeShare())actions.push(['more','Share',I.dots]);
   openSheet(`<h3 class="sh-t">Share</h3>
     <div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div>
-    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
+    <div class="share-row">${actions.map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>
+    ${canNativeShare()?'':'<p class="hint">This browser has no share sheet, so the link is the only way out. Copy it and send it wherever you like.</p>'}`);
 }
 ACT.sharego=async b=>{
   const w=b.dataset.w;
-  if(w==='more'&&navigator.share){try{await navigator.share({title:'cultured',text:b.dataset.t,url:location.href});closeSheet();return}catch(e){}}
-  if(w==='copy'){try{await navigator.clipboard.writeText(location.href)}catch(e){}toast('Link copied')}
-  else if(w==='msg')toast('Sent to Messages');
-  else if(w==='story')toast('Added to your story');
-  else toast('Share sheet opened');
+  if(w==='more'){
+    /* A dismissed sheet is not a failure — say nothing rather than a toast
+       claiming something happened. */
+    try{await navigator.share({title:'cultured',text:b.dataset.t,url:location.href});closeSheet()}catch(e){}
+    return;
+  }
+  let ok=false;
+  try{await navigator.clipboard.writeText(location.href);ok=true}catch(e){}
+  /* Report what actually happened instead of assuming the clipboard worked. */
+  toast(ok?'Link copied':'Couldn’t reach the clipboard — copy the address bar instead');
   closeSheet();
 };
 ACT.closesheet=closeSheet;
@@ -683,6 +961,9 @@ function queue(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1
 function gatedCount(){return PEOPLE.filter(p=>!p.matched&&p.intent.indexOf(S.lens)>-1&&!S.decided[p.id]&&p.km<=S.set.radius&&p.score<MATCH_MIN_SCORE).length}
 const labelFor=s=>s>=90?'Taste twin':s>=80?'Strong overlap':'Worth a listen';
 function renderMatchShell(){
+  /* The v5 Matrix owns #s-match when its flag is on. main.ts mounts into the
+     same host, so the tab rail, nav and deep links keep working untouched. */
+  if(V5_MATRIX)return;
   $('#s-match').innerHTML=`<div class="tint matrix-tint">${mediaLayer('matrixBg','matrix-media')}${mediaLayer('matrixVideo','matrix-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}Matrix</div><div class="hr"><button class="ibtn" data-act="open-settings" aria-label="Discovery settings">${I.sliders}</button></div></header>
     ${ftabsHTML('lens',[['dating','Dating'],['friends','Friends']],S.lens)}
@@ -862,6 +1143,9 @@ function stopPulseFX(){if(PFX){clearInterval(PFX.r);PFX=null}}
    Pulse stats strip are removed in this phase; the card row, the local-signal card,
    the note rail and the duel entry all remain as the Phase-3 fill-in point. */
 function renderArena(){
+  /* The v5 Arena owns #s-arena when its flag is on. main.ts mounts into the
+     same host, so the tab rail and deep links keep working. */
+  if(V5_ARENA)return;
   /* The arena tells the truth about a duel: live, waiting, or revealed — read
      from the same localStorage record the /d/:id tab writes to. */
   const dl=S.duelLink&&S.duelLink.id?S.duelLink:null;
@@ -1102,17 +1386,25 @@ ACT['duel-chip']=async b=>{
   try{await duelEnsure()}catch(e){toast('The duel adapter is offline in this build');return}
   openSheet(duelSheetHTML());paintDuel();haptic(8);track('duel_chip',{source:'thread'});
 };
-ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Arena refreshed · new signals found');haptic(8)};
+/* This re-renders from state that is already on the device. It fetches nothing,
+   so it cannot claim new signals arrived — saying so would be the same lie the
+   share sheet used to tell. The week badge is derived from the real date, so
+   that genuinely can change. */
+ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Up to date · nothing new since you last looked');haptic(8)};
 ACT['arena-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
 
 /* ================= people + chat ================= */
 let PV='chats';
 function renderPeople(){
+  /* The v5 People screen owns #s-people when its flag is on. main.ts mounts
+     into the same host, so the tab rail and deep links keep working. */
+  if(V5_PEOPLE)return;
   const items=Object.keys(S.threads).map(id=>({p:person(id),t:S.threads[id]})).filter(x=>x.p);
   const fresh=items.filter(x=>!x.t.msgs.length),chats=items.filter(x=>x.t.msgs.length).sort((a,b)=>b.t.msgs[b.t.msgs.length-1].ts-a.t.msgs[a.t.msgs.length-1].ts);
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
   $('#s-people').innerHTML=`<div class="tint"><i class="aur a1"></i><i class="aur a2"></i><i class="aur a3"></i></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
+    <div id="stories-rail">${storiesRailHTML()}</div>
     ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
     ${!fresh.length&&!chats.length?`<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🫥</span><p class="hint">No conversations yet. A thread opens when you and someone both Resonate — cultured won’t write the first message for you.</p></div></div>`:''}
@@ -1123,7 +1415,13 @@ function renderPeople(){
 FT.pv=v=>{PV=v;renderPeople();const el=$('#s-people');el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');setTimeout(()=>el.classList.remove('enter'),1500)};
 ACT['open-thread']=b=>openThread(b.dataset.id);
 function openThread(id){
-  const p=person(id),t=S.threads[id];if(!t)return;t.unread=0;save();updateBadge();
+  const p=person(id),t=S.threads[id];if(!t)return;
+  /* Threads are persisted; the people behind them are not (D-27). Lines 910 and
+     944 pass an id straight out of S.threads, so `p` can be undefined even
+     though the thread exists, and `orb(p)` / `p.name` would throw. Say so
+     rather than opening a broken page. The thread stays on disk. */
+  if(!p){toast('That match is no longer here');return}
+  t.unread=0;save();updateBadge();
   const pg=openPage(`<div class="page-head"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button>${orb(p,42)}<div class="ph-t"><b>${esc(p.name)}</b><span>${calibrating()?'calibrating':p.score+'% resonance'}, ${p.km} km away</span></div>${FEATURE_ROOMS?`<button class="ibtn" data-act="to-room" data-id="moons" data-with="${id}" aria-label="${ROOM_OFFER_LABEL}">${I.headphones}</button>`:'<span style="width:42px"></span>'}</div>
     <div class="msgs" id="msgs"></div><div id="starters"></div>
     <div class="composer"><span id="repochip"></span><button class="send alt" data-act="song-pick" aria-label="Send a song">${I.note}</button><button class="send alt" data-act="meme-pick" aria-label="Send a meme">😂</button><input id="msg-in" placeholder="Say something about a song" maxlength="280" autocomplete="off" aria-label="Message"><button class="send" data-act="send" data-fx="send" aria-label="Send">${I.send}</button></div>`);
@@ -1190,7 +1488,7 @@ ACT['bub-react']=b=>{
   if(!m.rx[e])delete m.rx[e];
   save();haptic(6);renderMsgs(id);
 };
-function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}${tools}</div>`}
+function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
 function reply(id){
   TYPING[id]=true;renderMsgs(id);const t=S.threads[id];
   setTimeout(()=>{
@@ -1232,7 +1530,12 @@ const SEATROWS=[8,'s','s','s','s',0,'s','s'];
 function openRoom(o){
   const t=TRACKS[o.trackId]||TRACKS.moons;
   const friends=PEOPLE.filter(p=>p.matched||S.matchedIds.indexOf(p.id)>-1);
-  const R=ROOM={t:t,w:(o.withId&&person(o.withId))?o.withId:friends[0].id,friends:friends.map(f=>f.id),n:2,slot:'Now',day:0,room:0,sel:[],live:{},iv:null};
+  /* A room needs somebody to listen with. With the invented population gated
+     off this array is legitimately empty, and `friends[0].id` used to throw
+     before the page opened. Ask instead of crashing. */
+  const withWho=(o.withId&&person(o.withId))?o.withId:(friends[0]&&friends[0].id);
+  if(!withWho){toast('Nobody to listen with yet — match with someone first.');haptic(6);return}
+  const R=ROOM={t:t,w:withWho,friends:friends.map(f=>f.id),n:2,slot:'Now',day:0,room:0,sel:[],live:{},iv:null};
   const pg=openPage(`<div class="rm-top"><button class="ibtn" data-act="back" aria-label="Back">${I.back}</button><div class="rm-t"><b>${esc(t.title)}</b><button data-act="room-who" aria-label="Change who you listen with"><span id="rWith"></span>${I.chevd}</button></div><span style="width:42px"></span></div>
     <div class="page-body" style="padding-bottom:110px">
     <div class="rm-pills stg"><button class="rpill" data-act="room-day" aria-label="Change day"><span id="rDay">Today</span>${I.chevd}</button><div class="rpill sel2"><button class="stp" data-act="seats-dec" aria-label="Fewer seats">${I.minus}</button><span id="rN">2 Seats</span><button class="stp" data-act="seats-inc" aria-label="More seats">${I.plus}</button></div></div>
@@ -1380,10 +1683,16 @@ ACT['s-recap']=()=>{
 
 /* ================= you (Cultural Fingerprint) ================= */
 function renderYou(){
+  /* The v5 profile owns #s-you when its flag is on (it is, by default). main.ts
+     mounts it into the host, same seam as Matrix/People/Arena. */
+  if(V5_PROFILE)return;
   const pr=S.prof,mine=fpParams(mineSeed());
   const P=youPal(),bgS=pr.bg||'rings';
-  const saved=Object.keys(S.react).filter(id=>S.react[id].s&&POSTS[id]);
-  const laughs=Object.keys(S.react).filter(id=>S.react[id].h).length;
+  /* v5: both numbers come from the store, so a save made on a corpus meme in
+     "Today's memes" lands here too. The old filter dropped everything that was
+     not one of the 10 hard-coded POSTS ids — that was the "0" bug. */
+  const saved=v5SavedKeys(V5.getState()).map(v5Resolve).filter(Boolean);
+  const laughs=v5LaughsGiven(V5.getState());
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
     <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
@@ -1401,7 +1710,7 @@ function renderYou(){
     <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
-    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
+    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
     <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
@@ -1497,8 +1806,9 @@ ACT['saved-open']=b=>{
   const id=b.dataset.id,p=POSTS[id],r=refOf(p);
   openSheet(`<div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div><button class="cta" data-act="open-saved" data-id="${id}">Open</button><button class="cta ghostb" data-act="unsave" data-id="${id}">Remove from saved</button>`);
 };
+ACT['open-vault']=()=>{void openV5Vault()};
 ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),300);trackEvent('view','meme',b.dataset.id)};
-ACT.unsave=b=>{rs(b.dataset.id).s=0;save();syncPost(b.dataset.id);closeSheet();renderYou()};
+ACT.unsave=b=>{const id=b.dataset.id;rs(id).s=0;V5.setSaved(kindOf(id),id,false);save();syncPost(id);closeSheet();renderYou();toast('Let go.')};
 function trackView(id,type){const p=POSTS[id];if(!p)return;trackEvent('view',type||(p.kind==='music'?'track':'meme'),id,{label:p.kind==='music'?TRACKS[p.ref].title:p.text.split('\n')[0]})};
 ACT['mm-open']=b=>{trackView(b.dataset.id);openDetail(b.dataset.id,b)};
 SEG.vis=v=>{S.prof.vis=v;save();toast({all:'Everyone can see your Fingerprint',matches:'Only matches can see it',me:'Your Fingerprint is private'}[v])};
@@ -1506,7 +1816,7 @@ ACT['share-fp']=()=>{
   const saved=Object.keys(mmS().s).filter(k=>mmS().s[k]).map(k=>mmOf(k)).filter(Boolean).slice(0,3);
   const artists=S.prof.artists.slice(0,3);
   openSheet(`<h3 class="sh-t">Share your Fingerprint</h3>
-    <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
+    <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>Fingerprint clarity</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
     <p class="hint" style="margin:12px 0 16px">A live preview built from your current signals. Photos and location stay private.</p>
     <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 };
@@ -1602,7 +1912,10 @@ ACT.reset=()=>{
 };
 ACT['reset-go']=()=>{
   store.clear();S=merge(DEF(),{});S.threads=DEMO_DATA?BASE_THREADS():{};S.onboarded=true;save();applyCalm();DK.day=0;
-  closeSheet();closePage();renderAll();toast('Local data cleared');
+  /* The v5 store owns reactions/saves/pins too — clearing one and not the
+     other is how the counts went stale in the first place. */
+  shelfSeeded=false;
+  V5.clearLocalData().finally(()=>{closeSheet();closePage();renderAll();toast('Local data cleared')});
 };
 const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.calm);
 
@@ -1612,9 +1925,16 @@ const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.cal
    a physics stack with haptic ticks, the audio step plays 7-second clips with
    a live waveform, the Fingerprint builds itself live as answers land, and
    the ending is a three-beat reveal: Fingerprint, Taste Card, Duel a friend. */
-const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
+/* `adult` is *computed* from the date of birth and nothing else. `attested` is
+   the checkbox — a legal acknowledgement, not evidence of age. They used to be
+   the same flag, which let the checkbox stand in for a date of birth that was
+   never entered. */
+const OB={step:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
 let OBSTACK=null,OBWAVE=null;
-function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
+function showOnboarding(){/* When the v5 cold open is on, main.ts has already played it before this
+   module loads — starting at step 0 here would play the legacy ~11s intro a
+   second time ("we're getting both intro"). The v5 intro is the replacement,
+   so onboarding opens straight on step 1 (the age gate). */Object.assign(OB,{step:V5_INTRO?1:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
 /* ---------------- the Cold Open: onboarding scene 0 ----------------
    Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
    intro from src/motion/timeline.ts, which ends by advancing to step 1. */
@@ -1718,11 +2038,15 @@ const isSeedTrack=id=>SEED_TRACKS.some(t=>t.id===seedTrackId(id));
 function drawObNow(){
   const o=$('#onboard');let body='';
   const prog=`<div class="ob-prog">${Array.from({length:9},(_,i)=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
-  const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;
+  /* Both are required: a date of birth that actually computes to 18+, and the
+     acknowledgement. The checkbox alone used to be enough, which is how the
+     server-side age check got bypassed. */
+  const ageOk=()=>OB.adult&&OB.attested;
+  const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!ageOk()?'disabled':''}>${label}</button></div>`;
   /* the last step finishes on ob-done, not on a capped ob-next */
   const footDone=label=>`<div class="ob-foot"><button class="cta" data-act="ob-done">${label}</button></div>`;
-  const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% signal confidence</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
-  if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
+  const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% Fingerprint clarity</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
+  if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.attested}"><span class="sw" data-on="${OB.attested}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
   else if(OB.step===2){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Photo check</span><h1 class="ob-q">Show there’s a real person here.</h1><p class="ob-s">A quick on-device check keeps the Matrix human. This badge says <b>photo checked</b>, not verified identity.</p><div class="verify-orb ${OB.photoChecked?'done':''}">${OB.photoChecked?I.check:RING_GLYPH}</div><button class="cta ghostb" data-act="ob-photo">${OB.photoChecked?'Photo checked':'Run photo check'}</button></div>${foot('Continue')}</div>`}
   else if(OB.step===3){const providers=[['manual','Manual taste chips','Start without connecting anything.'],['lastfm','Last.fm username','Bring in public scrobbles later.'],['apple','Apple Music','Connect when MusicKit is configured.'],['spotify','Spotify · alpha only','Allowlisted testers only.']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Music signal</span><h1 class="ob-q">Where should your taste come from?</h1><p class="ob-s">Manual is the default. You can reconnect or rebuild this vector later.</p><div class="provider-list">${providers.map(p=>`<button class="provider ${OB.music===p[0]?'on':''}" data-act="ob-music" data-v="${p[0]}"><span>${p[0]==='manual'?I.note:I.link}</span><div><b>${p[1]}</b><small>${p[2]}</small></div>${OB.music===p[0]?I.check:''}</button>`).join('')}</div></div>${foot('Use this source')}</div>`}
   else if(OB.step===4){body=`<div class="step ob-scene-stack"><div class="ob-body"><span class="eyebrow">Meme calibration · ${Math.min(OB.memeSignals.length%5+1,5)}/5 in this deck</span><h1 class="ob-q">What kind of funny are you?</h1><p class="ob-s">Drag the card toward what it is, or use the buttons. Nothing here is shared.</p></div>
@@ -1740,10 +2064,10 @@ function drawObNow(){
   else if(OB.step===7){const opts=[['dating','Dating'],['friends','Friends'],['both','Both']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Basics</span><h1 class="ob-q">What should we call you?</h1><label class="field"><span>Name</span><input id="ob-name" maxlength="24" placeholder="Your first name" value="${esc(OB.name)}"></label><h3 class="tg">Looking for</h3><div class="chips">${opts.map(x=>`<button class="chip ${OB.intent===x[0]?'on':''}" data-act="ob-intent" data-fx="chip" data-v="${x[0]}" aria-pressed="${OB.intent===x[0]}">${x[1]}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
   else {body=`<div class="step"><div class="ob-body"><span class="eyebrow">Last step</span><h1 class="ob-q">Keep the ritual close.</h1><p class="ob-s">Choose what you want to hear about. You can change this anytime in Settings.</p><div class="permission-card"><button class="row" data-act="ob-permission"><div class="tx"><b>Daily Drop at 9:00 AM</b><span>One track, one meme, no guilt trips.</span></div><span class="sw" data-on="${OB.permissions}"></span></button><button class="row"><div class="tx"><b>Location</b><span>Used to tune your discovery radius.</span></div><span class="chipg">Later</span></button></div></div>${footDone('Build my Fingerprint')}</div>`}
   o.innerHTML=prog+body;
-  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;drawOb(false)};
+  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;const c=$('#onboard .step .cta');if(c)c.disabled=!(OB.adult&&OB.attested);drawOb(false)};
   const name=$('#ob-name');if(name)name.oninput=()=>{OB.name=name.value};
 }
-ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;const c=$('#onboard .step .cta');if(c)c.disabled=!OB.adult;haptic(6)};
+ACT['ob-adult']=b=>{OB.attested=!OB.attested;b.setAttribute('aria-checked',OB.attested);$('.sw',b).dataset.on=OB.attested;const c=$('#onboard .step .cta');if(c)c.disabled=!(OB.adult&&OB.attested);haptic(6)};
 ACT['ob-next']=()=>{OB.step=Math.min(8,OB.step+1);drawOb();haptic(8)};
 ACT['ob-auth']=b=>{$$('.auth-rail .chip').forEach(x=>x.classList.toggle('on',x===b));toast('Auth adapter ready for '+b.dataset.v);haptic(5)};
 ACT['ob-photo']=b=>{
@@ -1777,7 +2101,11 @@ ACT['ob-done']=()=>{
   const repo=window.Cultured&&window.Cultured.repo;
   if(repo&&repo.onboard){
     repo.onboard({
-      dateOfBirth:OB.dob||(OB.adult?'2000-01-01':''),displayName:OB.name||S.prof.name,mode:OB.intent||'both',city:S.city,
+      /* The real date of birth, or nothing. This used to fall back to a
+         fabricated '2000-01-01' whenever the checkbox was ticked, which handed
+         the server an adult date of birth for an account that never supplied
+         one — defeating the 18+ check the server exists to make. */
+      dateOfBirth:OB.dob,displayName:OB.name||S.prof.name,mode:OB.intent||'both',city:S.city,
       musicSource:OB.music,pickedTastes:S.prof.humor,
       memeSignals:OB.memeSignals.filter(x=>isSeedMeme(x.memeId)),
       audioSignals:OB.audioSignals.map(x=>({trackId:seedTrackId(x.track),kind:x.kind})),
@@ -1789,11 +2117,11 @@ ACT['ob-done']=()=>{
      the invitation. Tap jumps ahead; the buttons below do the work. */
   const pct=Math.round(obFrac()*100);
   o.innerHTML=`<div class="reveal">
-    <div class="rv rv-fp"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div><span class="eyebrow">Beat one · yours, from your answers</span><h2>Your Fingerprint.</h2><p>${pct}% signal confidence from ${S.cal||0} calibration events.</p></div>
-    <div class="rv rv-tc"><span class="eyebrow">Beat two · shareable, with real numbers</span>
-      <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${76+pct/4|0}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))||'unwritten'}</strong></div><div><small>on repeat</small><strong>${S.prof.artists.slice(0,2).map(esc).join(' · ')||'your first saves'}</strong></div></div><footer>cultured · find who else relates</footer></div>
+    <div class="rv rv-fp"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div><span class="eyebrow">Yours, from your answers</span><h2>Your Fingerprint.</h2><p>${pct}% Fingerprint clarity from ${S.cal||0} calibration events.</p></div>
+    <div class="rv rv-tc"><span class="eyebrow">Shareable, with real numbers</span>
+      <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${76+pct/4|0}%</b><span>Fingerprint clarity</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))||'unwritten'}</strong></div><div><small>on repeat</small><strong>${S.prof.artists.slice(0,2).map(esc).join(' · ')||'your first saves'}</strong></div></div><footer>cultured · find who else relates</footer></div>
     </div>
-    <div class="rv rv-duel"><span class="eyebrow">Beat three · the only real test</span><h2>Prove it on someone.</h2><p>Duel a friend: same five prompts, no peeking, verdict only when both are in.</p><button class="cta" data-act="ob-duel">${I.pair}Duel a friend</button><button class="cta ghostb" data-act="ob-enter">Enter cultured</button></div>
+    <div class="rv rv-duel"><span class="eyebrow">The only real test</span><h2>Prove it on someone.</h2><p>Duel a friend: same five prompts, no peeking, verdict only when both are in.</p><button class="cta" data-act="ob-duel">${I.pair}Duel a friend</button><button class="cta ghostb" data-act="ob-enter">Enter cultured</button></div>
   </div>`;
   haptic([10,40,10,40,20]);
   RUN_REVEAL=runReveal(o,[
@@ -1813,75 +2141,58 @@ ACT['ob-duel']=async()=>{
 
 /* ================= v3: today's memes ================= */
 const STK='<div class="stks" aria-hidden="true">'+['😂','🎧','🔥','💀','✨','🫠'].map((e,i)=>`<i style="--i:${i};--x:${[6,80,14,74,44,90][i]}%;--y:${[2,8,66,60,90,36][i]}%">${e}</i>`).join('')+'</div>';
-const WEB_MEMES=[
- {id:'web01',k:'life',e:'🫠',t:'Hydration, but make it suspicious',img:'/memes/meme-01.webp',alt:'Relatable gym and hydration meme'},
- {id:'web02',k:'life',e:'🚿',t:'A family group chat classic',img:'/memes/meme-02.webp',alt:'Family and shower waiting meme'},
- {id:'web03',k:'work',e:'🧽',t:'The workday ends when the workday ends',img:'/memes/meme-03.webp',alt:'SpongeBob work meme'},
- {id:'web04',k:'work',e:'🧪',t:'The test suite has entered the chat',img:'/memes/meme-04.webp',alt:'Software testing and coding meme collage'},
- {id:'web05',k:'work',e:'🤖',t:'When the bug report writes itself',img:'/memes/meme-05.webp',alt:'Information technology meme'},
- {id:'web06',k:'life',e:'🦎',t:'Me, meeting my own expectations',img:'/memes/meme-06.webp',alt:'Self reflection and gym meme'},
- {id:'web07',k:'life',e:'🐈',t:'Already fumbled the year. Still optimistic.',img:'/memes/meme-07.webp',alt:'Cat meme about 2026 and 2027'},
- {id:'web08',k:'life',e:'🧼',t:'Good guy Charlie has a system',img:'/memes/meme-08.webp',alt:'Funny 2026 meme'},
- {id:'web09',k:'work',e:'🫡',t:'Happy Monday, the team chat edition',img:'/memes/meme-09.webp',alt:'Office life meme'},
- {id:'web10',k:'work',e:'📅',t:'Everything is urgent until it is not',img:'/memes/meme-10.webp',alt:'Relatable work meme'},
- {id:'web11',k:'love',e:'✨',t:'A tiny bit of main-character energy',img:'/memes/meme-11.webp',alt:'Office and relationship meme'},
- {id:'web12',k:'life',e:'🐈',t:'2026: a year in one facial expression',img:'/memes/meme-12.webp',alt:'Funny 2026 cat meme'},
- {id:'web13',k:'music',e:'🎟️',t:'The concert ticket was the easy part',img:'/memes/meme-13.webp',alt:'Concert ticket music meme'},
- {id:'web14',k:'work',e:'🖥️',t:'The RGB upgrade is a lifestyle choice',img:'/memes/meme-14.webp',alt:'Gaming computer meme'},
- {id:'web15',k:'work',e:'🧑‍💻',t:'Delete the test case. Become the test case.',img:'/memes/meme-15.webp',alt:'Tech system meme'},
- {id:'web16',k:'life',e:'🌤️',t:'Weekend plans: aggressively unplanned',img:'/memes/meme-16.webp',alt:'Weekend meme'},
- {id:'web17',k:'music',e:'🎶',t:'A suspiciously complete history of meme songs',img:'/memes/meme-17.webp',alt:'Meme songs culture collage'},
- {id:'web18',k:'life',e:'🐈',t:'The year is still recoverable',img:'/memes/meme-18.webp',alt:'Cat meme about 2026 and 2027'},
- {id:'web19',k:'screen',e:'📺',t:'The internet has a museum wing now',img:'/memes/meme-19.webp',alt:'Meme culture collage'},
- {id:'web20',k:'screen',e:'🗺️',t:'A field guide to how we got here',img:'/memes/meme-20.webp',alt:'Guide to meme evolution'}
-];
 /* Topic -> sticker. Declared before MM because MM.map runs immediately. */
 const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵',money:'🧾'};
-const MM=[
- {id:'x1',k:'work',e:'🐛',t:'me: i’ll just fix this one bug\n\nthe codebase: 47 new bugs',bg:'#F2D45C',fg:'#141413'},
- {id:'x2',k:'work',e:'📧',t:'“this meeting could’ve been an email”\n\nthe meeting: 3 hours',bg:'#9EC5E8',fg:'#141413'},
- {id:'x3',k:'work',e:'🤖',t:'AI will take my job\n\nAI: have you tried turning your prompt off and on again?',bg:'#EFE9DA',fg:'#141413'},
- {id:'x4',k:'music',e:'🎧',t:'“one more song then bed”\n\nme at 4am: building a playlist for a trip i’m not taking',bg:'#F26B4E',fg:'#141413'},
- {id:'x5',k:'music',e:'🕺',t:'the 8 seconds of silence before the beat drops: 🧍\n\nthe beat: 🕺🕺🕺',bg:'#C8A8F0',fg:'#141413'},
- {id:'x6',k:'screen',e:'📺',t:'me: i’ll watch one episode\n\nthe sun: rising',bg:'#9be8bf',fg:'#141413'},
- {id:'x7',k:'screen',e:'🍥',t:'every anime fan: “it gets good at episode 12”',bg:'#ff8fa3',fg:'#141413'},
- {id:'x8',k:'life',e:'🏋️',t:'gym: 5 min\nstretching: 3 min\nresting on my phone: 55 min',bg:'#F2D45C',fg:'#141413'},
- {id:'x9',k:'life',e:'☕',t:'me: i’m so low maintenance\n\nalso me: a 4-step coffee order',bg:'#EFE9DA',fg:'#141413'},
- {id:'x10',k:'life',e:'🍳',t:'me: i’m basically a chef\n\nthe smoke alarm: respectfully, no',bg:'#F26B4E',fg:'#141413'},
- {id:'x11',k:'love',e:'🎵',t:'flirting style: sending a song at 1:47am\n\ncaption: “no reason”',bg:'#F26B4E',fg:'#141413'},
- {id:'x12',k:'money',e:'🧾',t:'my budget: rent or matcha\n\nme: matcha, obviously',bg:'#F2D45C',fg:'#141413'},
- {id:'x13',k:'money',e:'💸',t:'“treat yourself”\n\nthe treat: $9 toast and a slight panic',bg:'#9be8bf',fg:'#141413'}
-].concat(
-  /* The default feed is 122 original typographic cards, generated for cultured
-     and tagged with the Resonance taxonomy. Every one carries alt text. */
-  SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,bg:m.bg,fg:m.fg,alt:m.alt})),
-  /* The 20 searched images, for local demos only. Never in a production build. */
-  DEMO_MEMES?WEB_MEMES:[]);
+/* Today's memes is the real image corpus and nothing else.
+   The 122 generated typographic text cards and the 13 hand-written ones that
+   used to sit here are gone: cultured only shows real image and video memes,
+   and only ones the content pipeline has actually built a manifest for. */
+const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
 let mmTab='all';
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
 const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
-const mmTxt=t=>esc(t).replace(/\n/g,'<br>');
-function mmVisual(m){return m.img?`<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy"></div>`:`<span class="mm-e">${m.e}</span>`}
-function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}">${m.img?`<img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy">`:`<span>${m.e}</span>`}<i>${esc(m.t.split('\n')[0])}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in-house</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
+function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
+function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
+function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
+function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
-ACT['mm-like']=b=>{const id=mmId(b),st=mmS();st.l[id]=st.l[id]?0:1;b.classList.toggle('on',!!st.l[id]);b.setAttribute('aria-pressed',!!st.l[id]);save();repoCall('recordReaction',id,'like');if(st.l[id]){burst(b,'#ff5d7a');haptic(10)}};
-ACT['mm-save']=b=>{const id=mmId(b),st=mmS();st.s[id]=st.s[id]?0:1;b.classList.toggle('on',!!st.s[id]);b.setAttribute('aria-pressed',!!st.s[id]);save();repoCall('recordReaction',id,'save');renderYou();toast(st.s[id]?'Pinned to your meme shelf':'Removed from shelf');haptic(8)};
+ACT['mm-like']=b=>{
+  const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
+  if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
+  if(on){burst(b,'#ff5d7a');floatFromEl(b,V5_LIKE,3);haptic(10)}
+};
+ACT['mm-save']=b=>{
+  const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
+  V5.setSaved('meme',id,on);
+  if(on)V5.pin('meme',id);else V5.unpin('meme',id);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'save');
+  toast(on?'Kept.':'Let go.');haptic(8);
+};
 ACT['mm-share']=b=>{
-  const id=mmId(b),ids=Object.keys(S.threads||{});
+  const id=mmId(b);
+  /* Thread keys outlive the people behind them: they are persisted, and with
+     the invented population gated off (D-27) `person()` legitimately returns
+     undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on
+     a list that used to be populated. The threads are left in place — this
+     filters a view, it does not delete anything. */
+  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
 };
-ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
-function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
+ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
+  ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
+function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
-  const st=mmS();
-  const saved=MM.filter(m=>st.s[m.id]);
-  const liked=MM.filter(m=>st.l[m.id]&&st.s[m.id]===undefined);
-  const rest=MM.filter(m=>!st.s[m.id]&&!st.l[m.id]);
+  const state=V5.getState();
+  const strip=k=>k.slice('meme:'.length);
+  const savedSet=new Set(v5SavedKeys(state).filter(k=>k.startsWith('meme:')).map(strip));
+  const likedSet=new Set(v5LaughedKeys(state).filter(k=>k.startsWith('meme:')).map(strip));
+  const saved=MM.filter(m=>savedSet.has(m.id));
+  const liked=MM.filter(m=>!savedSet.has(m.id)&&likedSet.has(m.id));
+  const rest=MM.filter(m=>!savedSet.has(m.id)&&!likedSet.has(m.id));
   openSheet(`<h3 class="sh-t">Send a meme</h3>
     ${saved.length?`<span class="chipg" style="margin:6px 0 8px">Saved · ${saved.length}</span><div class="mm-grid">${saved.map(mmMiniRow).join('')}</div>`:''}
     ${liked.length?`<span class="chipg" style="margin:12px 0 8px">You laughed at · ${liked.length}</span><div class="mm-grid">${liked.slice(0,10).map(mmMiniRow).join('')}</div>`:''}
@@ -1891,14 +2202,30 @@ ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:
 /* The shelf is the profile's pinned corner: memes AND songs, from saved and
    liked, in an order you can drag. Unpin peels the item off; pinning a card
    from the feed arcs it here (see data-fx="pin"). */
-function shelfIds(){
+/* v5: the pin board reads the store. `S.shelf` is seeded into it exactly once
+   (the migration usually already did this) so unpinning everything cannot
+   resurrect the old list. */
+let shelfSeeded=false;
+function shelfSeedOnce(){
+  if(shelfSeeded)return;shelfSeeded=true;
   if(!S.shelf){
     const ids=[];
     Object.keys(S.react).forEach(id=>{if(S.react[id].s&&POSTS[id]&&POSTS[id].kind==='music')ids.push('t:'+POSTS[id].ref)});
     const st=mmS();MM.forEach(m=>{if(st.s[m.id])ids.push('m:'+m.id)});
     S.shelf=ids;
   }
-  return S.shelf;
+  const pins=v5PinsByKind(V5.getState());
+  const have=new Set([...pins.meme,...pins.song].map(p=>(p.kind==='meme'?'m':'t')+':'+p.itemId));
+  S.shelf.forEach(k=>{
+    if(have.has(k))return;
+    const i=k.indexOf(':');if(i<1)return;
+    V5.pin(k[0]==='m'?'meme':'song',k.slice(i+1));
+  });
+}
+function shelfIds(){
+  shelfSeedOnce();
+  const pins=v5PinsByKind(V5.getState());
+  return [...pins.meme.map(p=>'m:'+p.itemId),...pins.song.map(p=>'t:'+p.itemId)];
 }
 function shelfEntry(id){
   const [kind,key]=id.split(':');
@@ -1907,7 +2234,7 @@ function shelfEntry(id){
 }
 function mmShelf(){
   const ids=shelfIds().map(shelfEntry).filter(Boolean);
-  const liked=Object.keys(S.react).filter(id=>S.react[id].h).length;
+  const liked=v5LaughsGiven(V5.getState());
   return `<div class="blk stg" style="--d:5"><h2>Pin board<small>drag to reorder</small></h2>
     <div class="mm-shelf" id="shelf">${ids.length?ids.map(x=>x.kind==='m'?
       `<button class="mm-mini sh" data-k="m:${x.m.id}" data-act="shelf-open">${x.m.img?`<img src="${x.m.img}" alt="${esc(x.m.alt||x.m.t)}">`:`<span>${x.m.e}</span>`}<i>${esc(String(x.m.t).split('\n')[0])}</i><em class="pin-x" data-act="shelf-unpin" data-k="m:${x.m.id}" aria-label="Unpin">✕</em></button>`:
@@ -1917,10 +2244,10 @@ function mmShelf(){
   </div>`;
 }
 ACT['shelf-unpin']=b=>{
-  const k=b.dataset.k,shelf=shelfIds();
+  const k=b.dataset.k,shelf=shelfIds(),isMeme=k.startsWith('m:'),id=k.slice(2);
   S.shelf=shelf.filter(x=>x!==k);
-  if(k.startsWith('m:')){const st=mmS();delete st.s[k.slice(2)]}
-  else{const id=k.slice(2);const post=Object.values(POSTS).find(p=>p.kind==='music'&&p.ref===id);if(post&&S.react[post.id])S.react[post.id].s=0}
+  if(isMeme){const st=mmS();delete st.s[id];V5.unpin('meme',id);V5.setSaved('meme',id,false)}
+  else{const post=Object.values(POSTS).find(p=>p.kind==='music'&&p.ref===id);if(post&&S.react[post.id])S.react[post.id].s=0;V5.unpin('song',id)}
   const item=b.closest('.mm-mini');
   const done=()=>{save();renderYou();renderFeed()};
   if(item&&!S.set.calm){
@@ -2041,6 +2368,7 @@ function init(){
   installMicro({haptic:p=>haptic(p),sound:()=>S.set.sound!==false,stage:()=>$('#phone')});
   window.CulturedMicro=microPublic;
   synth.setEnabled(S.set.sound!==false);
+  syncDemoStories();
   initPTR();renderAll();go('feed');
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layoutTabs(document));
   window.addEventListener('resize',()=>layoutTabs(document));

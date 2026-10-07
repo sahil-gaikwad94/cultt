@@ -217,12 +217,29 @@ export class MockRepo implements Repo {
   private state: MockState;
   private readonly now: number;
   private population: Candidate[] | null = null;
+  private readonly demo: boolean;
   private readonly listeners = new Set<(session: Session | null) => void>();
   private readonly threadListeners = new Map<string, Set<(message: Message) => void>>();
 
-  constructor(now: number = Date.now()) {
+  /**
+   * `demo` turns on the invented population — the 48 seeded people and the
+   * three named circle authors. It is OFF by default and must be opted into
+   * (`?demo=1` or `window.CULTURED_CONFIG.demo`), because a production build
+   * must never show a person who does not exist.
+   *
+   * Everything the user actually created — decisions, threads, reactions,
+   * saved content — is unaffected either way. This gates invented content, not
+   * anyone's data.
+   */
+  constructor(now: number = Date.now(), demo = false) {
     this.now = now;
+    this.demo = demo;
     this.state = this.load(now);
+  }
+
+  /** True when the invented population is available. */
+  get isDemo(): boolean {
+    return this.demo;
   }
 
   /* ------------------------------------------------------------ storage */
@@ -265,6 +282,9 @@ export class MockRepo implements Repo {
   /* -------------------------------------------------------- population */
 
   private candidates(): Candidate[] {
+    /* No demo opt-in means no invented people: an empty queue and the honest
+       empty state, rather than forty-eight strangers who never signed up. */
+    if (!this.demo) return [];
     if (!this.population) this.population = buildPopulation(this.now);
     return this.population;
   }
@@ -443,6 +463,7 @@ export class MockRepo implements Repo {
       saved: Boolean(state.save),
       // Local Discovery: never a face grid, never an inline swipe.
       nearbyCount: rng() > 0.55 ? 2 + Math.floor(rng() * 12) : null,
+      img: seed.img,
     };
   }
 
@@ -484,6 +505,8 @@ export class MockRepo implements Repo {
   }
 
   private circles(): CirclePost[] {
+    // Ines, Kai and Dev are personas, not users. Same gate as the population.
+    if (!this.demo) return [];
     const random = seededRandom(hashString(`circles:${Math.floor(this.now / DAY_MS)}`));
     return SEED_MEMES.slice(0, 3).map((meme, index) => ({
       id: `c_${meme.id}`,

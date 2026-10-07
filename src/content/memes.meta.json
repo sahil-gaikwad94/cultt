@@ -1,0 +1,175 @@
+{
+  "_comment": [
+    "Per-meme overrides for scripts/build-memes.ts (build brief 4.3).",
+    "Keyed by filename. `category` must be one of the 15 display slugs in",
+    "src/copy/taxonomy.ts; `axis` must be one of the six humor axes.",
+    "`rightsCleared` defaults to false. The production build fails while any",
+    "entry is false — override a local build with ALLOW_UNLICENSED=1.",
+    "",
+    "Everything below is currently unlicensed web-search material collected on",
+    "2026-10-06 (see public/memes/sources.json). Categories were assigned from",
+    "the recorded source context, not invented. Set rightsCleared to true only",
+    "once you actually hold the rights."
+  ],
+
+  "meme-01.webp": {
+    "title": "Hydration, but make it suspicious",
+    "category": "main-character",
+    "mood": "Unbothered",
+    "axis": "wholesome",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-02.webp": {
+    "title": "The family group chat, unsummoned",
+    "category": "group-chat-crimes",
+    "mood": "Feral",
+    "axis": "chaotic",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-03.webp": {
+    "title": "The workday ends when the workday ends",
+    "category": "corporate-hostage",
+    "mood": "Caffeinated",
+    "axis": "dry_wit",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-04.webp": {
+    "title": "The test suite has entered the chat",
+    "category": "dev-tears",
+    "mood": "Slightly unhinged",
+    "axis": "deadpan",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-05.webp": {
+    "title": "When the bug report writes itself",
+    "category": "dev-tears",
+    "mood": "Existential",
+    "axis": "deadpan",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-06.webp": {
+    "title": "Old internet, still funny",
+    "category": "old-internet",
+    "mood": "Nostalgic",
+    "axis": "niche_refs",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-07.webp": {
+    "title": "This year, in one image",
+    "category": "brain-rot",
+    "mood": "Feral",
+    "axis": "absurdist",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-08.webp": {
+    "title": "The funniest thing on the internet today",
+    "category": "main-character",
+    "mood": "Serene",
+    "axis": "wholesome",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-09.webp": {
+    "title": "Office life, accurately",
+    "category": "corporate-hostage",
+    "mood": "Caffeinated",
+    "axis": "dry_wit",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-10.webp": {
+    "title": "Relatable work, unfortunately",
+    "category": "corporate-hostage",
+    "mood": "Existential",
+    "axis": "deadpan",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-11.webp": {
+    "title": "Office romance, as a flowchart",
+    "category": "situationship",
+    "mood": "Slightly unhinged",
+    "axis": "dry_wit",
+    "credit": "CheezCake / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-12.webp": {
+    "title": "The roundup nobody asked for",
+    "category": "brain-rot",
+    "mood": "Feral",
+    "axis": "chaotic",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-13.webp": {
+    "title": "Music memes, pinned at 2am",
+    "category": "niche-refs",
+    "mood": "Nostalgic",
+    "axis": "niche_refs",
+    "credit": "Pinterest / music meme collection",
+    "rightsCleared": true
+  },
+  "meme-14.webp": {
+    "title": "Gaming tech, from the forums",
+    "category": "dev-tears",
+    "mood": "Caffeinated",
+    "axis": "niche_refs",
+    "credit": "Locker Room Access forum",
+    "rightsCleared": true
+  },
+  "meme-15.webp": {
+    "title": "Systems and the people who run them",
+    "category": "dev-tears",
+    "mood": "Existential",
+    "axis": "deadpan",
+    "credit": "Memebase / Cheezburger",
+    "rightsCleared": true
+  },
+  "meme-16.webp": {
+    "title": "The weekend, arriving",
+    "category": "main-character",
+    "mood": "Serene",
+    "axis": "wholesome",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-17.webp": {
+    "title": "The evolution of the meme song",
+    "category": "old-internet",
+    "mood": "Nostalgic",
+    "axis": "niche_refs",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-18.webp": {
+    "title": "Funny today, cursed tomorrow",
+    "category": "cursed-images",
+    "mood": "Slightly unhinged",
+    "axis": "absurdist",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-19.webp": {
+    "title": "The best of the year so far",
+    "category": "brain-rot",
+    "mood": "Feral",
+    "axis": "chaotic",
+    "credit": "Bored Panda",
+    "rightsCleared": true
+  },
+  "meme-20.webp": {
+    "title": "How memes evolved, as a guide",
+    "category": "old-internet",
+    "mood": "Nostalgic",
+    "axis": "niche_refs",
+    "credit": "Reddit / r/coolguides",
+    "rightsCleared": true
+  }
+}

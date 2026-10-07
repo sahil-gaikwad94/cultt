@@ -19,6 +19,9 @@
 
 import { DUR, EASE, shouldAnimate } from './reduce';
 import { synth } from './audio';
+/* Type-only: the ReactionTray + FX engine itself is pulled in lazily (below) so
+   the tray and its particle canvas never sit on the first-paint path. */
+import type { createFxLayer } from '../v5/reactions.ts';
 
 /* ------------------------------------------------------------- bridge */
 
@@ -269,55 +272,55 @@ const settle = (el: HTMLElement, cls: string, ms = 420): void => {
 
 /* ------------------------------------------------------- press handling */
 
-const holdable = new WeakMap<HTMLElement, { timer: number; fired: boolean }>();
+const holdable = new WeakMap<HTMLElement, { timer: number; fired: boolean; x: number; y: number }>();
 let pendingSkip: HTMLElement | null = null;
 
+/* The full ReactionTray (brief §6.3) — long-press opens an 8-emoji tray, the
+   finger drags a fisheye, the pick flies to the chip and a signature FX plays.
+   It lives in v5/reactions and is imported lazily; one shared particle canvas
+   serves every surface. The seam owns state: this only reports the pick via a
+   `micro:react` event, so the tray never writes to the store itself. */
+type FxLayer = ReturnType<typeof createFxLayer>;
+let fxLayer: FxLayer | null = null;
+let rxnPromise: Promise<typeof import('../v5/reactions.ts')> | null = null;
+const loadRxn = (): Promise<typeof import('../v5/reactions.ts')> =>
+  rxnPromise ?? (rxnPromise = import('../v5/reactions.ts'));
+
 const fanFor = (btn: HTMLElement): void => {
-  const host = stage();
-  const rect = btn.getBoundingClientRect();
-  const hr = host.getBoundingClientRect();
-  const fan = document.createElement('div');
-  fan.className = 'fx-fan';
-  const options = [
-    { e: '😂', k: 'laugh' },
-    { e: '🔥', k: 'fire' },
-    { e: '✨', k: 'soft' },
-    { e: '💀', k: 'dead' },
-  ];
-  options.forEach((o, i) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.textContent = o.e;
-    item.setAttribute('aria-label', `React ${o.k}`);
-    item.dataset.fan = o.k;
-    item.style.setProperty('--i', String(i));
-    item.addEventListener(
-      'click',
-      (ev) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-        fan.remove();
-        btn.dispatchEvent(new CustomEvent('micro:fan', { detail: o.k, bubbles: true }));
-      },
-      true,
-    );
-    fan.appendChild(item);
-  });
-  fan.style.left = `${rect.left - hr.left + rect.width / 2}px`;
-  fan.style.top = `${rect.top - hr.top - 8}px`;
-  host.appendChild(fan);
-  const close = (): void => {
-    document.removeEventListener('pointerdown', onDown);
-    if (fan.isConnected) fan.remove();
-  };
-  const onDown = (e: PointerEvent): void => {
-    if (!fan.contains(e.target as Node)) close();
-  };
-  // Let this gesture's own pointerup land before arming the outside-close.
-  window.setTimeout(() => document.addEventListener('pointerdown', onDown), 0);
-  window.setTimeout(close, 4200);
-  pop(fan, 1.05);
-  tick(10);
+  try {
+    const card = (btn.closest('.mm-card, .dcard, .cc, article') as HTMLElement | null) ?? null;
+    const kind: 'meme' | 'song' = card?.dataset?.rxnKind === 'song' ? 'song' : 'meme';
+    const rect = btn.getBoundingClientRect();
+    const anchor = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    // Belt-and-braces: never leave the tray or its scrim on screen, whatever
+    // happens — a stuck scrim reads as a blank screen.
+    const cleanup = (): void => {
+      document.querySelectorAll('.tray-scrim, .reaction-tray').forEach((n) => n.remove());
+    };
+    void loadRxn()
+      .then((mod) => {
+        if (!fxLayer) {
+          const canvas = document.createElement('canvas');
+          canvas.setAttribute('aria-hidden', 'true');
+          canvas.style.cssText =
+            'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:120';
+          document.body.appendChild(canvas);
+          fxLayer = mod.createFxLayer({ canvas });
+        }
+        return mod.openReactionTray({ kind, anchor, target: card ?? btn });
+      })
+      .then((res) => {
+        cleanup();
+        if (!res.emoji) return;
+        void fxLayer?.play(res.emoji, res.at);
+        btn.dispatchEvent(
+          new CustomEvent('micro:react', { detail: { emoji: res.emoji, at: res.at, kind }, bubbles: true }),
+        );
+      })
+      .catch(cleanup);
+  } catch {
+    /* The tray is decoration; it must never be able to take the screen down. */
+  }
 };
 
 /* ------------------------------------------------------- delegated fx */
@@ -571,12 +574,26 @@ export const installMicro = (b: MicroBridge): (() => void) => {
     const target = e.target as HTMLElement | null;
     const btn = target?.closest?.('[data-fx="like"]') as HTMLElement | null;
     if (!btn) return;
+    void loadRxn(); // warm the tray chunk so the 380 ms hold never waits on it
     const timer = window.setTimeout(() => {
       const held = holdable.get(btn);
       if (held) held.fired = true;
       fanFor(btn);
     }, 380);
-    holdable.set(btn, { timer, fired: false });
+    holdable.set(btn, { timer, fired: false, x: e.clientX, y: e.clientY });
+  };
+
+  // A scroll or swipe must never be mistaken for a reaction: moving more than
+  // 10 px cancels the hold before the tray can open.
+  const onPointerMove = (e: PointerEvent): void => {
+    const target = e.target as HTMLElement | null;
+    const btn = target?.closest?.('[data-fx="like"]') as HTMLElement | null;
+    const held = btn ? holdable.get(btn) : undefined;
+    if (!held) return;
+    if (Math.hypot(e.clientX - held.x, e.clientY - held.y) > 10) {
+      window.clearTimeout(held.timer);
+      holdable.delete(btn as HTMLElement);
+    }
   };
 
   const onPointerUp = (e: PointerEvent): void => {
@@ -617,6 +634,7 @@ export const installMicro = (b: MicroBridge): (() => void) => {
   document.addEventListener('click', onClick);
   document.addEventListener('click', onCapture, true);
   document.addEventListener('pointerdown', onPointerDown, true);
+  document.addEventListener('pointermove', onPointerMove, { passive: true });
   document.addEventListener('pointerup', onPointerUp, true);
   document.addEventListener('pointercancel', onPointerCancel, true);
   document.addEventListener('micro:fan', onFan);
@@ -627,6 +645,7 @@ export const installMicro = (b: MicroBridge): (() => void) => {
     document.removeEventListener('click', onClick);
     document.removeEventListener('click', onCapture, true);
     document.removeEventListener('pointerdown', onPointerDown, true);
+    document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp, true);
     document.removeEventListener('pointercancel', onPointerCancel, true);
     document.removeEventListener('micro:fan', onFan);

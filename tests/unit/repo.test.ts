@@ -5,7 +5,11 @@ import { HUMOR_DIMS, MUSIC_DIMS } from '../../src/lib/matching';
 
 const NOW = Date.parse('2026-10-06T12:00:00Z');
 
-const newRepo = (): MockRepo => new MockRepo(NOW);
+/* These specs exercise the matching engine, which needs the invented
+   population to have anything to rank. That population is demo content and is
+   off by default, so the helper opts in explicitly. The regression test below
+   pins the default. */
+const newRepo = (): MockRepo => new MockRepo(NOW, true);
 
 const onboard = {
   dateOfBirth: '1998-04-02',
@@ -293,5 +297,41 @@ describe('MockRepo — trust, sessions and data rights', () => {
     const reloaded = newRepo();
     expect((await reloaded.getSession()).onboarded).toBe(true);
     expect((await reloaded.getFingerprint()).vectorVersion).toBe(version);
+  });
+});
+
+describe('the invented population is opt-in', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('hands a default build an empty queue, not forty-eight strangers', async () => {
+    const repo = new MockRepo(NOW);
+    await repo.onboard(onboard);
+    expect(await repo.getCandidates()).toEqual([]);
+    expect((await repo.getFeed()).circles).toEqual([]);
+  });
+
+  it('hands the same build the population once demo is requested', async () => {
+    const repo = new MockRepo(NOW, true);
+    await repo.onboard(onboard);
+    expect((await repo.getCandidates()).length).toBeGreaterThan(0);
+    expect((await repo.getFeed()).circles.length).toBeGreaterThan(0);
+  });
+
+  it('never claims anyone likes you outside demo', async () => {
+    const repo = new MockRepo(NOW);
+    await repo.onboard(onboard);
+    const cards = await repo.getCandidates();
+    expect(cards.filter((card) => card.likesYou)).toEqual([]);
+  });
+
+  it('keeps what the user actually created either way', async () => {
+    // React and save in demo, then read the same store back without the flag.
+    const demo = new MockRepo(NOW, true);
+    await demo.onboard(onboard);
+    await demo.recordReaction('mk001', 'laugh');
+
+    const plain = new MockRepo(NOW);
+    const fingerprint = await plain.getFingerprint();
+    expect(fingerprint.vectorVersion).toBeGreaterThan(0);
   });
 });

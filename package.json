@@ -5,15 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/prune-demo-assets.mjs",
+    "build": "npm run content:gate && tsc --noEmit && vite build && node scripts/prune-demo-assets.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "content:memes": "node --experimental-strip-types scripts/build-memes.ts",
+    "content:songs": "node --experimental-strip-types scripts/build-songs.ts",
+    "content:songs:offline": "node --experimental-strip-types scripts/build-songs.ts --offline",
+    "content:gate": "node --experimental-strip-types scripts/build-memes.ts --gate",
     "db:seed": "node scripts/build-seed-sql.mjs",
-    "test:db": "sh supabase/tests/run.sh"
+    "test:db": "sh supabase/tests/run.sh",
+    "content:nhie": "node --experimental-strip-types scripts/build-nhie.ts",
+    "content:all": "npm run content:memes && npm run content:songs && npm run content:nhie"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
@@ -22,12 +28,14 @@
     "eslint-config-prettier": "^9.1.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.4.2",
+    "sharp": "^0.33.5",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.71.0",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.2"
+    "@supabase/supabase-js": "^2.117.2",
+    "idb": "^8.0.4"
   }
 }
