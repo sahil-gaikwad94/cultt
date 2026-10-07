@@ -1737,9 +1737,13 @@ const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.cal
    a physics stack with haptic ticks, the audio step plays 7-second clips with
    a live waveform, the Fingerprint builds itself live as answers land, and
    the ending is a three-beat reveal: Fingerprint, Taste Card, Duel a friend. */
-const OB={step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
+/* `adult` is *computed* from the date of birth and nothing else. `attested` is
+   the checkbox — a legal acknowledgement, not evidence of age. They used to be
+   the same flag, which let the checkbox stand in for a date of birth that was
+   never entered. */
+const OB={step:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
 let OBSTACK=null,OBWAVE=null;
-function showOnboarding(){Object.assign(OB,{step:0,adult:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
+function showOnboarding(){Object.assign(OB,{step:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
 /* ---------------- the Cold Open: onboarding scene 0 ----------------
    Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
    intro from src/motion/timeline.ts, which ends by advancing to step 1. */
@@ -1843,11 +1847,15 @@ const isSeedTrack=id=>SEED_TRACKS.some(t=>t.id===seedTrackId(id));
 function drawObNow(){
   const o=$('#onboard');let body='';
   const prog=`<div class="ob-prog">${Array.from({length:9},(_,i)=>`<i class="${i<=OB.step?'on':''}"></i>`).join('')}</div>`;
-  const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;
+  /* Both are required: a date of birth that actually computes to 18+, and the
+     acknowledgement. The checkbox alone used to be enough, which is how the
+     server-side age check got bypassed. */
+  const ageOk=()=>OB.adult&&OB.attested;
+  const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!ageOk()?'disabled':''}>${label}</button></div>`;
   /* the last step finishes on ob-done, not on a capped ob-next */
   const footDone=label=>`<div class="ob-foot"><button class="cta" data-act="ob-done">${label}</button></div>`;
   const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% Fingerprint clarity</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
-  if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
+  if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.attested}"><span class="sw" data-on="${OB.attested}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
   else if(OB.step===2){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Photo check</span><h1 class="ob-q">Show there’s a real person here.</h1><p class="ob-s">A quick on-device check keeps the Matrix human. This badge says <b>photo checked</b>, not verified identity.</p><div class="verify-orb ${OB.photoChecked?'done':''}">${OB.photoChecked?I.check:RING_GLYPH}</div><button class="cta ghostb" data-act="ob-photo">${OB.photoChecked?'Photo checked':'Run photo check'}</button></div>${foot('Continue')}</div>`}
   else if(OB.step===3){const providers=[['manual','Manual taste chips','Start without connecting anything.'],['lastfm','Last.fm username','Bring in public scrobbles later.'],['apple','Apple Music','Connect when MusicKit is configured.'],['spotify','Spotify · alpha only','Allowlisted testers only.']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Music signal</span><h1 class="ob-q">Where should your taste come from?</h1><p class="ob-s">Manual is the default. You can reconnect or rebuild this vector later.</p><div class="provider-list">${providers.map(p=>`<button class="provider ${OB.music===p[0]?'on':''}" data-act="ob-music" data-v="${p[0]}"><span>${p[0]==='manual'?I.note:I.link}</span><div><b>${p[1]}</b><small>${p[2]}</small></div>${OB.music===p[0]?I.check:''}</button>`).join('')}</div></div>${foot('Use this source')}</div>`}
   else if(OB.step===4){body=`<div class="step ob-scene-stack"><div class="ob-body"><span class="eyebrow">Meme calibration · ${Math.min(OB.memeSignals.length%5+1,5)}/5 in this deck</span><h1 class="ob-q">What kind of funny are you?</h1><p class="ob-s">Drag the card toward what it is, or use the buttons. Nothing here is shared.</p></div>
@@ -1865,10 +1873,10 @@ function drawObNow(){
   else if(OB.step===7){const opts=[['dating','Dating'],['friends','Friends'],['both','Both']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Basics</span><h1 class="ob-q">What should we call you?</h1><label class="field"><span>Name</span><input id="ob-name" maxlength="24" placeholder="Your first name" value="${esc(OB.name)}"></label><h3 class="tg">Looking for</h3><div class="chips">${opts.map(x=>`<button class="chip ${OB.intent===x[0]?'on':''}" data-act="ob-intent" data-fx="chip" data-v="${x[0]}" aria-pressed="${OB.intent===x[0]}">${x[1]}</button>`).join('')}</div></div>${foot('Continue')}</div>`}
   else {body=`<div class="step"><div class="ob-body"><span class="eyebrow">Last step</span><h1 class="ob-q">Keep the ritual close.</h1><p class="ob-s">Choose what you want to hear about. You can change this anytime in Settings.</p><div class="permission-card"><button class="row" data-act="ob-permission"><div class="tx"><b>Daily Drop at 9:00 AM</b><span>One track, one meme, no guilt trips.</span></div><span class="sw" data-on="${OB.permissions}"></span></button><button class="row"><div class="tx"><b>Location</b><span>Used to tune your discovery radius.</span></div><span class="chipg">Later</span></button></div></div>${footDone('Build my Fingerprint')}</div>`}
   o.innerHTML=prog+body;
-  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;drawOb(false)};
+  const dob=$('#ob-dob');if(dob)dob.oninput=()=>{OB.dob=dob.value;OB.adult=dob.value?((Date.now()-new Date(dob.value).getTime())/31557600000)>=18:false;const c=$('#onboard .step .cta');if(c)c.disabled=!(OB.adult&&OB.attested);drawOb(false)};
   const name=$('#ob-name');if(name)name.oninput=()=>{OB.name=name.value};
 }
-ACT['ob-adult']=b=>{OB.adult=!OB.adult;b.setAttribute('aria-checked',OB.adult);$('.sw',b).dataset.on=OB.adult;const c=$('#onboard .step .cta');if(c)c.disabled=!OB.adult;haptic(6)};
+ACT['ob-adult']=b=>{OB.attested=!OB.attested;b.setAttribute('aria-checked',OB.attested);$('.sw',b).dataset.on=OB.attested;const c=$('#onboard .step .cta');if(c)c.disabled=!(OB.adult&&OB.attested);haptic(6)};
 ACT['ob-next']=()=>{OB.step=Math.min(8,OB.step+1);drawOb();haptic(8)};
 ACT['ob-auth']=b=>{$$('.auth-rail .chip').forEach(x=>x.classList.toggle('on',x===b));toast('Auth adapter ready for '+b.dataset.v);haptic(5)};
 ACT['ob-photo']=b=>{
@@ -1902,7 +1910,11 @@ ACT['ob-done']=()=>{
   const repo=window.Cultured&&window.Cultured.repo;
   if(repo&&repo.onboard){
     repo.onboard({
-      dateOfBirth:OB.dob||(OB.adult?'2000-01-01':''),displayName:OB.name||S.prof.name,mode:OB.intent||'both',city:S.city,
+      /* The real date of birth, or nothing. This used to fall back to a
+         fabricated '2000-01-01' whenever the checkbox was ticked, which handed
+         the server an adult date of birth for an account that never supplied
+         one — defeating the 18+ check the server exists to make. */
+      dateOfBirth:OB.dob,displayName:OB.name||S.prof.name,mode:OB.intent||'both',city:S.city,
       musicSource:OB.music,pickedTastes:S.prof.humor,
       memeSignals:OB.memeSignals.filter(x=>isSeedMeme(x.memeId)),
       audioSignals:OB.audioSignals.map(x=>({trackId:seedTrackId(x.track),kind:x.kind})),

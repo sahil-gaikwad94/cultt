@@ -52,6 +52,16 @@ describe('the production bundle carries no invented people', () => {
     expect(bundle).toContain('a lie with a nice layout');
   });
 
+  it.skipIf(bundle === null)('never fabricates a date of birth to pass the 18+ check', () => {
+    /* The onboarding "I'm 18 or older" checkbox used to stand in for a date of
+       birth that was never entered, and the submit path filled in
+       '2000-01-01' — which isAdult() accepts. That handed the server an adult
+       date of birth for an account that never supplied one, defeating the
+       server-side age check the brief says to preserve. The checkbox is now an
+       attestation only, and a real date of birth is required. */
+    expect(bundle).not.toContain('2000-01-01');
+  });
+
   it.skipIf(bundle === null)('does not ship the seeded circle authors as content', () => {
     /* The room seat map keeps three of these names behind FEATURE_ROOMS, which
        is off by default and not reachable from any shipping surface. What must
