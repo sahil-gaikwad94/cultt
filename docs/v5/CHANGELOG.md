@@ -364,3 +364,28 @@ checkbox, Continue requires both, and the submit path never fabricates a date.
 
 Tests 21 files / **379 passing**; the fabricated date is asserted absent from
 the shipped legacy bundle.
+
+## Fixes — the intro had no art, and demo content was on by default
+
+Two defects behind the "unrendered UI on most pages" report:
+
+- **The cold open rendered empty.** `mountV5Intro` called `servableMemes()` with
+  no argument; every meme is `rightsCleared: false`, so the default filter
+  returns `[]` and the 5.5 s intro painted zero cards. The deck and Stories
+  already pass `servableMemes(true)` — licensing is enforced at the build gate,
+  not by starving the runtime. The intro now matches them (D-34).
+
+- **Demo personas showed by default in dev.** `DEMO_DATA` was
+  `DEV && flags.demoData !== false` with `demoData` defaulting true, so every dev
+  preview showed the 48 seeded people and the PROTOTYPE banner. Now
+  `DEV && (?demo=1 || flags.demoData === true)`: the `DEV &&` prefix still folds
+  to `false` in production so the personas tree-shake out of the bundle, but dev
+  no longer shows fabricated people without an explicit opt-in (D-35).
+
+Added `tests/unit/v5-surfaces.test.ts`, mounting the intro, Vault, profile wall
+and Stories into a real DOM — the four marquee surfaces had no dedicated mount
+coverage. The intro test asserts it paints 5 cards, which is what would have
+caught the empty-pool bug.
+
+Tests 22 files / **383 passing**; `tsc --noEmit`, eslint, and the
+`ALLOW_UNLICENSED=1` build all clean.

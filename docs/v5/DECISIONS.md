@@ -490,3 +490,33 @@ for every user, and the age gate in D-32 was found on exactly that path.
 The lesson worth keeping: a flag-gated replacement does not retire the thing it
 replaces until the flag is on by default. Until then both are production, and
 the old one has the larger audience.
+
+### D-34 · The intro read the licensed-only meme pool and got nothing
+
+`mountV5Intro` called `servableMemes()` with no argument. Every meme in the
+manifest is `rightsCleared: false` (they are placeholder art), so the default
+filter returns `[]` — the 5.5 s cold open rendered with zero cards. The deck
+(`home.ts`) and Stories already pass `servableMemes(true)`; the intro was the one
+caller that did not.
+
+Licensing is enforced where it matters — the build gate fails a production build
+while any meme is unlicensed (§0, `content:gate`). A build that exists was
+allowed to ship, so the runtime serves the same pool everywhere. The intro now
+matches the deck. Pinned by `tests/unit/v5-surfaces.test.ts`, which mounts the
+intro and asserts it paints 5 cards; with an empty pool that assertion fails.
+
+### D-35 · Demo content is opt-in on every build, dev included
+
+`legacy.ts` had `DEMO_DATA = DEV && CFG.flags.demoData !== false`, and the config
+defaulted `demoData: true`. The result: every dev preview showed the 48 seeded
+personas, the circle transcripts, and the yellow PROTOTYPE banner — fabricated
+social proof handed to anyone who opened the URL. That is the one thing the
+honesty rules forbid, and it was the default path.
+
+Now `DEMO_DATA = DEV && (?demo=1 || flags.demoData === true)`. The `DEV &&`
+prefix is load-bearing: it folds `DEMO_DATA` to the constant `false` in a
+production build, so the personas tree-shake out of the shipped bundle —
+`no-fake-people.test.ts` asserts their bios are absent from `dist`. Dropping the
+prefix would gate them at runtime but still ship them. In dev the personas now
+cost one query param instead of being on by default. This mirrors the v5 `demo`
+gate (`?demo=1`), so the invented population is never the default path anywhere.

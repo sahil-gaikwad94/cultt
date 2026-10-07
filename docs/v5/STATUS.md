@@ -119,7 +119,7 @@ pre-v5 app. `tests/e2e/v5.spec.ts` asserts exactly that.
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 379 passed / 21 files   (baseline 140 / 6)
+npx vitest run     → 383 passed / 22 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
