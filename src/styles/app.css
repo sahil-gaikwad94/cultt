@@ -32,6 +32,14 @@ svg{display:block}
 .screen{position:absolute;inset:0;z-index:1;overflow-y:auto;overflow-x:hidden;padding-bottom:110px;opacity:0;pointer-events:none;transition:opacity .3s;scrollbar-width:none;overscroll-behavior:contain}
 .screen::-webkit-scrollbar{display:none}
 .screen.on{opacity:1;pointer-events:auto}
+/* Perf: all five screens are rendered up front but only one is visible. The
+   inactive four still painted every meme image, fingerprint SVG and looping
+   animation behind the active screen — the main source of lag on the profile
+   and image pages. `content-visibility:hidden` drops their whole render tree
+   until they are switched on. No visual change: they were already invisible. */
+.screen:not(.on){content-visibility:hidden}
+/* Same idea for the circles list: skip cards scrolled out of view. */
+.cc{content-visibility:auto;contain-intrinsic-size:auto 360px}
 .tint{position:absolute;left:0;right:0;top:0;height:470px;overflow:hidden;pointer-events:none;z-index:0;-webkit-mask-image:linear-gradient(#000 52%,transparent);mask-image:linear-gradient(#000 52%,transparent)}
 .tint .tl{position:absolute;inset:-70px -70px 0;opacity:0;transition:opacity .9s ease;filter:blur(32px) saturate(1.7) brightness(.95)}
 .tint .tl.on{opacity:1}
