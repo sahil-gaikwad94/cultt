@@ -481,3 +481,19 @@ Build clean; 395 tests / 24 files green.
   numbers, the "most you" meme, and a filmstrip of what you reacted to.
 
 Build clean; 395 tests / 24 files green; tsc/eslint clean.
+
+## ReactionTray + Stories in the original UI
+
+- **Full ReactionTray** (brief §6.3): the basic 4-emoji long-press fan is
+  replaced by the v5 tray — 8 reactions per surface (meme 💀😭🗿🤡🧠🫠🥹🔥 /
+  song 🔥🎧🥹😭🤌🫠🕺💀), fisheye drag-to-select, fly-to-chip, and a per-emoji
+  signature FX on one shared particle canvas. Lazy-loaded (warmed on first
+  press) so it stays off the first-paint path; a >10px move cancels the hold so
+  scrolling never opens it. `micro.ts` stays decoration-only and reports the
+  pick via `micro:react`; the seam owns the `V5.react` write.
+- **Stories** (brief §6.6): a stories rail tops the feed and opens the v5
+  `mountStories` overlay (compose, view, 12-hour expiry) in a z-200 host. Demo
+  stories seed only under `?demo=1` and prune on any load without it.
+- Loads the scoped v5 stylesheet globally (~8KB gz) to style both.
+
+Build clean; 395 tests / 24 files green; tsc/eslint clean.

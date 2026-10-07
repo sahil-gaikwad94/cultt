@@ -1,5 +1,10 @@
 import './styles/tokens.css';
 import './styles/app.css';
+/* The v5 stylesheet is fully scoped (.v5-*, .reaction-tray, .tray-*, .hold-ring)
+   — no global selectors — so it is safe to load alongside the legacy app. It
+   carries the ReactionTray and Stories styling the legacy UI now reuses. ~8 KB
+   gz; the brief's budget (§10) is about JS, and this stays off the JS path. */
+import './v5/styles.css';
 import { createRepo } from './data';
 import { installRepoBridge } from './components/phase1';
 import { getStore } from './store';

@@ -488,7 +488,7 @@ function reactions(p,col){
 function dcardHTML(p){
   const r=refOf(p),isM=p.kind==='music',by=p.by&&person(p.by);
   const id=p.id;
-  return `<div class="dcard" data-id="${id}">
+  return `<div class="dcard" data-id="${id}" data-rxn-kind="${isM?'song':'meme'}">
     ${artOf(p)}${isM?'<div class="shade"></div>':''}
     <div class="dc-top"><span class="chipg">${isM?'Song':'Meme'}</span><span class="chipg">${isM?esc(r.genre):(by?'From '+esc(by.name):'Today’s meme')}</span><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
     ${isM?`<div class="dc-bot"><h3>${esc(r.title)}</h3><p>${esc(r.artist)}</p><button class="playp" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button></div>`:''}
@@ -499,7 +499,7 @@ function dcardHTML(p){
 }
 function ccardHTML(p,i){
   const r=refOf(p),isM=p.kind==='music',by=person(p.by);
-  return `<article class="cc stg" style="--d:${i}" data-id="${p.id}">
+  return `<article class="cc stg" style="--d:${i}" data-id="${p.id}" data-rxn-kind="${isM?'song':'meme'}">
     <div class="cc-art" data-act="open-d" data-id="${p.id}" role="button" tabindex="0" aria-label="Open ${esc(labelOf(p))}">${artOf(p)}${isM?'<div class="shade"></div>':''}
       <div class="cc-by glass">${orb(by,30)}<span><b>${esc(by.name)}</b> ${isM?'dropped this':'sent this'}</span></div>
       ${isM?`<div class="cc-bot"><h3>${esc(r.title)}</h3><p>${esc(p.note||r.artist)}</p></div>`:''}</div>
@@ -592,12 +592,50 @@ function homeBodyHTML(){
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
+/* ---- Stories (brief §6.6): a rail on the feed that opens the v5 Stories
+   overlay. The compose/view/12-hour-expiry component is reused as-is; the seam
+   only provides the entry point and keeps the rail in sync with the store. ---- */
+let storiesHandle=null;
+function storiesRailHTML(){
+  const st=V5.getState(),now=Date.now();
+  const live=(st.stories||[]).filter(s=>s.expiresAt>now);
+  const addRing=`<button class="sring add" data-act="open-stories" aria-label="Add to your story"><span class="sring-i">＋</span></button>`;
+  const ring=s=>{const e=(((s.layers||[]).find(l=>l.type==='sticker'))||{}).name||'✨';return `<button class="sring" data-act="open-story" data-id="${esc(s.id)}" aria-label="View story"><span class="sring-i">${esc(String(e).slice(0,2))}</span></button>`};
+  const mine=live.filter(s=>s.ownerId==='me'),others=live.filter(s=>s.ownerId!=='me');
+  return `<div class="srail">${addRing}${mine.map(ring).join('')}${others.map(ring).join('')}</div>`+(live.length?'':'<p class="srail-hint">Stories · gone in 12 hours</p>');
+}
+function renderStoriesRail(){const r=$('#stories-rail');if(r)r.innerHTML=storiesRailHTML()}
+function openStories(){
+  if(storiesHandle)return;
+  const host=document.createElement('div');host.className='stories-host';host.id='stories-host';
+  document.body.appendChild(host);
+  void import('./v5/stories.ts').then(({mountStories})=>{
+    storiesHandle=mountStories(host,{ownerId:'me',onClose:closeStories});
+  }).catch(()=>{host.remove()});
+}
+function closeStories(){
+  if(storiesHandle){try{storiesHandle.destroy()}catch(_){}storiesHandle=null}
+  const h=$('#stories-host');if(h)h.remove();
+  renderStoriesRail();
+}
+/* Demo stories live only behind ?demo=1 and are pruned the moment the app is
+   opened without it, so nothing fabricated ever shows by default. */
+function syncDemoStories(){
+  const st=V5.getState();
+  if(!DEMO_DATA){(st.stories||[]).filter(s=>String(s.id).indexOf('demo-story-')===0).forEach(s=>V5.dropStory(s.id));return}
+  if((st.stories||[]).some(s=>String(s.id).indexOf('demo-story-')===0))return;
+  const now=Date.now(),ttl=((v5config.hours&&v5config.hours.storyTtl)||12)*36e5;
+  [['ines','Music','this song on repeat since 2am'],['kai','W or L','pineapple on pizza. go.'],['noor','Mood','monday. send memes.']].forEach((d,i)=>{
+    V5.putStory({id:'demo-story-'+d[0],ownerId:d[0],createdAt:now-i*6e5,expiresAt:now+ttl-i*6e5,layers:[{type:'sticker',name:d[1]},{type:'text',body:d[2]}],audience:'everyone',hideFrom:[],replyRule:'react'});
+  });
+}
 function renderFeed(){
   if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
+      <div id="stories-rail">${storiesRailHTML()}</div>
       ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
@@ -759,6 +797,31 @@ document.addEventListener('micro:laugh',e=>{
   if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(true)}
   burst(btn,'#ffd166');floatFromEl(btn,V5_LAUGH,4);haptic([8,30,8]);
 });
+/* The ReactionTray (long-press) reports its pick here. The seam owns state: it
+   records the chosen emoji against the meme/song and floats it off the finger.
+   Works on both deck cards ([data-id]) and meme-shelf cards ([data-m]). */
+document.addEventListener('micro:react',e=>{
+  const btn=e.target,d=e.detail||{},emoji=d.emoji;
+  if(!btn||!btn.closest||!emoji)return;
+  const memeCard=btn.closest('[data-m]');
+  if(memeCard){
+    const id=memeCard.dataset.m,st=mmS();st.l[id]=1;
+    V5.react({kind:'meme',itemId:id,emoji,surface:'deck'});
+    save();renderYou();repoCall('recordReaction',id,'react');
+    const lb=memeCard.querySelector('[data-act="mm-like"]');
+    if(lb){lb.classList.add('on');lb.setAttribute('aria-pressed','true')}
+    floatFromEl(btn,emoji,3);haptic(10);
+    return;
+  }
+  const host=btn.closest('[data-id]');if(!host)return;
+  const id=host.dataset.id,st=rs(id),k=(d.kind==='song'||kindOf(id)==='song')?'song':'meme';
+  st.l=1;
+  V5.react({kind:k,itemId:id,emoji,surface:'deck'});
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'react');bumpCal(true);
+  floatFromEl(btn,emoji,3);haptic(10);
+});
+ACT['open-stories']=()=>openStories();
+ACT['open-story']=()=>openStories();
 ACT.share=b=>openShare(idOf(b));
 ACT['open-d']=b=>{openDetail(b.dataset.id,b);trackView(b.dataset.id)};
 /* previews */
@@ -2084,7 +2147,7 @@ const mmOf=id=>MM.find(m=>m.id===id);
 const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
 function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
 function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
+function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
 function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
@@ -2298,6 +2361,7 @@ function init(){
   installMicro({haptic:p=>haptic(p),sound:()=>S.set.sound!==false,stage:()=>$('#phone')});
   window.CulturedMicro=microPublic;
   synth.setEnabled(S.set.sound!==false);
+  syncDemoStories();
   initPTR();renderAll();go('feed');
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layoutTabs(document));
   window.addEventListener('resize',()=>layoutTabs(document));

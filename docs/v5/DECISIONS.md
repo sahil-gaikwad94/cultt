@@ -593,3 +593,23 @@ The lesson: a redesign is not automatically an improvement. The v5 work stays in
 the tree behind `?v5=1` so none of it is lost, but the shipping app is the
 original layout, with the cards enriched (depth, gradient ground, image vignette,
 filled category pill) rather than replaced.
+
+## D-39 — ReactionTray + signature FX reused from v5, not rebuilt
+The legacy long-press "fan" (4 fixed emoji on the like button) is replaced by
+the full v5 `openReactionTray` + `createFxLayer` (brief §6.3): 8 reactions per
+surface (meme vs song), fisheye drag, fly-to-chip, and a per-emoji signature FX
+on a single shared particle canvas. The engine is imported **lazily** inside
+`fanFor` (warmed on first pointerdown) so the tray + canvas never sit on the
+first-paint path. `micro.ts` stays decoration-only: it reports the pick via a
+`micro:react` event and the seam (`legacy.ts`) owns the state write
+(`V5.react`) — same contract as before. A >10 px move cancels the hold so a
+scroll never opens the tray. The v5 stylesheet is fully scoped (no global
+selectors), so it is loaded globally to style the tray.
+
+## D-40 — Stories reuse the v5 component; demo stories prune themselves
+Stories (brief §6.6) reuse `mountStories` as-is, opened from a stories rail at
+the top of the legacy feed into a `z-index:200` host (above nav/sheet/tray).
+The rail reads live stories straight from the shared store. Demo stories are
+seeded only under `?demo=1` and **pruned on any load without it**, so nothing
+fabricated ever shows by default (honours the no-fake-data rule). The component
+is honest by construction: no viewer counts.
