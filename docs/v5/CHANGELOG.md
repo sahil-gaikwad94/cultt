@@ -464,3 +464,20 @@ Testing population behind `?demo=1`: curated to **5 profiles and 1 chat**
 (was 9 + 3) so the Matrix, People and a thread are easy to exercise.
 
 Build clean; 395 tests / 24 files green.
+
+## Perf, floating reactions, and the Rewind sub-page
+
+- **Lag fix**: the small repeated glass controls (`.ibtn`, `.chipg`, `.pillb`,
+  `.eqb`, reaction buttons, `.glassb`, `.glass`) each carried a live
+  `backdrop-filter` blur — dozens of GPU blur layers on a single feed, the root
+  of the lag (and a black-render risk on some mobile GPUs). Dropped the blur on
+  those and made `--glass` opaque enough to read without it. The one-off frosted
+  panels (#nav, .sheet, #mini-player) keep a single blur.
+- **Floating reactions** (brief §6.4): liking, laughing and double-tapping now
+  float the reaction emoji up off the tap point (drift + fade, capped, skipped in
+  calm/reduced-motion), on top of the existing burst.
+- **Yesterday → Rewind**: renamed the tab and redesigned the sub-page from a
+  paper receipt into a bold recap — gradient hero, vibe of the day, big stat
+  numbers, the "most you" meme, and a filmstrip of what you reacted to.
+
+Build clean; 395 tests / 24 files green; tsc/eslint clean.

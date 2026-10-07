@@ -376,6 +376,22 @@ function burst(btn,color){
     d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>d.remove();
   }
 }
+/* Floating reaction: an emoji (or a few) lifts off the tap point, drifts and
+   fades — the brief's §6.4 "burst at the tap point". Fixed-position overlay so
+   it floats above every screen; pooled by timeout, capped, and skipped in calm
+   / reduced-motion. */
+function floatEmoji(x,y,emoji,n){
+  if(S.set.calm||!emoji)return;
+  const count=Math.min(n||3,6);
+  for(let i=0;i<count;i++){
+    const e=document.createElement('span');e.className='float-emoji';e.textContent=emoji;e.setAttribute('aria-hidden','true');
+    e.style.cssText=`left:${x}px;top:${y}px;--dx:${(Math.random()*64-32).toFixed(0)}px;--rot:${(Math.random()*50-25).toFixed(0)}deg;--s:${(0.85+Math.random()*0.5).toFixed(2)};animation-delay:${i*80}ms`;
+    document.body.appendChild(e);
+    setTimeout(()=>e.remove(),1300+i*80);
+  }
+}
+/* Float from the centre of a control (a like/save button). */
+function floatFromEl(el,emoji,n){if(!el)return;const r=el.getBoundingClientRect();floatEmoji(r.left+r.width/2,r.top+r.height/2,emoji,n)}
 function setTint(host,art){
   let box=$(':scope>.tint',host);if(!box){box=document.createElement('div');box.className='tint';host.prepend(box)}
   const l=document.createElement('div');l.className='tl';l.innerHTML=art;box.appendChild(l);
@@ -508,7 +524,7 @@ function tomorrowHTML(){
    store. Under ?demo=1 with no history it prints a sample so the surface is
    testable; in production an empty day is the honest empty state. */
 const rcDemoLines=()=>{const y=new Date(Date.now()-86400000);const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();return MM.slice(0,5).map((m,i)=>({ts:start+(9+i)*36e5+i*7e5,itemId:m.id,emoji:m.e||'🔥'}))};
-function receiptsHTML(){
+function rewindHTML(){
   const st=V5.getState();
   const y=new Date(Date.now()-86400000);
   const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();
@@ -516,25 +532,33 @@ function receiptsHTML(){
   const rx=(st.reactions||[]).filter(r=>r.ts>=start&&r.ts<end);
   const sv=(st.saves||[]).filter(s=>s.ts>=start&&s.ts<end);
   const demo=DEMO_DATA&&!rx.length&&!sv.length;
-  const src=rx.length?rx.slice(0,8):(demo?rcDemoLines():[]);
-  const dateStr=y.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  const src=rx.length?rx.slice(0,12):(demo?rcDemoLines():[]);
+  const dateStr=y.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
   if(!src.length){
-    return `<div class="drow stg"><div><span class="eyebrow">Yesterday · receipts</span>${bigDateHTML(-1)}</div></div>
-    <div class="rcpt-empty stg"><span class="rcpt-emoji" aria-hidden="true">🧾</span><h2>Nothing to report. Suspicious.</h2><p class="hint">React to a few drops today and your receipt prints here tomorrow.</p></div>`;
+    return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div></div>
+    <div class="rcpt-empty stg"><span class="rcpt-emoji" aria-hidden="true">📼</span><h2>Nothing to rewind. Yet.</h2><p class="hint">React to a few drops today and your rewind lands here tomorrow.</p></div>`;
   }
-  const hrs={};src.forEach(r=>{const h=new Date(r.ts).getHours();hrs[h]=(hrs[h]||0)+1});
-  let peak=0,pc=0;Object.keys(hrs).forEach(h=>{if(hrs[h]>pc){pc=hrs[h];peak=+h}});
-  const lines=src.map(r=>{const t=new Date(r.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const x=mmOf(r.itemId);const title=esc(String((x&&x.t)||r.itemId||'').split('\n')[0].slice(0,26));return `<li><span class="rc-t">${esc(t)}</span><span class="rc-d">${title}</span><span class="rc-e">${esc(r.emoji||'🔥')}</span></li>`}).join('');
-  const laughs=rx.length||(demo?src.length:0),saves=sv.length||(demo?3:0),shares=demo?1:0;
-  return `<div class="drow stg"><div><span class="eyebrow">Yesterday · receipts</span>${bigDateHTML(-1)}</div><button class="cnt" data-act="share-receipt" aria-label="Share receipt">Share</button></div>
-  <div class="rcpt stg" style="--d:1"><div class="rcpt-paper">
-    <header><b>${RING_GLYPH}cultured</b><span>${esc(dateStr)}</span></header>
-    <ul class="rc-lines">${lines}</ul>
-    <dl class="rc-totals"><div><dt>laughs</dt><dd>${laughs}</dd></div><div><dt>saves</dt><dd>${saves}</dd></div><div><dt>shares</dt><dd>${shares}</dd></div></dl>
-    <p class="rc-peak">Peak chaos · ${String(peak).padStart(2,'0')}:00</p>
-    <div class="rc-barcode" aria-hidden="true"></div>
-    <p class="rc-stamp">PAID IN FULL</p>
-  </div></div>`;
+  const VIBES=[['Chaotic','🌀'],['Deadpan','🗿'],['Wholesome','🥹'],['Unhinged','🤡'],['Soft','🫠'],['Niche','🧠']];
+  const vibe=VIBES[fnv1a('vibe'+start)%VIBES.length];
+  const laughs=rx.length||(demo?src.length:0),saves=sv.length||(demo?3:0);
+  const seen={},strip=[];
+  src.forEach(r=>{const m=mmOf(r.itemId);if(m&&!seen[m.id]){seen[m.id]=1;strip.push(`<div class="rw-tile">${mmVisual(m)}<span class="rw-tile-e">${esc(r.emoji||m.e||'✨')}</span></div>`)}});
+  const topMeme=mmOf(src[0].itemId);
+  return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div><button class="cnt" data-act="share-receipt" aria-label="Share rewind">Share</button></div>
+  <div class="rewind stg" style="--d:1">
+    <div class="rw-hero">
+      <span class="rw-kicker">${esc(dateStr)}</span>
+      <h2 class="rw-title">Your Rewind</h2>
+      <p class="rw-vibe">Vibe of the day <b>${vibe[0]}</b> ${vibe[1]}</p>
+    </div>
+    <div class="rw-stats">
+      <div><b>${laughs}</b><span>laughs ${esc(V5_LAUGH||'🔥')}</span></div>
+      <div><b>${saves}</b><span>saves 🔖</span></div>
+      <div><b>${src.length}</b><span>reacts</span></div>
+    </div>
+    ${topMeme?`<div class="rw-top"><span class="eyebrow">Most you</span><div class="rw-top-art">${mmVisual(topMeme)}</div></div>`:''}
+    ${strip.length?`<div class="rw-strip">${strip.join('')}</div>`:''}
+  </div>`;
 }
 /* ---- T1 The Draft: vote once on tomorrow's drop (brief §8.1) ----
    Two blurred candidate memes and two song teasers (genre + vibe only). The
@@ -563,7 +587,7 @@ function draftHTML(){
 }
 function homeBodyHTML(){
   if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
-  if(DK.day===-1){DK.items=[];DK.order=[];return receiptsHTML()}
+  if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
@@ -574,7 +598,7 @@ function renderFeed(){
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      ${ftabsHTML('day',[['-1','Yesterday'],['0','Today'],['1','Tomorrow']],String(DK.day))}
+      ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
@@ -585,7 +609,7 @@ function afterHome(){
   const d=$('#hdeck');
   if(d){
     $$('.dcard',d).forEach(c=>{
-      bindDrag(c,{can:()=>c.classList.contains('top')&&!DK.busy,fly:dir=>deckFly(dir),tap:()=>openDetail(c.dataset.id,c),dbl:()=>{const id=c.dataset.id;if(!rs(id).l){rs(id).l=1;save();syncPost(id)}bigHeart(c);haptic([10,30,10])}});
+      bindDrag(c,{can:()=>c.classList.contains('top')&&!DK.busy,fly:dir=>deckFly(dir),tap:()=>openDetail(c.dataset.id,c),dbl:()=>{const id=c.dataset.id;if(!rs(id).l){rs(id).l=1;save();syncPost(id)}bigHeart(c);const r=c.getBoundingClientRect();floatEmoji(r.left+r.width/2,r.top+r.height*0.44,V5_LIKE,5);haptic([10,30,10])}});
     });
     layoutDeck();
   }else setTint($('#s-feed'),poster(DK.day===1?TRACKS.route9:TRACKS.moons,true));
@@ -712,11 +736,13 @@ ACT.like=b=>{
   const id=idOf(b),st=rs(id),on=!st.l;st.l=on?1:0;
   if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction(kindOf(id),id);
   save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(on);
+  if(on)floatFromEl(b,V5_LIKE,3);
 };
 ACT.laugh=b=>{
   const id=idOf(b),st=rs(id),on=!st.h;st.h=on?1:0;
   if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});else V5.removeReaction(kindOf(id),id);
   save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(on);
+  if(on)floatFromEl(b,V5_LAUGH,4);
 };
 ACT.save=b=>{
   const id=idOf(b),st=rs(id),on=!st.s;st.s=on?1:0;
@@ -731,7 +757,7 @@ document.addEventListener('micro:laugh',e=>{
   const host=btn.closest('[data-id]');if(!host)return;
   const id=host.dataset.id,st=rs(id);
   if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(true)}
-  burst(btn,'#ffd166');haptic([8,30,8]);
+  burst(btn,'#ffd166');floatFromEl(btn,V5_LAUGH,4);haptic([8,30,8]);
 });
 ACT.share=b=>openShare(idOf(b));
 ACT['open-d']=b=>{openDetail(b.dataset.id,b);trackView(b.dataset.id)};
@@ -2066,7 +2092,7 @@ ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
   if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
   b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
-  if(on){burst(b,'#ff5d7a');haptic(10)}
+  if(on){burst(b,'#ff5d7a');floatFromEl(b,V5_LIKE,3);haptic(10)}
 };
 ACT['mm-save']=b=>{
   const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
