@@ -238,10 +238,6 @@ const DEMO_PEOPLE=[
   {id:'dev',name:'Dev',km:3.1,intent:['dating','friends'],matched:true,score:81,pal:['#ffb86b','#ff6fa5','#4a2a6e','#14081a'],seed:8,shared:['cherry','glass'],humor:[.7,.5,.6,.6,.4,.8],bio:'Commute DJ. Has been asked to stop.',age:28},
   {id:'noor',name:'Noor',km:1.8,intent:['dating','friends'],score:94,likesYou:true,pal:['#8f7bff','#ff9466','#1d3b6e','#0b1626'],seed:11,shared:['moons','route9','choir'],humor:[.9,.5,.8,.3,.6,.9],bio:'Makes playlists for weather that hasn’t happened yet.',age:27},
   {id:'saoirse',name:'Saoirse',km:4.6,intent:['dating'],score:89,likesYou:true,pal:['#ff6fa5','#c3a6ff','#3a2a6e','#10131f'],seed:14,shared:['cherry','choir'],humor:[.7,.6,.9,.4,.3,.8],bio:'Will explain the lore of a song she heard once on a bus.',age:25},
-  {id:'mateo',name:'Mateo',km:5,intent:['friends','dating'],score:83,pal:['#ffd166','#ff8a5b','#7b3aa8','#1b1233'],seed:17,shared:['route9','glass'],humor:[.5,.7,.5,.9,.7,.5],bio:'Group chat DJ. Responsible for three of your saved songs.',age:31},
-  {id:'wren',name:'Wren',km:7.3,intent:['friends'],score:77,pal:['#8fb4ff','#58d6c8','#3a2a6e','#0e1220'],seed:20,shared:['soft','glass'],humor:[.4,.6,.6,.5,.9,.7],bio:'Nostalgic for decades she wasn’t alive for.',age:24},
-  {id:'idris',name:'Idris',km:8.9,intent:['dating'],score:72,pal:['#c3a6ff','#ff6fa5','#2a1448','#10131f'],seed:23,shared:['moons'],humor:[.95,.3,.9,.2,.4,.8],bio:'Deadpan in three languages.',age:30},
-  {id:'lena',name:'Lena',km:11,intent:['dating','friends'],score:68,pal:['#ff9466','#ffd166','#1f8f78','#0b1a14'],seed:26,shared:['route9'],humor:[.4,.5,.7,.7,.8,.4],bio:'Thinks every road trip needs an official opening track.',age:28}
 ];
 /* The Matrix, the People tab and the listening-room seat map all read this.
    In a production build it is empty, because these nine are personas and not
@@ -278,9 +274,7 @@ const DEF=()=>({
   pulse:{duel:false,seen:0},duelLink:null
 });
 const BASE_THREADS=()=>{const n=Date.now();return{
-  ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]},
-  kai:{unread:0,msgs:[{f:'me',t:'defend your worst-rated favorite album',ts:n-1500*6e4},{f:'them',t:'Soft Machine Summer. no notes. you will not change my mind',ts:n-1490*6e4},{f:'me',t:'bold. i respect it a little',ts:n-1480*6e4}]},
-  dev:{unread:1,msgs:[{f:'them',t:'up for a 15 minute listen later?',ts:n-300*6e4}]}
+  ines:{unread:2,msgs:[{f:'them',kind:'track',ref:'choir',ts:n-53*6e4},{f:'them',t:'ok but have you heard the key change in this one',ts:n-52*6e4},{f:'them',t:'i need a second opinion immediately',ts:n-51*6e4}]}
 }};
 let S=merge(DEF(),store.get('state',{}));
 /* Demo people come with demo transcripts. A real account starts with zero
@@ -509,8 +503,67 @@ function tomorrowHTML(){
     <div class="group"><div class="row"><div class="tx" style="text-align:left"><b>Remind me</b><span>A quiet nudge when it lands.</span></div>${swHTML('tog','remind',S.set.remind,'Remind me')}</div></div>
   </div></div></div>`;
 }
+/* ---- Y1 Receipts: yesterday as a thermal-paper receipt (brief §8.1) ----
+   Line items, totals, peak chaos and a PAID IN FULL stamp, read from the real
+   store. Under ?demo=1 with no history it prints a sample so the surface is
+   testable; in production an empty day is the honest empty state. */
+const rcDemoLines=()=>{const y=new Date(Date.now()-86400000);const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();return MM.slice(0,5).map((m,i)=>({ts:start+(9+i)*36e5+i*7e5,itemId:m.id,emoji:m.e||'🔥'}))};
+function receiptsHTML(){
+  const st=V5.getState();
+  const y=new Date(Date.now()-86400000);
+  const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();
+  const end=start+86400000;
+  const rx=(st.reactions||[]).filter(r=>r.ts>=start&&r.ts<end);
+  const sv=(st.saves||[]).filter(s=>s.ts>=start&&s.ts<end);
+  const demo=DEMO_DATA&&!rx.length&&!sv.length;
+  const src=rx.length?rx.slice(0,8):(demo?rcDemoLines():[]);
+  const dateStr=y.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  if(!src.length){
+    return `<div class="drow stg"><div><span class="eyebrow">Yesterday · receipts</span>${bigDateHTML(-1)}</div></div>
+    <div class="rcpt-empty stg"><span class="rcpt-emoji" aria-hidden="true">🧾</span><h2>Nothing to report. Suspicious.</h2><p class="hint">React to a few drops today and your receipt prints here tomorrow.</p></div>`;
+  }
+  const hrs={};src.forEach(r=>{const h=new Date(r.ts).getHours();hrs[h]=(hrs[h]||0)+1});
+  let peak=0,pc=0;Object.keys(hrs).forEach(h=>{if(hrs[h]>pc){pc=hrs[h];peak=+h}});
+  const lines=src.map(r=>{const t=new Date(r.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const x=mmOf(r.itemId);const title=esc(String((x&&x.t)||r.itemId||'').split('\n')[0].slice(0,26));return `<li><span class="rc-t">${esc(t)}</span><span class="rc-d">${title}</span><span class="rc-e">${esc(r.emoji||'🔥')}</span></li>`}).join('');
+  const laughs=rx.length||(demo?src.length:0),saves=sv.length||(demo?3:0),shares=demo?1:0;
+  return `<div class="drow stg"><div><span class="eyebrow">Yesterday · receipts</span>${bigDateHTML(-1)}</div><button class="cnt" data-act="share-receipt" aria-label="Share receipt">Share</button></div>
+  <div class="rcpt stg" style="--d:1"><div class="rcpt-paper">
+    <header><b>${RING_GLYPH}cultured</b><span>${esc(dateStr)}</span></header>
+    <ul class="rc-lines">${lines}</ul>
+    <dl class="rc-totals"><div><dt>laughs</dt><dd>${laughs}</dd></div><div><dt>saves</dt><dd>${saves}</dd></div><div><dt>shares</dt><dd>${shares}</dd></div></dl>
+    <p class="rc-peak">Peak chaos · ${String(peak).padStart(2,'0')}:00</p>
+    <div class="rc-barcode" aria-hidden="true"></div>
+    <p class="rc-stamp">PAID IN FULL</p>
+  </div></div>`;
+}
+/* ---- T1 The Draft: vote once on tomorrow's drop (brief §8.1) ----
+   Two blurred candidate memes and two song teasers (genre + vibe only). The
+   pick is deterministic per day so it is stable across renders; with no backend
+   it is labelled Practice Mode rather than pretending to tally real votes. */
+const fnv1a=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
+function draftHTML(){
+  const today=new Date().toISOString().slice(0,10);
+  const h=fnv1a('draft'+today);
+  const np=Math.max(1,MM.length),nt=Math.max(1,Object.keys(TRACKS).length);
+  const a=MM[h%np],b=MM[(h>>>4)%np]||MM[(h+1)%np];
+  const tracks=Object.values(TRACKS);
+  const s1=tracks[h%nt],s2=tracks[(h>>>6)%nt]||tracks[(h+1)%nt];
+  const vote=(S.draftVote&&S.draftVote.day===today)?S.draftVote.pick:null;
+  const winner=h%2;
+  const cand=(m,i)=>m?`<button class="dcand ${vote===i?'picked':''}" data-act="draft-vote" data-v="${i}" ${vote!==null?'disabled':''} aria-label="Vote for candidate ${i+1}"><span class="dcand-art">${mmVisual(m)}</span><span class="dcand-tag">${esc(m.k||'unlisted')}</span>${vote===i?'<span class="dcand-check" aria-hidden="true">✓</span>':''}</button>`:'';
+  const teaser=t=>t?`<div class="dtease"><b>${esc(t.genre||'Track')}</b><span>${esc(t.style||'')}</span></div>`:'';
+  return `<div class="drow stg"><div><span class="eyebrow">Tomorrow · the draft</span>${bigDateHTML(1)}</div><span class="cnt" id="cd">00:00:00</span></div>
+  <div class="draft stg" style="--d:1">
+    <p class="draft-q">Which meme drops tomorrow? Vote once — it's free.</p>
+    <div class="draft-cands">${cand(a,0)}${cand(b,1)}</div>
+    <div class="draft-songs"><span class="eyebrow">Song teasers</span>${teaser(s1)}${teaser(s2)}</div>
+    <p class="draft-mode">Practice mode: results arrive at 9:00 once voting is live.</p>
+    ${vote!==null?(vote===winner?'<div class="called">🎯 Called it — +1 to your profile</div>':'<div class="called-no">Not this time. Tomorrow is a new draft.</div>'):''}
+  </div>`;
+}
 function homeBodyHTML(){
-  if(DK.day===1){DK.items=[];DK.order=[];return tomorrowHTML()}
+  if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
+  if(DK.day===-1){DK.items=[];DK.order=[];return receiptsHTML()}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
@@ -591,6 +644,25 @@ FT.day=v=>{
   $('#circles').style.display=DK.day===0?'':'none';haptic(6);afterHome();
 };
 ACT.refresh=()=>{$('#s-feed').scrollTo({top:0,behavior:'smooth'});refresh()};
+/* The Draft: one free vote per day, then the card locks and shows the verdict. */
+ACT['draft-vote']=b=>{
+  const today=new Date().toISOString().slice(0,10);
+  if(S.draftVote&&S.draftVote.day===today){toast('You already voted today');return}
+  S.draftVote={day:today,pick:+b.dataset.v};save();haptic(8);
+  const hb=$('#hbody');if(hb)hb.innerHTML=homeBodyHTML();
+  track('draft_voted',{pick:+b.dataset.v});
+};
+/* Share the receipt. Uses the real Web Share / clipboard so the control never
+   claims a share it did not perform (honesty rule D-30). */
+ACT['share-receipt']=async()=>{
+  const st=V5.getState();const n=(st.reactions||[]).length;
+  const txt=`My cultured receipt — ${n} laughs, ${v5SavedKeys(st).length} saves. Match on your humor, not your headshot.`;
+  try{
+    if(navigator.share){await navigator.share({title:'cultured receipt',text:txt});track('receipt_shared',{via:'share'})}
+    else if(navigator.clipboard){await navigator.clipboard.writeText(txt);toast('Receipt copied to clipboard');track('receipt_shared',{via:'copy'})}
+    else toast('Sharing is not available on this device');
+  }catch(e){/* user dismissed the share sheet — not an error */}
+};
 function skel(n){return `<div class="sk-deck">${Array.from({length:n},(_,i)=>`<div class="sk sk-card" style="--d:${i}"></div>`).join('')}</div>`}
 function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);

@@ -1521,3 +1521,50 @@ button.fp-bleed{border:0;padding:0;font:inherit;color:inherit;text-align:left;cu
 .look-o.on{color:var(--bone);border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.08)}
 .look-o:active{transform:scale(.94)}
 .drow{position:relative;z-index:1}
+
+/* ===== Home sub-pages: Y1 Receipts + T1 The Draft (brief §8.1) ===== */
+/* Y1 — thermal-paper receipt */
+.rcpt{display:flex;justify-content:center;padding:8px 0 20px}
+.rcpt-paper{position:relative;width:min(92%,360px);background:var(--paper,#FBF7EC);color:#16150f;border-radius:4px;padding:20px 22px 26px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;box-shadow:0 26px 60px rgba(0,0,0,.5)}
+.rcpt-paper::after{content:'';position:absolute;left:-2px;right:-2px;bottom:-7px;height:8px;background:radial-gradient(circle 7px at 7px 0,var(--paper,#FBF7EC) 99%,transparent 100%) 0 0/14px 8px repeat-x}
+.rcpt-paper header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed rgba(0,0,0,.32);padding-bottom:10px;margin-bottom:13px}
+.rcpt-paper header b{display:flex;align-items:center;gap:6px;text-transform:uppercase;font-size:14px;letter-spacing:.06em}
+.rcpt-paper header b svg{width:16px;height:16px}
+.rcpt-paper header span{font-size:12px;opacity:.7}
+.rc-lines{list-style:none;display:flex;flex-direction:column;gap:7px;font-size:13px}
+.rc-lines li{display:grid;grid-template-columns:50px 1fr 22px;gap:8px;align-items:baseline}
+.rc-t{opacity:.6;font-variant-numeric:tabular-nums}
+.rc-d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-e{text-align:right}
+.rc-totals{display:flex;justify-content:space-between;border-top:1px dashed rgba(0,0,0,.32);margin-top:15px;padding-top:12px}
+.rc-totals div{text-align:center;flex:1}
+.rc-totals dt{font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
+.rc-totals dd{font-size:23px;font-weight:700;margin:2px 0 0}
+.rc-peak{text-align:center;font-size:12px;letter-spacing:.04em;margin-top:13px;opacity:.8}
+.rc-barcode{height:46px;margin:15px 0 4px;opacity:.85;background:repeating-linear-gradient(90deg,#16150f 0 2px,transparent 2px 4px,#16150f 4px 5px,transparent 5px 9px,#16150f 9px 12px,transparent 12px 15px)}
+.rc-stamp{width:fit-content;margin:10px auto 0;font-weight:800;letter-spacing:.18em;font-size:15px;color:#c0392b;border:3px double #c0392b;padding:4px 13px;transform:rotate(-8deg);animation:stampIn .55s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes stampIn{0%{opacity:0;transform:rotate(-8deg) scale(2.6)}55%{opacity:1}100%{opacity:1;transform:rotate(-8deg) scale(1)}}
+.rcpt-empty{text-align:center;padding:52px 26px}
+.rcpt-empty .rcpt-emoji{font-size:48px;display:block;margin-bottom:12px}
+.rcpt-empty h2{font-size:22px;margin-bottom:8px}
+/* T1 — The Draft */
+.draft{display:flex;flex-direction:column;gap:15px}
+.draft-q{font-size:18px;font-weight:700;line-height:1.2}
+.draft-cands{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dcand{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:var(--ash);aspect-ratio:3/4;padding:0;transition:transform .3s var(--spring),box-shadow .3s}
+.dcand:active{transform:scale(.97)}
+.dcand.picked{box-shadow:0 0 0 2px var(--sun),0 18px 40px rgba(0,0,0,.5)}
+.dcand:disabled{opacity:.9}
+.dcand-art{position:absolute;inset:0}
+.dcand-art .mm-photo-wrap{width:100%;height:100%;background:#0a0a09}
+.dcand-art .mm-photo{width:100%;height:100%;object-fit:cover;filter:blur(24px) saturate(1.15);transform:scale(1.28)}
+.dcand-tag{position:absolute;left:10px;right:10px;bottom:10px;text-align:center;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:rgba(10,10,9,.72);color:var(--bone);padding:5px 8px;border-radius:999px}
+.dcand-check{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:var(--sun);color:#15140f;display:grid;place-items:center;font-weight:800;font-size:14px}
+.draft-songs{display:flex;flex-direction:column;gap:8px}
+.dtease{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px;border-radius:14px;background:var(--coal);border:1px solid var(--line)}
+.dtease b{font-size:14px}
+.dtease span{font-size:12px;color:var(--mist);font-style:italic}
+.draft-mode{font-size:12px;color:var(--stone);text-align:center}
+.called,.called-no{text-align:center;font-weight:800;padding:12px;border-radius:14px;animation:mmin .4s var(--spring) both}
+.called{background:rgba(255,209,102,.16);color:var(--sun)}
+.called-no{background:var(--coal);color:var(--mist)}

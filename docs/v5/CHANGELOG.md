@@ -443,3 +443,24 @@ go back behind `?v5=1` as an alternative (D-38, reversing D-36).
 
 `v5-flags.test.ts` rewritten for the restored model; e2e points back at `?v5=1`.
 395 tests / 24 files green; tsc, eslint, build clean.
+
+## Home sub-pages + a testing population
+
+Brought the v5 Home sub-pages into the original UI (the Yesterday/Today/Tomorrow
+pager already existed; the two outer days now render the new specs):
+
+- **Yesterday → Y1 Receipts**: yesterday as a thermal-paper receipt (monospace,
+  serrated edge, barcode) with up to 8 line items (time · title · emoji), totals
+  (laughs/saves/shares), "Peak chaos", and a **PAID IN FULL** stamp that slams
+  in. Share button uses the real Web Share / clipboard. Honest empty state when
+  there is no history; a sample receipt prints under `?demo=1` so it is testable.
+- **Tomorrow → T1 The Draft**: two blurred candidate memes (24px) + two song
+  teasers (genre/vibe only), one free vote per day, countdown to 9:00, "Called
+  it" verdict, labelled Practice Mode until a backend tallies real votes.
+- Emojis ride on the receipt line items and the verdict; the stamp and verdict
+  carry the animations.
+
+Testing population behind `?demo=1`: curated to **5 profiles and 1 chat**
+(was 9 + 3) so the Matrix, People and a thread are easy to exercise.
+
+Build clean; 395 tests / 24 files green.
