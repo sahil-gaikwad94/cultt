@@ -166,10 +166,23 @@ What was **not** executed: anything needing a real browser. See below.
   They are reachable and functional, so nothing is half-built, but the v5
   treatment (Fingerprint-led cards, locked reveal duels, the resonate budget)
   has not landed. Arena and the sharing/viral loops of Phase 4 are the same.
-- **No preview deployment.** There is no `vercel.json` and this sandbox cannot
-  reach a deploy target, so the acceptance criterion "preview deployment URL"
-  is met here by a live dev preview of the branch instead. `api/preview.ts` is
-  written and ready for a real Vercel deploy.
+- **`vercel.json` now exists** (D-31): SPA rewrite for the `/d/:id` duel deep
+  link, immutable caching on content-hashed `/assets/*` and the generated media,
+  `must-revalidate` on `index.html`, `/api/*` excluded so `api/preview.ts` keeps
+  serving from the function. The rewrite regex is compiled and checked.
+  **Not deployed**: this sandbox has no Vercel CLI and no route to a deploy
+  target, and `vercel.com` is outside the network allowlist, so the acceptance
+  criterion "preview deployment URL" is met here by a live dev preview of the
+  branch rather than a Vercel URL. Anyone with the CLI can deploy this config
+  as-is — but see the meme-licensing note below, because `npm run build` fails
+  first by design.
+- **Honesty audit complete (D-27, D-30).** No invented people and no fabricated
+  statistics ship in a production build, and no control reports an action it did
+  not perform. Pinned by `tests/unit/no-fake-people.test.ts`, which checks the
+  built bundle rather than the source. This also required guarding every
+  `person(...)` dereference, since gating the population legitimately makes it
+  return `undefined`: `openRoom`, `mm-share`, `mm-send` and `openThread` were all
+  live crashes, not merely cosmetic.
 - **The 20 seed memes are still unlicensed.** `content:gate` fails the
   production build until they are replaced, which is the intended behaviour —
   but it does mean a production deploy needs real art first.
