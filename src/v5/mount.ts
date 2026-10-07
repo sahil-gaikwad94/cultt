@@ -186,7 +186,11 @@ export const mountV5Home = async (host: HTMLElement): Promise<V5HomeHandle> => {
 export const mountV5Intro = async (onDone: () => void): Promise<void> => {
   const { mountIntro, INTRO_DURATION } = await import('./intro.ts');
 
-  const memes = servableMemes().slice(0, 5).map((meme) => ({ src: meme.src, alt: meme.alt }));
+  /* The deck and stories read `servableMemes(true)`; the intro used to call it
+     with no argument, which returns [] (all memes are unlicensed), and the cold
+     open then rendered with zero cards. Match the rest of the app: licensing is
+     enforced at the build gate, and a build that exists was allowed to ship. */
+  const memes = servableMemes(true).slice(0, 5).map((meme) => ({ src: meme.src, alt: meme.alt }));
   const host = document.createElement('div');
   document.body.appendChild(host);
 

@@ -80,7 +80,7 @@ const store={
   clear(){try{Object.keys(localStorage).filter(k=>k.indexOf('cultured2:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 };
 /* ===== v4 production seam: the ONLY places the real backend/analytics plug in ===== */
-const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
+const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:false,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
 /* ------------------------------------------------------------------ honesty
    Two flags decide how much of this build is a demonstration rather than a
    product, and a production build refuses to be a demonstration at all.
@@ -91,8 +91,11 @@ const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleM
                `npm run content:gate` fails the production build until they are
                replaced with rights-cleared art. Nothing in this file can
                override that, whatever `window.CULTURED_CONFIG` says.
-   DEMO_DATA   seeded people, circle posts and chat transcripts. On in dev so
-               the prototype is explorable, off in production.
+   DEMO_DATA   seeded people, circle posts and chat transcripts. OFF by
+               default everywhere, dev included — opt in with `?demo=1` or by
+               setting `window.CULTURED_CONFIG.flags.demoData = true`. Mirrors
+               the v5 `demo` gate so the invented population is never the
+               default path on any build.
    ROOMS       the 15-minute synced listening rooms. Off everywhere for now.
    ------------------------------------------------------------------------- */
 /* `import.meta.env.DEV` / `.PROD` are substituted with the literal `true` or
@@ -101,7 +104,19 @@ const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleM
    `!!(typeof import.meta !== 'undefined' && …)` instead left web-image URLs in
    the production bundle, because the `typeof` guard defeated the folding. */
 const DEV=import.meta.env.DEV===true;
-const DEMO_DATA=DEV&&CFG.flags.demoData!==false;
+/* Explicit opt-in only — `?demo=1` or `flags.demoData === true`. Was
+   `DEV && CFG.flags.demoData !== false`, which turned the 48 seeded people
+   and the PROTOTYPE banner on by default in every dev preview. That is the
+   one thing the honesty rules forbid: fabricated social proof shown to
+   someone who did not ask for it. Now it costs one query param. */
+const DEMO_PARAM=(()=>{try{return typeof location!=='undefined'&&/[?&]demo=1\b/.test(location.search)}catch(_){return false}})();
+/* The `DEV &&` prefix must stay: it is what folds DEMO_DATA to the constant
+   `false` in a production build, so the 48 seeded personas, the circle posts
+   and the transcripts tree-shake out of the shipped bundle (asserted by
+   no-fake-people.test.ts). Dropping it would gate them at runtime but still
+   ship them. In dev the personas now cost `?demo=1`, or an explicit
+   `flags.demoData = true`, instead of being on by default. */
+const DEMO_DATA=DEV&&(DEMO_PARAM||CFG.flags.demoData===true);
 const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
 /* Merge, never replace: `main.ts` installs `Cultured.repo` before this file is
