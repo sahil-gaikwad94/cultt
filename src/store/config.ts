@@ -30,6 +30,16 @@ export interface V5Config {
   deferAuthToAfterReveal: boolean;
   /** `?demo=1` or an explicit opt-in. Never on by default. */
   demo: boolean;
+  /**
+   * v5 screen rollout. Every v5 screen lives behind one of these so `main`
+   * stays deployable while the rest is still being built — a half-built screen
+   * is never reachable by default.
+   */
+  v5: {
+    intro: boolean;
+    home: boolean;
+    vault: boolean;
+  };
 }
 
 export const DEFAULT_CONFIG: V5Config = {
@@ -43,6 +53,8 @@ export const DEFAULT_CONFIG: V5Config = {
   },
   deferAuthToAfterReveal: true,
   demo: false,
+  /* Off by default: the v5 shell is opt-in (`?v5=1`) until Phase 2 is signed off. */
+  v5: { intro: false, home: false, vault: false },
 };
 
 interface RawConfig {
@@ -53,18 +65,21 @@ interface RawConfig {
   homeTomorrowSubPage?: string;
   deferAuthToAfterReveal?: boolean;
   demo?: boolean;
+  v5?: { intro?: boolean; home?: boolean; vault?: boolean };
 }
 
 const isFinitePositive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
 
-const hasDemoOptIn = (): boolean => {
+const hasParam = (name: string): boolean => {
   if (typeof window === 'undefined') return false;
   try {
-    return new URLSearchParams(window.location.search).get('demo') === '1';
+    return new URLSearchParams(window.location.search).get(name) === '1';
   } catch {
     return false;
   }
 };
+
+const hasDemoOptIn = (): boolean => hasParam('demo');
 
 /**
  * Reads config once. Call sites import `v5config`; tests use `readV5Config()`
@@ -100,6 +115,17 @@ export const readV5Config = (raw?: RawConfig | null): V5Config => {
     deferAuthToAfterReveal:
       source?.deferAuthToAfterReveal === undefined ? DEFAULT_CONFIG.deferAuthToAfterReveal : !!source.deferAuthToAfterReveal,
     demo: source?.demo === true || hasDemoOptIn(),
+    /* `?v5=1` turns the whole shell on; a single key can opt one screen in or
+       out on its own (`?v5=0&...` is not supported — the config object is). */
+    v5: (() => {
+      const optIn = hasParam('v5');
+      const explicit = source?.v5;
+      return {
+        intro: explicit?.intro ?? optIn,
+        home: explicit?.home ?? optIn,
+        vault: explicit?.vault ?? optIn,
+      };
+    })(),
   };
 };
 

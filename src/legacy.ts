@@ -18,7 +18,7 @@ import { renderDuelCard } from './duel/card';
 /* The shared synth (Settings → Sound gates it here, in one place). */
 import { synth } from './motion/audio';
 /* The 122 original in-house meme cards. Production content is generated, not
-   scraped; see scripts/generate-meme-corpus.mjs. */
+   the real corpus under public/memes, via src/content. */
 import { SEED_MEMES } from './data/seed/memes';
 /* The seed track catalogue, used only to check whether an id can cross the
    adapter boundary without fabricating a vector. */
@@ -29,6 +29,7 @@ import { SEED_TRACKS } from './data/seed/tracks';
    D-03. The seam still keeps its own shapes for its own markup, but it no
    longer decides what the numbers are. */
 import { getStore } from './store';
+import { v5config } from './store/config';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -39,6 +40,17 @@ import {
 } from './store/selectors';
 
 const V5 = getStore();
+/* v5 rollout flags. Off by default, so a build without `?v5=1` (or an explicit
+   `window.CULTURED_CONFIG.v5`) renders exactly the pre-v5 app. */
+const V5_HOME=v5config.v5.home;
+const V5_VAULT=v5config.v5.vault;
+let v5VaultHandle=null;
+const openV5Vault=async()=>{
+  if(v5VaultHandle)return;
+  const {mountVault}=await import('./v5/vault');
+  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
+  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
+};
 /** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
 const v5Resolve = key => {
   const i = key.indexOf(':');
@@ -65,15 +77,17 @@ const store={
   clear(){try{Object.keys(localStorage).filter(k=>k.indexOf('cultured2:')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 };
 /* ===== v4 production seam: the ONLY places the real backend/analytics plug in ===== */
-const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,demoMemes:false,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
+const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleMusic:false,phoneOtp:false,ugc:false,sound:true,demoData:true,rooms:false},assets:{}},window.CULTURED_CONFIG||{});
 /* ------------------------------------------------------------------ honesty
-   Three flags decide how much of this build is a demonstration rather than a
+   Two flags decide how much of this build is a demonstration rather than a
    product, and a production build refuses to be a demonstration at all.
 
-   DEMO_MEMES  the 20 images under public/memes came from web image search and
-               have no licence (see public/memes/sources.json). They are for
-               local demos only and can never appear in a production build,
-               whatever `window.CULTURED_CONFIG` says.
+   MEMES       the images under public/memes are the real corpus, listed in
+               src/content/memes.manifest.json. None of the twenty seed files
+               carries a licence yet (see public/memes/sources.json), so
+               `npm run content:gate` fails the production build until they are
+               replaced with rights-cleared art. Nothing in this file can
+               override that, whatever `window.CULTURED_CONFIG` says.
    DEMO_DATA   seeded people, circle posts and chat transcripts. On in dev so
                the prototype is explorable, off in production.
    ROOMS       the 15-minute synced listening rooms. Off everywhere for now.
@@ -84,7 +98,6 @@ const CFG=Object.assign({backend:'local',flags:{spotify:false,lastfm:true,appleM
    `!!(typeof import.meta !== 'undefined' && …)` instead left web-image URLs in
    the production bundle, because the `typeof` guard defeated the folding. */
 const DEV=import.meta.env.DEV===true;
-const DEMO_MEMES=DEV&&CFG.flags.demoMemes===true;
 const DEMO_DATA=DEV&&CFG.flags.demoData!==false;
 const FEATURE_ROOMS=CFG.flags.rooms===true;
 const track=(ev,p)=>{try{if(window.posthog&&window.posthog.capture)window.posthog.capture(ev,p||{});else if(window.CulturedHooks&&window.CulturedHooks.track)window.CulturedHooks.track(ev,p||{})}catch(e){}};
@@ -464,6 +477,7 @@ function homeBodyHTML(){
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
 }
 function renderFeed(){
+  if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
@@ -1233,7 +1247,7 @@ ACT['bub-react']=b=>{
   if(!m.rx[e])delete m.rx[e];
   save();haptic(6);renderMsgs(id);
 };
-function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}${tools}</div>`}
+function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
 function reply(id){
   TYPING[id]=true;renderMsgs(id);const t=S.threads[id];
   setTimeout(()=>{
@@ -1447,7 +1461,7 @@ function renderYou(){
     <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
-    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
+    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
     <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
@@ -1543,6 +1557,7 @@ ACT['saved-open']=b=>{
   const id=b.dataset.id,p=POSTS[id],r=refOf(p);
   openSheet(`<div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div><button class="cta" data-act="open-saved" data-id="${id}">Open</button><button class="cta ghostb" data-act="unsave" data-id="${id}">Remove from saved</button>`);
 };
+ACT['open-vault']=()=>{void openV5Vault()};
 ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),300);trackEvent('view','meme',b.dataset.id)};
 ACT.unsave=b=>{const id=b.dataset.id;rs(id).s=0;V5.setSaved(kindOf(id),id,false);save();syncPost(id);closeSheet();renderYou();toast('Let go.')};
 function trackView(id,type){const p=POSTS[id];if(!p)return;trackEvent('view',type||(p.kind==='music'?'track':'meme'),id,{label:p.kind==='music'?TRACKS[p.ref].title:p.text.split('\n')[0]})};
@@ -1862,59 +1877,21 @@ ACT['ob-duel']=async()=>{
 
 /* ================= v3: today's memes ================= */
 const STK='<div class="stks" aria-hidden="true">'+['😂','🎧','🔥','💀','✨','🫠'].map((e,i)=>`<i style="--i:${i};--x:${[6,80,14,74,44,90][i]}%;--y:${[2,8,66,60,90,36][i]}%">${e}</i>`).join('')+'</div>';
-const WEB_MEMES=[
- {id:'web01',k:'life',e:'🫠',t:'Hydration, but make it suspicious',img:'/memes/meme-01.webp',alt:'Relatable gym and hydration meme'},
- {id:'web02',k:'life',e:'🚿',t:'A family group chat classic',img:'/memes/meme-02.webp',alt:'Family and shower waiting meme'},
- {id:'web03',k:'work',e:'🧽',t:'The workday ends when the workday ends',img:'/memes/meme-03.webp',alt:'SpongeBob work meme'},
- {id:'web04',k:'work',e:'🧪',t:'The test suite has entered the chat',img:'/memes/meme-04.webp',alt:'Software testing and coding meme collage'},
- {id:'web05',k:'work',e:'🤖',t:'When the bug report writes itself',img:'/memes/meme-05.webp',alt:'Information technology meme'},
- {id:'web06',k:'life',e:'🦎',t:'Me, meeting my own expectations',img:'/memes/meme-06.webp',alt:'Self reflection and gym meme'},
- {id:'web07',k:'life',e:'🐈',t:'Already fumbled the year. Still optimistic.',img:'/memes/meme-07.webp',alt:'Cat meme about 2026 and 2027'},
- {id:'web08',k:'life',e:'🧼',t:'Good guy Charlie has a system',img:'/memes/meme-08.webp',alt:'Funny 2026 meme'},
- {id:'web09',k:'work',e:'🫡',t:'Happy Monday, the team chat edition',img:'/memes/meme-09.webp',alt:'Office life meme'},
- {id:'web10',k:'work',e:'📅',t:'Everything is urgent until it is not',img:'/memes/meme-10.webp',alt:'Relatable work meme'},
- {id:'web11',k:'love',e:'✨',t:'A tiny bit of main-character energy',img:'/memes/meme-11.webp',alt:'Office and relationship meme'},
- {id:'web12',k:'life',e:'🐈',t:'2026: a year in one facial expression',img:'/memes/meme-12.webp',alt:'Funny 2026 cat meme'},
- {id:'web13',k:'music',e:'🎟️',t:'The concert ticket was the easy part',img:'/memes/meme-13.webp',alt:'Concert ticket music meme'},
- {id:'web14',k:'work',e:'🖥️',t:'The RGB upgrade is a lifestyle choice',img:'/memes/meme-14.webp',alt:'Gaming computer meme'},
- {id:'web15',k:'work',e:'🧑‍💻',t:'Delete the test case. Become the test case.',img:'/memes/meme-15.webp',alt:'Tech system meme'},
- {id:'web16',k:'life',e:'🌤️',t:'Weekend plans: aggressively unplanned',img:'/memes/meme-16.webp',alt:'Weekend meme'},
- {id:'web17',k:'music',e:'🎶',t:'A suspiciously complete history of meme songs',img:'/memes/meme-17.webp',alt:'Meme songs culture collage'},
- {id:'web18',k:'life',e:'🐈',t:'The year is still recoverable',img:'/memes/meme-18.webp',alt:'Cat meme about 2026 and 2027'},
- {id:'web19',k:'screen',e:'📺',t:'The internet has a museum wing now',img:'/memes/meme-19.webp',alt:'Meme culture collage'},
- {id:'web20',k:'screen',e:'🗺️',t:'A field guide to how we got here',img:'/memes/meme-20.webp',alt:'Guide to meme evolution'}
-];
 /* Topic -> sticker. Declared before MM because MM.map runs immediately. */
 const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵',money:'🧾'};
-const MM=[
- {id:'x1',k:'work',e:'🐛',t:'me: i’ll just fix this one bug\n\nthe codebase: 47 new bugs',bg:'#F2D45C',fg:'#141413'},
- {id:'x2',k:'work',e:'📧',t:'“this meeting could’ve been an email”\n\nthe meeting: 3 hours',bg:'#9EC5E8',fg:'#141413'},
- {id:'x3',k:'work',e:'🤖',t:'AI will take my job\n\nAI: have you tried turning your prompt off and on again?',bg:'#EFE9DA',fg:'#141413'},
- {id:'x4',k:'music',e:'🎧',t:'“one more song then bed”\n\nme at 4am: building a playlist for a trip i’m not taking',bg:'#F26B4E',fg:'#141413'},
- {id:'x5',k:'music',e:'🕺',t:'the 8 seconds of silence before the beat drops: 🧍\n\nthe beat: 🕺🕺🕺',bg:'#C8A8F0',fg:'#141413'},
- {id:'x6',k:'screen',e:'📺',t:'me: i’ll watch one episode\n\nthe sun: rising',bg:'#9be8bf',fg:'#141413'},
- {id:'x7',k:'screen',e:'🍥',t:'every anime fan: “it gets good at episode 12”',bg:'#ff8fa3',fg:'#141413'},
- {id:'x8',k:'life',e:'🏋️',t:'gym: 5 min\nstretching: 3 min\nresting on my phone: 55 min',bg:'#F2D45C',fg:'#141413'},
- {id:'x9',k:'life',e:'☕',t:'me: i’m so low maintenance\n\nalso me: a 4-step coffee order',bg:'#EFE9DA',fg:'#141413'},
- {id:'x10',k:'life',e:'🍳',t:'me: i’m basically a chef\n\nthe smoke alarm: respectfully, no',bg:'#F26B4E',fg:'#141413'},
- {id:'x11',k:'love',e:'🎵',t:'flirting style: sending a song at 1:47am\n\ncaption: “no reason”',bg:'#F26B4E',fg:'#141413'},
- {id:'x12',k:'money',e:'🧾',t:'my budget: rent or matcha\n\nme: matcha, obviously',bg:'#F2D45C',fg:'#141413'},
- {id:'x13',k:'money',e:'💸',t:'“treat yourself”\n\nthe treat: $9 toast and a slight panic',bg:'#9be8bf',fg:'#141413'}
-].concat(
-  /* The default feed is 122 original typographic cards, generated for cultured
-     and tagged with the Resonance taxonomy. Every one carries alt text. */
-  SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,bg:m.bg,fg:m.fg,alt:m.alt})),
-  /* The 20 searched images, for local demos only. Never in a production build. */
-  DEMO_MEMES?WEB_MEMES:[]);
+/* Today's memes is the real image corpus and nothing else.
+   The 122 generated typographic text cards and the 13 hand-written ones that
+   used to sit here are gone: cultured only shows real image and video memes,
+   and only ones the content pipeline has actually built a manifest for. */
+const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
 let mmTab='all';
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
 const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
-const mmTxt=t=>esc(t).replace(/\n/g,'<br>');
-function mmVisual(m){return m.img?`<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy"></div>`:`<span class="mm-e">${m.e}</span>`}
-function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}">${m.img?`<img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy">`:`<span>${m.e}</span>`}<i>${esc(m.t.split('\n')[0])}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has-photo':''}" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p>${mmTxt(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in-house</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
+function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
+function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
+function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
+function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
 ACT['mm-like']=b=>{
@@ -1935,7 +1912,7 @@ ACT['mm-share']=b=>{
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
-function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
+function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
   const state=V5.getState();

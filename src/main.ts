@@ -3,6 +3,7 @@ import './styles/app.css';
 import { createRepo } from './data';
 import { installRepoBridge } from './components/phase1';
 import { getStore } from './store';
+import { v5config } from './store/config';
 
 const repo = createRepo();
 installRepoBridge(repo);
@@ -43,7 +44,30 @@ const boot = async () => {
     return;
   }
   await v5store.ready;
+
+  /* v5 cold open (brief §5.1). Lazy: the intro chunk never ships to a user
+     without the flag, and it plays at most once per install. */
+  if (v5config.v5.intro) {
+    const { introSeen, markIntroSeen, mountV5Intro } = await import('./v5/mount');
+    if (!introSeen()) {
+      await new Promise<void>((resolve) => {
+        markIntroSeen();
+        void mountV5Intro(resolve);
+      });
+    }
+  }
+
   await import('./legacy');
+
+  /* v5 Home replaces the legacy feed inside the same `#s-feed` host, so the
+     existing tab rail, nav and deep links keep working untouched. */
+  if (v5config.v5.home) {
+    const host = document.getElementById('s-feed');
+    if (host) {
+      const { mountV5Home } = await import('./v5/mount');
+      await mountV5Home(host);
+    }
+  }
 };
 
 void boot();
