@@ -119,16 +119,17 @@ pre-v5 app. `tests/e2e/v5.spec.ts` asserts exactly that.
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 297 passed / 13 files   (baseline 140 / 6)
+npx vitest run     → 316 passed / 16 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
 ```
 
-First-paint JS is **150.9 kB gz** (`legacy` 59.64 + `index` 91.35) against the
-180 kB budget in §10 — about 29 kB of headroom. The v5 shell is entirely in lazy
-chunks: `home` 10.03, `stories` 3.03, `profile` 2.49, `nhie-screen` 2.02,
-`vault` 2.47, `intro` 2.98, `mount` 0.82, CSS 4.36.
+First-paint JS is **124.08 KiB gz with the v5 flags on** and **87.57 KiB gz with
+them off**, against the 180 KiB budget in §10. See `PERF_REPORT.md` for the
+breakdown and D-29 for why an earlier figure of 150.9 kB here was wrong — it
+summed two chunks and missed `card`, the v5 chain, and the fact that `main.ts`
+awaits `import('./legacy')` before any content renders.
 
 The code paths those commands actually executed: `createStore()` → `reconcile()`
 → `migrateLegacyState()` on a real legacy blob; `orderDeck()` over a real
@@ -137,8 +138,13 @@ catalog (including the regression where it silently dropped two of 32 items);
 `renderIntro()` frame by frame across all 5.5 s; `validateBank()` against the
 shipped bank and each of its failure modes; `pickRound()` determinism and pool
 exhaustion; `readWall()` over real pins; `layersFor()`/`describeLayers()`;
-`mountNhie()` driven end-to-end by clicking in jsdom; and `verdictFor()` /
-`forecastIndex()` over the yesterday window.
+`mountNhie()` driven end-to-end by clicking in jsdom; `verdictFor()` /
+`forecastIndex()` over the yesterday window; `mountV5Home()` mounted into a real
+host, asserting the shell, the pip count, the deck section and that `destroy()`
+removes the fx canvas it appended to `document.body`; `createRepo()` awaited in
+the order `main.ts` runs it, with `installRepoBridge` publishing an adapter
+rather than a Promise; and the built `legacy-*.js` bundle checked for invented
+people and fabricated statistics.
 
 What was **not** executed: anything needing a real browser. See below.
 
