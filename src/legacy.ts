@@ -48,6 +48,7 @@ const V5_MATRIX=v5config.v5.matrix;
 const V5_PEOPLE=v5config.v5.people;
 const V5_ARENA=v5config.v5.arena;
 const V5_PROFILE=v5config.v5.profile;
+const V5_INTRO=v5config.v5.intro;
 let v5VaultHandle=null;
 const openV5Vault=async()=>{
   if(v5VaultHandle)return;
@@ -1762,7 +1763,10 @@ const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.cal
    never entered. */
 const OB={step:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false};
 let OBSTACK=null,OBWAVE=null;
-function showOnboarding(){Object.assign(OB,{step:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
+function showOnboarding(){/* When the v5 cold open is on, main.ts has already played it before this
+   module loads — starting at step 0 here would play the legacy ~11s intro a
+   second time ("we're getting both intro"). The v5 intro is the replacement,
+   so onboarding opens straight on step 1 (the age gate). */Object.assign(OB,{step:V5_INTRO?1:0,adult:false,attested:false,dob:'',intent:'',picks:[],photoChecked:false,music:'manual',memeIndex:0,stackDone:false,memeSignals:[],audioSignals:[],name:'',permissions:false});OBSTACK=null;OBWAVE=null;$('#onboard').classList.add('on');drawOb()}
 /* ---------------- the Cold Open: onboarding scene 0 ----------------
    Step 0 is no longer a hero card with a CTA. It is the ~11-second scripted
    intro from src/motion/timeline.ts, which ends by advancing to step 1. */

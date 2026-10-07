@@ -1116,8 +1116,19 @@
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
   will-change: transform, opacity;
 }
+/* Scrim between the meme cards and the headline. Without it the gold type sat
+   directly on busy artwork and was unreadable — the cards stay vivid at the
+   edges, the middle darkens just enough for the text to land. */
+.v5-intro-cards::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(78% 60% at 50% 46%, rgba(10, 10, 9, 0.86) 0%, rgba(10, 10, 9, 0.62) 46%, rgba(10, 10, 9, 0.12) 74%, transparent 88%);
+}
 .v5-intro-type {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1130,6 +1141,7 @@
   font-stretch: 76%;
   letter-spacing: -0.03em;
   color: var(--gold, #e8c77e);
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.92), 0 1px 3px rgba(0, 0, 0, 0.95);
   will-change: clip-path, opacity;
 }
 .v5-intro-headshot {
@@ -1155,6 +1167,7 @@
   font-stretch: 76%;
   letter-spacing: -0.02em;
   color: var(--bone, #efe9da);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.95);
 }
 .v5-intro-word i {
   font-style: normal;

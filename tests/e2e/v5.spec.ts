@@ -1,16 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * The v5 shell, end to end.
+ * The v5 screens, end to end.
  *
- * v5 is the app, so the default path `/` renders the v5 screens — that is what
- * these tests exercise. `?v5=0` is the kill-switch that hands the five screen
- * hosts back to the legacy renders; the last test in this file asserts that
- * fallback still works.
+ * The original cultt screens are the default app at `/`. The v5 screens are an
+ * alternative behind `?v5=1`, which is what these tests exercise. The last test
+ * asserts the original screens still render at the default path.
  */
 
-const V5 = '/';
-const LEGACY = '/?v5=0';
+const V5 = '/?v5=1';
+const LEGACY = '/';
 
 test.describe('v5 shell', () => {
   test.beforeEach(async ({ page }) => {
@@ -126,7 +125,7 @@ test.describe('v5 shell', () => {
 });
 
 test.describe('the flag gate', () => {
-  test('hands the screens back to the legacy shell under ?v5=0', async ({ page }) => {
+  test('renders the original screens at the default path', async ({ page }) => {
     await page.addInitScript(() => localStorage.clear());
     await page.goto(LEGACY);
     // No v5 chrome anywhere.

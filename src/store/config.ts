@@ -59,9 +59,12 @@ export const DEFAULT_CONFIG: V5Config = {
   },
   deferAuthToAfterReveal: true,
   demo: false,
-  /* v5 is the app: every screen is on by default. `?v5=0` is the kill-switch
-     back to the legacy shell; see readV5Config. */
-  v5: { intro: true, home: true, vault: true, profile: true, stories: true, matrix: true, people: true, arena: true },
+  /* The original cultt screens are the app. The v5 screens stay behind `?v5=1`
+     as an alternative, not the default — the v5 layout replaced too much of a
+     design that was already working. The v5 *intro* is the exception: it is on
+     by default because the cold-open animation is the one piece that improved
+     on the original. See D-38. */
+  v5: { intro: true, home: false, vault: false, profile: false, stories: false, matrix: false, people: false, arena: false },
 };
 
 interface RawConfig {
@@ -124,22 +127,22 @@ export const readV5Config = (raw?: RawConfig | null): V5Config => {
     deferAuthToAfterReveal:
       source?.deferAuthToAfterReveal === undefined ? DEFAULT_CONFIG.deferAuthToAfterReveal : !!source.deferAuthToAfterReveal,
     demo: source?.demo === true || hasDemoOptIn(),
-    /* v5 is the app, so the shell is on by default. `?v5=0` is the kill-switch
-       back to the legacy shell; an explicit per-screen value in the config
-       object overrides either way (so one surface can be turned off, or turned
-       back on under `?v5=0`, without touching the others). */
+    /* The original screens are the default. `?v5=1` turns the alternative v5
+       screens on for comparison; an explicit per-screen value in the config
+       object overrides either way. The v5 intro is on by default regardless —
+       it replaced the legacy cold open, which is now skipped (see legacy.ts). */
     v5: (() => {
-      const shellDefault = getParam('v5') !== '0';
+      const optIn = getParam('v5') === '1';
       const explicit = source?.v5;
       return {
-        intro: explicit?.intro ?? shellDefault,
-        home: explicit?.home ?? shellDefault,
-        vault: explicit?.vault ?? shellDefault,
-        profile: explicit?.profile ?? shellDefault,
-        stories: explicit?.stories ?? shellDefault,
-        matrix: explicit?.matrix ?? shellDefault,
-        people: explicit?.people ?? shellDefault,
-        arena: explicit?.arena ?? shellDefault,
+        intro: explicit?.intro ?? true,
+        home: explicit?.home ?? optIn,
+        vault: explicit?.vault ?? optIn,
+        profile: explicit?.profile ?? optIn,
+        stories: explicit?.stories ?? optIn,
+        matrix: explicit?.matrix ?? optIn,
+        people: explicit?.people ?? optIn,
+        arena: explicit?.arena ?? optIn,
       };
     })(),
   };
