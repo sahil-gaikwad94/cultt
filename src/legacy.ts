@@ -1189,7 +1189,11 @@ ACT['duel-chip']=async b=>{
   try{await duelEnsure()}catch(e){toast('The duel adapter is offline in this build');return}
   openSheet(duelSheetHTML());paintDuel();haptic(8);track('duel_chip',{source:'thread'});
 };
-ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Arena refreshed · new signals found');haptic(8)};
+/* This re-renders from state that is already on the device. It fetches nothing,
+   so it cannot claim new signals arrived — saying so would be the same lie the
+   share sheet used to tell. The week badge is derived from the real date, so
+   that genuinely can change. */
+ACT['arena-refresh']=()=>{S.pulse.seen=(S.pulse.seen||0)+1;save();renderArena();toast('Up to date · nothing new since you last looked');haptic(8)};
 ACT['arena-explore']=()=>{closeSheet();go('feed');setTimeout(()=>toast('Local signal opens at 25 people in one area'),260)};
 
 /* ================= people + chat ================= */
