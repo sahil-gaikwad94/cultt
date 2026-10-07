@@ -7,3 +7,8 @@ test-results
 
 # Playwright artefacts from the visual/motion suite
 tests/visual/.artifacts/
+
+# Generated meme variants (regenerate with `npm run content:memes`)
+public/memes/gen/
+# Song resolution misses (regenerate with `npm run content:songs`)
+unresolved.txt

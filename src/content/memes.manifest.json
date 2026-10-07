@@ -1,0 +1,567 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-07T03:54:40.676Z",
+  "count": 20,
+  "categories": [
+    "brain-rot",
+    "corporate-hostage",
+    "cursed-images",
+    "dev-tears",
+    "group-chat-crimes",
+    "main-character",
+    "niche-refs",
+    "old-internet",
+    "situationship"
+  ],
+  "items": [
+    {
+      "id": "meme-1be6203cfa22",
+      "kind": "image",
+      "src": "/memes/meme-01.webp",
+      "title": "Hydration, but make it suspicious",
+      "category": "main-character",
+      "mood": "Unbothered",
+      "axis": "wholesome",
+      "placard": "Condition: emotionally damaged, structurally sound.",
+      "alt": "Hydration, but make it suspicious. Condition: emotionally damaged, structurally sound.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 700,
+      "height": 368,
+      "bytes": 31304,
+      "dominant": "#b4a8a6",
+      "blurhash": "Ly00fR000100NH00x]00xG00V@00Rj00R+00xV00V?00Rj00Rk",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-01-480.avif",
+          "webp": "/memes/gen/meme-01-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-a79177a2ce81",
+      "kind": "image",
+      "src": "/memes/meme-02.webp",
+      "title": "The family group chat, unsummoned",
+      "category": "group-chat-crimes",
+      "mood": "Feral",
+      "axis": "chaotic",
+      "placard": "On view since forever. Cultural impact: unforgivable.",
+      "alt": "The family group chat, unsummoned. On view since forever. Cultural impact: unforgivable.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 700,
+      "height": 368,
+      "bytes": 43540,
+      "dominant": "#889092",
+      "blurhash": "Lo00Rj00%M00XT00nN00~p00W;00NG00o000?b00s:00s.00R+",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-02-480.avif",
+          "webp": "/memes/gen/meme-02-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-6754bbe39ef3",
+      "kind": "image",
+      "src": "/memes/meme-03.webp",
+      "title": "The workday ends when the workday ends",
+      "category": "corporate-hostage",
+      "mood": "Caffeinated",
+      "axis": "dry_wit",
+      "placard": "Medium: pixels and regret.",
+      "alt": "The workday ends when the workday ends. Medium: pixels and regret.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 700,
+      "height": 700,
+      "bytes": 26488,
+      "dominant": "#b3bfc6",
+      "blurhash": "L+00s.00ah00oz00t700%M00WC00oe00oe00_400t600n$00a}",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-03-480.avif",
+          "webp": "/memes/gen/meme-03-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-3f0c22f37d28",
+      "kind": "image",
+      "src": "/memes/meme-04.webp",
+      "title": "The test suite has entered the chat",
+      "category": "dev-tears",
+      "mood": "Slightly unhinged",
+      "axis": "deadpan",
+      "placard": "Last seen causing a group chat to go quiet.",
+      "alt": "The test suite has entered the chat. Last seen causing a group chat to go quiet.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 420,
+      "bytes": 49094,
+      "dominant": "#68625f",
+      "blurhash": "LC00D%009[00NN00IA00_400R600Si00%I00IU00nj00tR00IT",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-04-480.avif",
+          "webp": "/memes/gen/meme-04-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-00b55d85d94a",
+      "kind": "image",
+      "src": "/memes/meme-05.webp",
+      "title": "When the bug report writes itself",
+      "category": "dev-tears",
+      "mood": "Existential",
+      "axis": "deadpan",
+      "placard": "Estimated value: priceless. Estimated sense: none.",
+      "alt": "When the bug report writes itself. Estimated value: priceless. Estimated sense: none.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 550,
+      "height": 569,
+      "bytes": 28800,
+      "dominant": "#847578",
+      "blurhash": "Lg00M|00?c00xu00Rk00~q00t600kA00Rj00xU00IU00WB00t6",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-05-480.avif",
+          "webp": "/memes/gen/meme-05-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-cddc6ee28d2f",
+      "kind": "image",
+      "src": "/memes/meme-06.webp",
+      "title": "Old internet, still funny",
+      "category": "old-internet",
+      "mood": "Nostalgic",
+      "axis": "niche_refs",
+      "placard": "Please do not touch. Please do react.",
+      "alt": "Old internet, still funny. Please do not touch. Please do react.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 700,
+      "height": 684,
+      "bytes": 39468,
+      "dominant": "#9a7f6a",
+      "blurhash": "Li00Iq00kD00V=00of00~V00og00of00j[00~W00ad00t800of",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-06-480.avif",
+          "webp": "/memes/gen/meme-06-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-8098e8f6e91d",
+      "kind": "image",
+      "src": "/memes/meme-07.webp",
+      "title": "This year, in one image",
+      "category": "brain-rot",
+      "mood": "Feral",
+      "axis": "absurdist",
+      "placard": "Condition: emotionally damaged, structurally sound.",
+      "alt": "This year, in one image. Condition: emotionally damaged, structurally sound.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 800,
+      "bytes": 50478,
+      "dominant": "#68605b",
+      "blurhash": "LS00D%00~W00={00-p00.700%L00tR00t700Sh00o}00g300S5",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-07-480.avif",
+          "webp": "/memes/gen/meme-07-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-1abf2af473a7",
+      "kind": "image",
+      "src": "/memes/meme-08.webp",
+      "title": "The funniest thing on the internet today",
+      "category": "main-character",
+      "mood": "Serene",
+      "axis": "wholesome",
+      "placard": "Acquired without permission. Displayed with pride.",
+      "alt": "The funniest thing on the internet today. Acquired without permission. Displayed with pride.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 710,
+      "height": 797,
+      "bytes": 29600,
+      "dominant": "#524d4d",
+      "blurhash": "Lc009Z00ax00Rj00of00~q00j[00j]00j[00_300of00og00ay",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-08-480.avif",
+          "webp": "/memes/gen/meme-08-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-67298e43d7d1",
+      "kind": "image",
+      "src": "/memes/meme-09.webp",
+      "title": "Office life, accurately",
+      "category": "corporate-hostage",
+      "mood": "Caffeinated",
+      "axis": "dry_wit",
+      "placard": "On view since forever. Cultural impact: unforgivable.",
+      "alt": "Office life, accurately. On view since forever. Cultural impact: unforgivable.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 420,
+      "bytes": 16662,
+      "dominant": "#97763e",
+      "blurhash": "Lk005m00t600t,00kX00lC00a#00bx00a~00DR00R+00RU00V[",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-09-480.avif",
+          "webp": "/memes/gen/meme-09-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-d9918bbb432f",
+      "kind": "image",
+      "src": "/memes/meme-10.webp",
+      "title": "Relatable work, unfortunately",
+      "category": "corporate-hostage",
+      "mood": "Existential",
+      "axis": "deadpan",
+      "placard": "Last seen causing a group chat to go quiet.",
+      "alt": "Relatable work, unfortunately. Last seen causing a group chat to go quiet.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 420,
+      "bytes": 16456,
+      "dominant": "#b6afaf",
+      "blurhash": "LR00fQ00o#00~p00x]00_300t700V]00of00?I00af00D%00WB",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-10-480.avif",
+          "webp": "/memes/gen/meme-10-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-50ca5d2379dc",
+      "kind": "image",
+      "src": "/memes/meme-11.webp",
+      "title": "Office romance, as a flowchart",
+      "category": "situationship",
+      "mood": "Slightly unhinged",
+      "axis": "dry_wit",
+      "placard": "On view since forever. Cultural impact: unforgivable.",
+      "alt": "Office romance, as a flowchart. On view since forever. Cultural impact: unforgivable.",
+      "credit": "CheezCake / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 420,
+      "bytes": 28676,
+      "dominant": "#c8c0bc",
+      "blurhash": "Lw00oz000100M{00%L00?b00%200of00WC00-;00t700kC00og",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-11-480.avif",
+          "webp": "/memes/gen/meme-11-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-dd7cebcf6bda",
+      "kind": "image",
+      "src": "/memes/meme-12.webp",
+      "title": "The roundup nobody asked for",
+      "category": "brain-rot",
+      "mood": "Feral",
+      "axis": "chaotic",
+      "placard": "Medium: pixels and regret.",
+      "alt": "The roundup nobody asked for. Medium: pixels and regret.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 800,
+      "bytes": 50478,
+      "dominant": "#68605b",
+      "blurhash": "LS00D%00~W00={00-p00.700%L00tR00t700Sh00o}00g300S5",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-12-480.avif",
+          "webp": "/memes/gen/meme-12-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-5a8b504b4794",
+      "kind": "image",
+      "src": "/memes/meme-13.webp",
+      "title": "Music memes, pinned at 2am",
+      "category": "niche-refs",
+      "mood": "Nostalgic",
+      "axis": "niche_refs",
+      "placard": "Estimated value: priceless. Estimated sense: none.",
+      "alt": "Music memes, pinned at 2am. Estimated value: priceless. Estimated sense: none.",
+      "credit": "Pinterest / music meme collection",
+      "rightsCleared": false,
+      "width": 236,
+      "height": 224,
+      "bytes": 6914,
+      "dominant": "#eeedec",
+      "blurhash": "LI00?b009G00D*00o#00~q00M{00M{00j[00D%00ae00t700f6",
+      "durationMs": null,
+      "poster": null,
+      "variants": []
+    },
+    {
+      "id": "meme-53516752e2c9",
+      "kind": "image",
+      "src": "/memes/meme-14.webp",
+      "title": "Gaming tech, from the forums",
+      "category": "dev-tears",
+      "mood": "Caffeinated",
+      "axis": "niche_refs",
+      "placard": "Medium: pixels and regret.",
+      "alt": "Gaming tech, from the forums. Medium: pixels and regret.",
+      "credit": "Locker Room Access forum",
+      "rightsCleared": false,
+      "width": 640,
+      "height": 640,
+      "bytes": 42346,
+      "dominant": "#989fac",
+      "blurhash": "L|00jt00$z00jZ00t700_N00X900t700ae00-;00R*00Rj00of",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-14-480.avif",
+          "webp": "/memes/gen/meme-14-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-fe9e67b16b69",
+      "kind": "image",
+      "src": "/memes/meme-15.webp",
+      "title": "Systems and the people who run them",
+      "category": "dev-tears",
+      "mood": "Existential",
+      "axis": "deadpan",
+      "placard": "Provenance: someone's cousin's phone.",
+      "alt": "Systems and the people who run them. Provenance: someone's cousin's phone.",
+      "credit": "Memebase / Cheezburger",
+      "rightsCleared": false,
+      "width": 800,
+      "height": 420,
+      "bytes": 41044,
+      "dominant": "#898781",
+      "blurhash": "Lh00NG008^00RO00tR00x]00ae00j]00s800Rk00fQ00ae00t8",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-15-480.avif",
+          "webp": "/memes/gen/meme-15-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-1870b21afcec",
+      "kind": "image",
+      "src": "/memes/meme-16.webp",
+      "title": "The weekend, arriving",
+      "category": "main-character",
+      "mood": "Serene",
+      "axis": "wholesome",
+      "placard": "Restored from a screenshot of a screenshot.",
+      "alt": "The weekend, arriving. Restored from a screenshot of a screenshot.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 1080,
+      "height": 608,
+      "bytes": 35468,
+      "dominant": "#806479",
+      "blurhash": "LJ00IB00^Z00gf00w000Th00-,00%L00s;00i{00%L00%M00tS",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-16-480.avif",
+          "webp": "/memes/gen/meme-16-480.webp"
+        },
+        {
+          "width": 960,
+          "avif": "/memes/gen/meme-16-960.avif",
+          "webp": "/memes/gen/meme-16-960.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-b6aa173f5887",
+      "kind": "image",
+      "src": "/memes/meme-17.webp",
+      "title": "The evolution of the meme song",
+      "category": "old-internet",
+      "mood": "Nostalgic",
+      "axis": "niche_refs",
+      "placard": "Acquired without permission. Displayed with pride.",
+      "alt": "The evolution of the meme song. Acquired without permission. Displayed with pride.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 1080,
+      "height": 608,
+      "bytes": 150398,
+      "dominant": "#84685b",
+      "blurhash": "LE009b00Gu00Mq00-H00^j00Ol00t700Vt00ot00nO00rl00Ol",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-17-480.avif",
+          "webp": "/memes/gen/meme-17-480.webp"
+        },
+        {
+          "width": 960,
+          "avif": "/memes/gen/meme-17-960.avif",
+          "webp": "/memes/gen/meme-17-960.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-cc110daf6fe8",
+      "kind": "image",
+      "src": "/memes/meme-18.webp",
+      "title": "Funny today, cursed tomorrow",
+      "category": "cursed-images",
+      "mood": "Slightly unhinged",
+      "axis": "absurdist",
+      "placard": "Last seen causing a group chat to go quiet.",
+      "alt": "Funny today, cursed tomorrow. Last seen causing a group chat to go quiet.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 710,
+      "height": 797,
+      "bytes": 29600,
+      "dominant": "#524d4d",
+      "blurhash": "Lc009Z00ax00Rj00of00~q00j[00j]00j[00_300of00og00ay",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-18-480.avif",
+          "webp": "/memes/gen/meme-18-480.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-a75c2f91542f",
+      "kind": "image",
+      "src": "/memes/meme-19.webp",
+      "title": "The best of the year so far",
+      "category": "brain-rot",
+      "mood": "Feral",
+      "axis": "chaotic",
+      "placard": "Restored from a screenshot of a screenshot.",
+      "alt": "The best of the year so far. Restored from a screenshot of a screenshot.",
+      "credit": "Bored Panda",
+      "rightsCleared": false,
+      "width": 1080,
+      "height": 1077,
+      "bytes": 116692,
+      "dominant": "#959fb2",
+      "blurhash": "LY00e-00T000s:00tR00}:00jE00bc00jZ00R400ni00NG00ad",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-19-480.avif",
+          "webp": "/memes/gen/meme-19-480.webp"
+        },
+        {
+          "width": 960,
+          "avif": "/memes/gen/meme-19-960.avif",
+          "webp": "/memes/gen/meme-19-960.webp"
+        }
+      ]
+    },
+    {
+      "id": "meme-a4992c49e104",
+      "kind": "image",
+      "src": "/memes/meme-20.webp",
+      "title": "How memes evolved, as a guide",
+      "category": "old-internet",
+      "mood": "Nostalgic",
+      "axis": "niche_refs",
+      "placard": "Medium: pixels and regret.",
+      "alt": "How memes evolved, as a guide. Medium: pixels and regret.",
+      "credit": "Reddit / r/coolguides",
+      "rightsCleared": false,
+      "width": 952,
+      "height": 970,
+      "bytes": 157604,
+      "dominant": "#766452",
+      "blurhash": "LE009a00H=00OX00$-00xx00R300M$00pF00AW00H;00o~00xJ",
+      "durationMs": null,
+      "poster": null,
+      "variants": [
+        {
+          "width": 480,
+          "avif": "/memes/gen/meme-20-480.avif",
+          "webp": "/memes/gen/meme-20-480.webp"
+        }
+      ]
+    }
+  ]
+}
