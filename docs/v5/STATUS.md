@@ -119,13 +119,13 @@ pre-v5 app. `tests/e2e/v5.spec.ts` asserts exactly that.
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 316 passed / 16 files   (baseline 140 / 6)
+npx vitest run     → 330 passed / 17 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
 ```
 
-First-paint JS is **124.08 KiB gz with the v5 flags on** and **87.57 KiB gz with
+First-paint JS is **124.77 KiB gz with the v5 flags on** and **87.84 KiB gz with
 them off**, against the 180 KiB budget in §10. See `PERF_REPORT.md` for the
 breakdown and D-29 for why an earlier figure of 150.9 kB here was wrong — it
 summed two chunks and missed `card`, the v5 chain, and the fact that `main.ts`
@@ -168,10 +168,10 @@ What was **not** executed: anything needing a real browser. See below.
   cards and the 13 hand-written ones are deleted; `src/data/seed/memes.ts` is a
   70-line adapter over the real manifest, and the Deck renders the 20 real
   images in `public/memes/`.
-- **Still open — Phase 3 Matrix and People.** Both are still the legacy screens.
-  They are reachable and functional, so nothing is half-built, but the v5
-  treatment (Fingerprint-led cards, locked reveal duels, the resonate budget)
-  has not landed. Arena and the sharing/viral loops of Phase 4 are the same.
+- **Phase 3 Matrix has landed** (flag-gated as `v5.matrix`); **People has not.**
+  People is still the legacy screen — reachable and functional, so nothing is
+  half-built, but the v5 treatment has not landed. Arena and the sharing/viral
+  loops of Phase 4 are the same.
 - **`vercel.json` now exists** (D-31): SPA rewrite for the `/d/:id` duel deep
   link, immutable caching on content-hashed `/assets/*` and the generated media,
   `must-revalidate` on `index.html`, `/api/*` excluded so `api/preview.ts` keeps
