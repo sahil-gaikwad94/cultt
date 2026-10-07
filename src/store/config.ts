@@ -40,6 +40,7 @@ export interface V5Config {
     home: boolean;
     vault: boolean;
     profile: boolean;
+    stories: boolean;
   };
 }
 
@@ -55,7 +56,7 @@ export const DEFAULT_CONFIG: V5Config = {
   deferAuthToAfterReveal: true,
   demo: false,
   /* Off by default: the v5 shell is opt-in (`?v5=1`) until Phase 2 is signed off. */
-  v5: { intro: false, home: false, vault: false, profile: false },
+  v5: { intro: false, home: false, vault: false, profile: false, stories: false },
 };
 
 interface RawConfig {
@@ -66,7 +67,7 @@ interface RawConfig {
   homeTomorrowSubPage?: string;
   deferAuthToAfterReveal?: boolean;
   demo?: boolean;
-  v5?: { intro?: boolean; home?: boolean; vault?: boolean; profile?: boolean };
+  v5?: { intro?: boolean; home?: boolean; vault?: boolean; profile?: boolean; stories?: boolean };
 }
 
 const isFinitePositive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -126,6 +127,7 @@ export const readV5Config = (raw?: RawConfig | null): V5Config => {
         home: explicit?.home ?? optIn,
         vault: explicit?.vault ?? optIn,
         profile: explicit?.profile ?? optIn,
+        stories: explicit?.stories ?? optIn,
       };
     })(),
   };

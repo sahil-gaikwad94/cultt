@@ -275,3 +275,27 @@ the loops pile up: pin six memes and you have six live loops redrawing one
 canvas. The screen keeps a list and destroys it before each paint and on
 unmount. This is the §10 "≤ 2 heavy effects at once" rule enforced structurally
 rather than by counting.
+
+
+### D-24 · Stories are compositions, never copies
+A story is a stack of layers that *reference* a meme or song id plus a sticker
+and a caption. No licensed bytes are ever copied into one. That matters for the
+rights gate: `servableMemes()` is the only door art comes through, and if a
+story could carry bytes it would be a second door. A test asserts a serialised
+layer stack contains no data URI and that a layer is just an id.
+
+`describeLayers` skips any layer whose id is no longer in the manifest, so
+removing content removes it from stories too rather than leaving a broken frame.
+
+### D-25 · No viewer count, because nobody has viewed it
+`copy.stories.viewers` ("Who saw it") exists in the deck, and the screen does
+not use it. With no backend there is nobody to have seen a story, and a
+fabricated "42 views" is precisely the fake stat the brief forbids. The viewer
+shows what is true: the audience you chose and when it expires. When a backend
+lands, the count becomes real and the label is already written.
+
+### D-26 · `timeLeft` reports the floor, and a finished story is "Gone."
+The countdown floors hours and minutes and returns `copy.stories.expired` at or
+after expiry, so a story never reads "1m left" for a minute it no longer has.
+`STORY_TTL_HOURS=12` comes from `v5config.hours.storyTtl`, which is the same
+value `expireStories()` compares against — one number, two consumers.

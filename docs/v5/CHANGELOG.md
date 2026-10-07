@@ -221,3 +221,25 @@ are committed to run anywhere with `npx playwright install chromium webkit`.
 Tests: 13 files, **291 passing** (was 284). `profile-*.js` is a 2.49 kB gz lazy
 chunk, and splitting it out dropped `home-*.js` from 16.21 to 10.00 kB gz. First
 paint is unchanged at 150.9 kB gz.
+
+## Phase 3 (flag-gated, continued) — Stories
+
+`src/v5/stories.ts`, behind `v5config.v5.stories`.
+
+- **Composer** — pick a backdrop from the servable memes and tracks, add one of
+  the six stickers, a caption, an audience and a reply rule. Nothing posts until
+  there is a backdrop, and the button is disabled rather than showing an error.
+- **Viewer** — full-bleed stage, a progress bar driven by the real expiry, the
+  audience chip, and a "take it down" affordance on your own story.
+- **Rail** — yours and everyone else's, each thumb showing the honest time left.
+
+Stories are compositions: a layer references a meme or song id, never bytes.
+There is exactly one door art comes through (`servableMemes()`), and a story is
+not a second one.
+
+No viewer count. There is no backend, so nobody has seen anything, and a
+fabricated count is the fake stat the brief forbids. `copy.stories.viewers`
+stays in the deck for when the number can be real.
+
+Tests: 13 files, **297 passing** (was 291). `stories-*.js` is a 3.03 kB gz lazy
+chunk; first paint is unchanged at 150.9 kB gz.

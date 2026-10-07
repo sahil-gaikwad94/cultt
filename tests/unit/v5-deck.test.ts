@@ -25,6 +25,9 @@ import { waveformFor } from '../../src/v5/audio';
 import { createStore } from '../../src/store';
 import { forecastIndex, verdictFor } from '../../src/v5/home';
 import { canPinMore, readWall } from '../../src/v5/profile';
+import { canPost, describeLayers, emptyDraft, layersFor, timeLeft } from '../../src/v5/stories';
+import type { StoryDraft } from '../../src/v5/stories';
+import { copy } from '../../src/copy';
 import { memes, songs } from '../../src/content';
 import { savedItemKeys } from '../../src/store/selectors';
 import { HUMOR_AXES, MEME_CATEGORY_SLUGS } from '../../src/copy/taxonomy';
@@ -518,5 +521,62 @@ describe('the profile wall', () => {
     const state = s.getState();
     expect(savedItemKeys(state)).toHaveLength(1);
     expect(readWall(state).memes).toHaveLength(1);
+  });
+});
+
+describe('story composition', () => {
+  it('will not post a story with nothing to show', () => {
+    expect(canPost(emptyDraft())).toBe(false);
+    expect(canPost({ ...emptyDraft(), sticker: 'Music', text: 'hi' })).toBe(false);
+    expect(canPost({ ...emptyDraft(), backdrop: { type: 'meme', id: memes.items[0]!.id } })).toBe(true);
+  });
+
+  it('builds the layer stack in order, and drops empty text', () => {
+    const draft: StoryDraft = {
+      backdrop: { type: 'song', id: songs.items[0]!.id },
+      sticker: 'Mood',
+      text: '   ',
+      audience: 'matches',
+      replyRule: 'off',
+    };
+    expect(layersFor(draft)).toEqual([
+      { type: 'song', id: songs.items[0]!.id },
+      { type: 'sticker', name: 'Mood' },
+    ]);
+  });
+
+  it('references content by id and never copies it', () => {
+    const layers = layersFor({ ...emptyDraft(), backdrop: { type: 'meme', id: memes.items[0]!.id } });
+    // A layer is an id, not bytes: nothing in it can leak an unlicensed file.
+    expect(JSON.stringify(layers)).not.toContain('data:');
+    expect((layers[0] as { id: string }).id).toBe(memes.items[0]!.id);
+  });
+
+  it('reads a layer stack back into something the viewer can render', () => {
+    const shown = describeLayers(layersFor({
+      backdrop: { type: 'meme', id: memes.items[0]!.id },
+      sticker: 'Music',
+      text: 'monday',
+      audience: 'everyone',
+      replyRule: 'react',
+    }));
+    expect(shown.alt).toBe(memes.items[0]!.alt);
+    expect(shown.caption).toBe('monday');
+    expect(shown.sticker).toBe('Music');
+    expect(shown.src).toBeTruthy();
+  });
+
+  it('skips layers that point at content no longer in the manifest', () => {
+    const shown = describeLayers([{ type: 'meme', id: 'meme-gone' }, { type: 'sticker', name: 'Mood' }]);
+    expect(shown.src).toBe(null);
+    expect(shown.sticker).toBe('Mood');
+  });
+
+  it('counts down honestly and never rounds a finished story back to life', () => {
+    const now = Date.parse('2026-10-07T12:00:00Z');
+    expect(timeLeft(now + 3 * 3600000 + 12 * 60000, now)).toBe('3h 12m left');
+    expect(timeLeft(now + 40 * 60000, now)).toBe('40m left');
+    expect(timeLeft(now, now)).toBe(copy.stories.expired);
+    expect(timeLeft(now - 1, now)).toBe(copy.stories.expired);
   });
 });

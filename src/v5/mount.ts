@@ -23,6 +23,27 @@ export const isV5Home = (): boolean => v5config.v5.home;
 export const isV5Vault = (): boolean => v5config.v5.vault;
 export const isV5Intro = (): boolean => v5config.v5.intro;
 export const isV5Profile = (): boolean => v5config.v5.profile;
+export const isV5Stories = (): boolean => v5config.v5.stories;
+
+/** Opens Stories as its own layer. */
+export const mountV5Stories = async (options: { onClose?: () => void } = {}): Promise<void> => {
+  const { mountStories } = await import('./stories.ts');
+
+  const layer = document.createElement('div');
+  layer.id = 'v5-stories-layer';
+  document.body.appendChild(layer);
+
+  let handle: { destroy(): void } | null = null;
+  handle = mountStories(layer, {
+    ...options,
+    onClose: () => {
+      handle?.destroy();
+      handle = null;
+      layer.remove();
+      options.onClose?.();
+    },
+  });
+};
 
 /** Opens the profile-as-a-wall as its own layer. */
 export const mountV5Profile = async (options: { onClose?: () => void } = {}): Promise<void> => {
@@ -110,6 +131,10 @@ export const mountV5Home = async (host: HTMLElement): Promise<V5HomeHandle> => {
       }
       if (game === 'profile') {
         void mountV5Profile();
+        return;
+      }
+      if (game === 'stories') {
+        void mountV5Stories();
         return;
       }
       // Duels are still the legacy screen in Phase 2.
