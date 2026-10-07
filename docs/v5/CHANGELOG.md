@@ -350,3 +350,17 @@ First-paint JS with all five v5 tabs on: 125.22 KiB gz against the 180 KiB
 budget. All five tabs now have a v5 screen.
 
 Tests 19 files / **361 passing** (was 345).
+
+## Safety — the 18+ age gate was bypassable
+
+The "I'm 18 or older" checkbox set the same flag the date-of-birth field
+computed, so ticking it with the date blank unlocked onboarding. The submit path
+then sent `dateOfBirth: OB.dob || '2000-01-01'`, and `isAdult('2000-01-01')` is
+true — so the server received an adult date of birth for an account that never
+supplied one, while the screen claimed the date was "checked server-side".
+
+`OB.adult` is now computed from the date of birth only, `OB.attested` is the
+checkbox, Continue requires both, and the submit path never fabricates a date.
+
+Tests 21 files / **379 passing**; the fabricated date is asserted absent from
+the shipped legacy bundle.

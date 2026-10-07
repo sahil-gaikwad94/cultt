@@ -119,7 +119,7 @@ pre-v5 app. `tests/e2e/v5.spec.ts` asserts exactly that.
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 378 passed / 21 files   (baseline 140 / 6)
+npx vitest run     → 379 passed / 21 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
@@ -159,11 +159,13 @@ What was **not** executed: anything needing a real browser. See below.
 - `scripts/build-songs.ts` cannot reach the iTunes/Deezer APIs from here
   (see DECISIONS D-10). Manifest generation is committed but unresolved until
   it runs with network.
-- Bugs §4.1.3–§4.1.7 are **not fixed yet**: card ghosting during Deck swaps,
-  the remaining overlap/clipping set, the `OB.photoChecked` state leak, the
-  garbled reveal name, and the "0%" flash. They live on screens Phase 1–3
-  replace; fixing them twice is waste. Recorded here so nothing is silently
-  dropped.
+- Bugs §4.1.3–§4.1.7 are **not all fixed**: card ghosting during Deck swaps, the
+  remaining overlap/clipping set, the `OB.photoChecked` state leak, the garbled
+  reveal name, and the "0%" flash. **The earlier note that these "live on
+  screens Phase 1–3 replace" no longer holds** — every v5 flag defaults off, so
+  `main` ships the legacy screens and these are live for every user (D-33). The
+  age-gate bypass in D-32 was found on exactly this path. Remaining ones should
+  be treated as production bugs, not deferred scaffolding.
 - **Resolved since Phase 0.1:** the text-meme generator, its 122 generated
   cards and the 13 hand-written ones are deleted; `src/data/seed/memes.ts` is a
   70-line adapter over the real manifest, and the Deck renders the 20 real

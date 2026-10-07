@@ -445,3 +445,48 @@ as specified, so the override is deliberately **not** baked into `vercel.json` �
 it has to be set as a deployment env var by someone choosing to ship
 unlicensed placeholder art. Defaulting it on would have defeated the gate that
 exists to prevent exactly that.
+
+
+### D-32 · The 18+ checkbox is an attestation, not a substitute for a date of birth
+The onboarding age gate was bypassable, defeating the server-side 18+ check the
+brief lists under *preserve*.
+
+`OB.adult` was written by two unrelated things. The date field's `oninput`
+handler computed it from the real date of birth; the "I'm 18 or older" checkbox
+flipped it directly with no date involved. Continue was gated on `OB.adult`
+alone, so leaving the date blank and ticking the box unlocked the flow.
+
+The submit path then covered the gap:
+
+```js
+dateOfBirth: OB.dob || (OB.adult ? '2000-01-01' : '')
+```
+
+`isAdult('2000-01-01')` is `true`, so the server received an adult date of birth
+for an account that never supplied one. The screen reads "Your date of birth is
+checked server-side" while sending a date the user never entered — the check was
+running against a value invented to pass it.
+
+Confirmed by executing `isAdult()` against the three payloads involved: `''`
+rejects, `'2015-06-01'` rejects, `'2000-01-01'` accepts.
+
+The two concepts are now separate flags. `OB.adult` is computed from the date of
+birth and nothing else; `OB.attested` is the checkbox — a legal acknowledgement,
+not evidence of age. Continue requires both, and the submit path sends the real
+date of birth or nothing. The checkbox markup was rebound from `OB.adult` to
+`OB.attested`; without that the switch would not have visually reflected the
+click.
+
+`legacy.ts` is `@ts-nocheck`, so this is pinned two ways: the build proves it
+compiles, and `no-fake-people.test.ts` asserts `'2000-01-01'` is absent from the
+shipped `legacy-*.js`.
+
+### D-33 · The legacy screens are production, not scaffolding
+STATUS carried a note that bugs §4.1.3–§4.1.7 "live on screens Phase 1–3
+replace; fixing them twice is waste." That reasoning stopped holding once every
+v5 flag defaulted off: `main` ships the legacy screens, so those bugs are live
+for every user, and the age gate in D-32 was found on exactly that path.
+
+The lesson worth keeping: a flag-gated replacement does not retire the thing it
+replaces until the flag is on by default. Until then both are production, and
+the old one has the larger audience.
