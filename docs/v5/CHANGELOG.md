@@ -243,3 +243,26 @@ stays in the deck for when the number can be real.
 
 Tests: 13 files, **297 passing** (was 291). `stories-*.js` is a 3.03 kB gz lazy
 chunk; first paint is unchanged at 150.9 kB gz.
+
+## Honesty — no invented people or counts in a production build
+
+Three leaks, all found by executing the code rather than reading it:
+
+- `MockRepo.getCandidates()` returned all 48 seeded people. Verified by
+  constructing the default repo and reading back 20 ranked cards with names and
+  bios. Now empty unless `v5config.demo`.
+- `legacy.ts` `PEOPLE` — nine hard-coded personas with scores and `likesYou`
+  flags, read directly by `queue()`. Now `DEMO_DATA ? DEMO_PEOPLE : []`, the
+  same pattern `ACTIVITY` and `CIRCLE_SOURCE` already used.
+- `DROPS` / `YEST` / `CIRCLE` carried `likes: 312` and lines like "Saved by 41
+  people in your circles this week." Now behind `N()` / `WHY()` helpers, and the
+  detail page no longer prints "Sent 0 times in your circles".
+
+Verified against the built artefact: `Saved by 41 people`, `Most replayed in
+your circles`, `from 38 circles` and `crept up the charts` are all absent from
+`dist/assets/legacy-*.js`, no persona bio survives, and the honest density gate
+("a lie with a nice layout") is still there.
+
+Tests: 14 files, **304 passing** (was 297). `repo.test.ts` gained four specs for
+the opt-in default; `no-fake-people.test.ts` checks the production bundle and
+skips itself when `dist/` is absent.

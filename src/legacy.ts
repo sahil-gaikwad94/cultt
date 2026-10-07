@@ -182,26 +182,33 @@ const MEMES={
   m3:{id:'m3',text:'my toxic trait is thinking i can read a room and also a shared playlist',bg:'#F2D45C',fg:'#141413',ac:'#141413',tag:'Toxic traits, shared playlists, DJ delusion'},
   m4:{id:'m4',text:'the bridge of the song starts\n\nme: are you okay?? i’m so proud of you',bg:'#9EC5E8',fg:'#141413',ac:'#F2D45C',tag:'Bridge appreciation, parasocial pride'}
 };
+/* Like/laugh counts and the "saved by N people in your circles" lines are
+   fabricated social proof — nobody produced them. They are demo content: in a
+   production build every count starts at zero and the only numbers on screen
+   are the ones the user's own taps created. Same flag as PEOPLE, ACTIVITY and
+   CIRCLE_SOURCE. */
+const N=n=>DEMO_DATA?n:0;
+const WHY=t=>DEMO_DATA?t:undefined;
 const DROPS=[
-  {music:{id:'d1a',kind:'music',ref:'route9',likes:312,laughs:18,why:'Saved by 41 people in your circles this week.'},meme:{id:'d1b',kind:'meme',ref:'m1',likes:128,laughs:604}},
-  {music:{id:'d2a',kind:'music',ref:'moons',likes:274,laughs:11,why:'Most replayed in your circles since Friday.'},meme:{id:'d2b',kind:'meme',ref:'m3',likes:96,laughs:512}}
+  {music:{id:'d1a',kind:'music',ref:'route9',likes:N(312),laughs:N(18),why:WHY('Saved by 41 people in your circles this week.')},meme:{id:'d1b',kind:'meme',ref:'m1',likes:N(128),laughs:N(604)}},
+  {music:{id:'d2a',kind:'music',ref:'moons',likes:N(274),laughs:N(11),why:WHY('Most replayed in your circles since Friday.')},meme:{id:'d2b',kind:'meme',ref:'m3',likes:N(96),laughs:N(512)}}
 ];
 const CIRCLE=[
-  {id:'c1',kind:'music',ref:'choir',by:'ines',note:'the key change at 2:40 is a personality test',likes:57,laughs:9},
-  {id:'c2',kind:'meme',ref:'m2',by:'kai',likes:44,laughs:211},
-  {id:'c3',kind:'music',ref:'cherry',by:'dev',note:'for dramatic commutes only',likes:82,laughs:14},
-  {id:'c4',kind:'meme',ref:'m4',by:'ines',likes:63,laughs:158},
-  {id:'c5',kind:'music',ref:'soft',by:'kai',note:'summer, but make it a little sad',likes:39,laughs:3}
+  {id:'c1',kind:'music',ref:'choir',by:'ines',note:'the key change at 2:40 is a personality test',likes:N(57),laughs:N(9)},
+  {id:'c2',kind:'meme',ref:'m2',by:'kai',likes:N(44),laughs:N(211)},
+  {id:'c3',kind:'music',ref:'cherry',by:'dev',note:'for dramatic commutes only',likes:N(82),laughs:N(14)},
+  {id:'c4',kind:'meme',ref:'m4',by:'ines',likes:N(63),laughs:N(158)},
+  {id:'c5',kind:'music',ref:'soft',by:'kai',note:'summer, but make it a little sad',likes:N(39),laughs:N(3)}
 ];
 const YEST=[
-  {id:'y1',kind:'music',ref:'glass',likes:201,laughs:7,why:'Yesterday’s most saved, from 38 circles.'},
-  {id:'y2',kind:'meme',ref:'m4',likes:90,laughs:340},
-  {id:'y3',kind:'music',ref:'soft',likes:166,laughs:5,why:'A slow riser. It crept up the charts overnight.'}
+  {id:'y1',kind:'music',ref:'glass',likes:N(201),laughs:N(7),why:WHY('Yesterday’s most saved, from 38 circles.')},
+  {id:'y2',kind:'meme',ref:'m4',likes:N(90),laughs:N(340)},
+  {id:'y3',kind:'music',ref:'soft',likes:N(166),laughs:N(5),why:WHY('A slow riser. It crept up the charts overnight.')}
 ];
 const POSTS={};[...DROPS.flatMap(d=>[d.music,d.meme]),...CIRCLE,...YEST].forEach(p=>POSTS[p.id]=p);
 /* Comments are gone: like, save and share only. The seeded ones went with them. */
 const HUMOR=['Deadpan','Absurdist','Dry wit','Chaotic','Wholesome','Niche refs'];
-const PEOPLE=[
+const DEMO_PEOPLE=[
   {id:'ines',name:'Ines',km:.9,intent:['friends','dating'],matched:true,score:88,pal:['#ff6fa5','#ffb86b','#7b3aa8','#180c1c'],seed:3,shared:['choir','cherry'],humor:[.6,.4,.9,.3,.6,.9],bio:'Keeps a spreadsheet of songs that make her want to leave the party.',age:26},
   {id:'kai',name:'Kai',km:2.2,intent:['friends'],matched:true,score:84,pal:['#58d6c8','#7de3b5','#1d3b6e','#0b1626'],seed:5,shared:['soft','moons'],humor:[.5,.8,.4,.8,.5,.6],bio:'Will defend one questionable album forever.',age:29},
   {id:'dev',name:'Dev',km:3.1,intent:['dating','friends'],matched:true,score:81,pal:['#ffb86b','#ff6fa5','#4a2a6e','#14081a'],seed:8,shared:['cherry','glass'],humor:[.7,.5,.6,.6,.4,.8],bio:'Commute DJ. Has been asked to stop.',age:28},
@@ -212,6 +219,14 @@ const PEOPLE=[
   {id:'idris',name:'Idris',km:8.9,intent:['dating'],score:72,pal:['#c3a6ff','#ff6fa5','#2a1448','#10131f'],seed:23,shared:['moons'],humor:[.95,.3,.9,.2,.4,.8],bio:'Deadpan in three languages.',age:30},
   {id:'lena',name:'Lena',km:11,intent:['dating','friends'],score:68,pal:['#ff9466','#ffd166','#1f8f78','#0b1a14'],seed:26,shared:['route9'],humor:[.4,.5,.7,.7,.8,.4],bio:'Thinks every road trip needs an official opening track.',age:28}
 ];
+/* The Matrix, the People tab and the listening-room seat map all read this.
+   In a production build it is empty, because these nine are personas and not
+   people: a dating deck with invented strangers in it is the one thing the
+   product must never do. `endHTML()` already states the density gate plainly
+   ("a dating deck with three people in it is a lie with a nice layout"), so an
+   empty list renders an honest screen rather than a broken one.
+   Same flag and same reasoning as ACTIVITY and CIRCLE_SOURCE above. */
+const PEOPLE=DEMO_DATA?DEMO_PEOPLE:[];
 const LIVE=[{id:'dev',track:'glass',since:'2m',n:6},{id:'ines',track:'choir',since:'8m',n:11},{id:'kai',track:'soft',since:'21m',n:4}];
 const STARTERS=['What song did you replay five times this week?','Defend your worst-rated favorite album','Send one meme that explains you','Pick a song for waiting on a late bus'];
 const REPLIES=['ha. okay. send the track','this is exactly the kind of taste crime i like','you get it. play it loud','be honest, did you cry at the bridge','i have so many opinions about this','adding it to my night bus playlist'];
@@ -651,14 +666,14 @@ const CREW_ROLES=['Saved it','Laughed hardest','Replayed it 5 times','Sent it fi
 function crewFor(p){return PEOPLE.slice().sort((a,b)=>hash(p.id+a.id)-hash(p.id+b.id)).slice(0,4)}
 function detailHTML(p){
   const r=refOf(p),isM=p.kind==='music',cs=[],crew=crewFor(p);
-  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span><span class="chipg">${p.likes+p.laughs} reactions</span>`;
+  const chips=isM?`<span class="chipg">${esc(r.genre)}</span><span class="chipg">${esc(GENRE_TAGS[r.genre]||'on heavy rotation')}</span><span class="chipg">${fmt(r.len)}</span><span class="chipg">${I.star}${r.rating}</span>`:`<span class="chipg">Meme</span>${p.likes+p.laughs?`<span class="chipg">${p.likes+p.laughs} reactions</span>`:'<span class="chipg">No reactions yet</span>'}`;
   return `<div class="d-scroll" data-id="${p.id}">
     <div class="d-top stg"><button class="pillb" data-act="back" aria-label="Back">${I.back}<span>Back</span></button><div class="d-chips">${chips}</div></div>
     <div class="d-hero" id="dHero">${artOf(p)}${isM?'<div class="shade" style="height:40%"></div><div class="eqb" aria-hidden="true"><i></i><i></i><i></i><i></i></div>':''}${isM?`<button class="glassb" data-act="play" data-fx="play" aria-label="Play 30-second preview"><span class="i-play">${I.play}</span><span class="i-pause">${I.pause}</span><span>Play preview</span></button>`:''}<div class="prog"><i></i></div></div>
     <h1 class="d-title stg" style="--d:2">${esc(isM?r.title:labelOf(p))}</h1>
     <p class="d-by stg" style="--d:3">${isM?esc(r.artist):'A cultured meme'}</p>
     <div class="arow stg" style="--d:4">${reactions(p,false)}</div>
-    <p class="d-desc stg" id="dDesc" style="--d:5">${esc(isM?(p.why?p.why+' ':'')+r.desc:'Sent '+(p.likes+p.laughs)+' times in your circles this week. Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.')}</p>
+    <p class="d-desc stg" id="dDesc" style="--d:5">${esc(isM?(p.why?p.why+' ':'')+r.desc:((p.likes+p.laughs)?'Sent '+(p.likes+p.laughs)+' times in your circles this week. Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.':'Tagged: '+r.tag+'. The kind of post that gets forwarded with no caption at all, because none is needed.'))}</p>
     <button class="readm stg" style="--d:5" data-act="readmore">Read more</button>
     ${DEMO_DATA?`<h3 class="d-h stg" style="--d:6">Crew<small>${crew.length} in your circles</small></h3>
     <div class="hs stg" style="--d:6">${crew.map((c,i)=>`<div class="crew-c"><div class="pt" style="background:linear-gradient(160deg,${c.pal[0]},${c.pal[3]})"><div class="fpmini">${fpSVG(fpParams(c.seed*31+hash(p.id)),'#ffffff',c.pal[1],{n:10,w:1.2})}</div><b>${esc(c.name[0])}</b></div><p>${esc(c.name)}</p><span>${CREW_ROLES[i]}</span></div>`).join('')}</div>`:`<h3 class="d-h stg" style="--d:6">Who’s moved this<small>0</small></h3><p class="hint stg" style="--d:6">Nobody yet — and cultured will not invent anybody to fill the row.</p>`}

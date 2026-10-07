@@ -299,3 +299,51 @@ The countdown floors hours and minutes and returns `copy.stories.expired` at or
 after expiry, so a story never reads "1m left" for a minute it no longer has.
 `STORY_TTL_HOURS=12` comes from `v5config.hours.storyTtl`, which is the same
 value `expireStories()` compares against — one number, two consumers.
+
+
+### D-27 · The invented population and the fabricated counts are demo-gated
+Three places were shipping invented people and invented statistics to a
+production build, because the gate only covered part of them:
+
+1. **`MockRepo.getCandidates()`** returned all 48 seeded people. `MockRepo` is
+   the default backend, so a production build with no config got a full Matrix
+   of strangers who never signed up — verified by constructing the repo and
+   reading back 20 ranked cards with names and bios.
+2. **`legacy.ts` `PEOPLE`** — a hard-coded nine (Ines, Kai, Dev, Noor, Saoirse,
+   Mateo, Wren, Idris, Lena) with scores, ages, bios and `likesYou: true`.
+   `queue()` and `gatedCount()` read it directly and never touched the repo, so
+   the Matrix screen users actually see was populated regardless. `ACTIVITY` and
+   `CIRCLE_SOURCE` right next to it were already gated; this one was not.
+3. **`DROPS` / `YEST` / `CIRCLE`** carried `likes: 312, laughs: 18` and
+   social-proof lines like *"Saved by 41 people in your circles this week."*
+   The detail page rendered them unconditionally, including a "Sent 730 times in
+   your circles this week" sentence computed from the fake numbers.
+
+All three now read `DEMO_DATA` (`DEV && flags.demoData !== false`) or, for the
+repo, `v5config.demo` (`?demo=1` or an explicit config value). In production the
+population is empty and every count starts at zero, so the only numbers on
+screen are the ones the user's own taps produced.
+
+Nothing the user created is touched. This gates invented content, not data —
+decisions, threads, reactions and saves survive either way, and a test pins that.
+
+`endHTML()` already had the honest alternative written ("A dating deck with
+three people in it is a lie with a nice layout"), so an empty population renders
+a screen that explains the density gate rather than a broken one. The reaction
+chip and the detail-page sentence now branch on a zero total instead of printing
+"0 reactions" / "Sent 0 times", which is true but reads like a bug.
+
+### D-28 · The production guarantee is tested against the artefact
+`tests/unit/no-fake-people.test.ts` reads the real `dist/assets/legacy-*.js` and
+asserts the persona bios and the social-proof strings are absent, and that the
+honest density gate survived. It checks the bundle rather than the source
+because the failure mode is a constant that does not fold: `DEMO_DATA` is
+`DEV && …` and `DEV` is `import.meta.env.DEV === true`, and an earlier
+`typeof import.meta !== 'undefined'` guard defeated the folding and left the
+seeded people in the shipped bundle. Source-level assertions would have passed
+through that. The test skips itself when `dist/` has not been built, so a plain
+unit run does not require one.
+
+The room seat map still carries ten first names behind `FEATURE_ROOMS`, which is
+off by default and reachable from no shipping surface. That is dead code, not a
+visible fake, so it is left alone rather than half-gated.
