@@ -718,19 +718,34 @@ ACT['to-room']=b=>{
   S.threads[withId].msgs.push({f:'me',kind:'track',ref,ts:Date.now()});
   save();closeSheet();toast('Sent with a 30-second clip');haptic(8);reply(withId);track('song_sent',{via:'rooms_off'});
 };
+/* Only real actions get a button. This sheet used to offer "Messages" and
+   "Your story" that did nothing but toast "Sent to Messages" / "Added to your
+   story" — a button that lies is worse than no button, because the user walks
+   away believing something was sent. The OS share sheet already covers every
+   real target, so it is the only alternative to copying the link, and it is
+   only offered where it exists. */
+const canNativeShare=()=>typeof navigator!=='undefined'&&typeof navigator.share==='function';
 function openShare(id){
   const p=POSTS[id],r=refOf(p);
+  const actions=[['copy','Copy link',I.link]];
+  if(canNativeShare())actions.push(['more','Share',I.dots]);
   openSheet(`<h3 class="sh-t">Share</h3>
     <div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div>
-    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
+    <div class="share-row">${actions.map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>
+    ${canNativeShare()?'':'<p class="hint">This browser has no share sheet, so the link is the only way out. Copy it and send it wherever you like.</p>'}`);
 }
 ACT.sharego=async b=>{
   const w=b.dataset.w;
-  if(w==='more'&&navigator.share){try{await navigator.share({title:'cultured',text:b.dataset.t,url:location.href});closeSheet();return}catch(e){}}
-  if(w==='copy'){try{await navigator.clipboard.writeText(location.href)}catch(e){}toast('Link copied')}
-  else if(w==='msg')toast('Sent to Messages');
-  else if(w==='story')toast('Added to your story');
-  else toast('Share sheet opened');
+  if(w==='more'){
+    /* A dismissed sheet is not a failure — say nothing rather than a toast
+       claiming something happened. */
+    try{await navigator.share({title:'cultured',text:b.dataset.t,url:location.href});closeSheet()}catch(e){}
+    return;
+  }
+  let ok=false;
+  try{await navigator.clipboard.writeText(location.href);ok=true}catch(e){}
+  /* Report what actually happened instead of assuming the clipboard worked. */
+  toast(ok?'Link copied':'Couldn’t reach the clipboard — copy the address bar instead');
   closeSheet();
 };
 ACT.closesheet=closeSheet;
@@ -1928,10 +1943,17 @@ ACT['mm-save']=b=>{
   toast(on?'Kept.':'Let go.');haptic(8);
 };
 ACT['mm-share']=b=>{
-  const id=mmId(b),ids=Object.keys(S.threads||{});
+  const id=mmId(b);
+  /* Thread keys outlive the people behind them: they are persisted, and with
+     the invented population gated off (D-27) `person()` legitimately returns
+     undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on
+     a list that used to be populated. The threads are left in place — this
+     filters a view, it does not delete anything. */
+  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
 };
-ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+person(pid).name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
+ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
+  ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
 function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
