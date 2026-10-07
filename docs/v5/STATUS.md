@@ -173,3 +173,29 @@ What was **not** executed: anything needing a real browser. See below.
 - **The 20 seed memes are still unlicensed.** `content:gate` fails the
   production build until they are replaced, which is the intended behaviour —
   but it does mean a production deploy needs real art first.
+
+
+## Perf budget — measured, not estimated
+
+`docs/v5/PERF_REPORT.md` now exists with the §10 budget checked against the real
+production build.
+
+| configuration | first-paint JS | vs 180 KiB budget |
+|---|---:|---:|
+| v5 flags off | 87.57 KiB gz | +92.43 headroom |
+| v5 flags on (`?v5=1`) | 124.08 KiB gz | +55.92 headroom |
+
+Getting there took one change: making the Supabase client a dynamic import
+(D-29), after `src/data/index.ts` was found to be putting 63 KiB gz of an
+optional backend into the entry chunk. The v5-enabled path measured 184.81 KiB
+gz before that — over budget — and the 150.9 KB figure quoted in earlier revisions
+of this file was wrong; see D-29 for how it was miscounted.
+
+Runtime budgets (LCP, INP, CLS, p95 fps) remain **unmeasured**. Chromium cannot
+be installed in this sandbox, so the committed Playwright specs were never
+executed. `npx playwright test --list` resolves 50 tests across 5 files on the
+`pixel7` and `iphone14` projects, which confirms the suites are well-formed but
+tells us nothing about how they score. Font weight is likewise unverified:
+`fonts.gstatic.com` is outside the network allowlist here.
+
+`PERF_REPORT.md` states all of this rather than quoting numbers nobody took.
