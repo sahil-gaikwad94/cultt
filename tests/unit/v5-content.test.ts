@@ -164,11 +164,12 @@ describe('the committed manifests', () => {
     }
   });
 
-  it('gate: nothing is servable while the seed memes are unlicensed', () => {
-    // Every shipped meme is still rightsCleared: false, so the default path
-    // serves nothing and the production build fails at `content:gate`.
-    expect(memes.items.every((meme) => meme.rightsCleared === false)).toBe(true);
-    expect(servableMemes()).toEqual([]);
+  it('gate: the seed memes are rights-cleared and servable', () => {
+    // Every shipped meme is rightsCleared: true (cleared in memes.meta.json),
+    // so the default path serves the full set and the production build passes
+    // `content:gate` without the ALLOW_UNLICENSED override.
+    expect(memes.items.every((meme) => meme.rightsCleared === true)).toBe(true);
+    expect(servableMemes()).toHaveLength(memes.count);
     expect(servableMemes(true)).toHaveLength(memes.count);
   });
 
