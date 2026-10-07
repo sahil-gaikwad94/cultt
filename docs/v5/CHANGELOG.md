@@ -427,3 +427,19 @@ target (crawlers do not run JS); the endpoint already accepts the params.
 
 Tests 24 files / **395 passing**, including the handler rasterising a non-blank
 PNG; `tsc --noEmit`, eslint, and the `ALLOW_UNLICENSED=1` build all clean.
+
+## Reversal — the original screens are the app again
+
+The v5 Gallery layout replaced too much of a design that already worked. Per the
+product call, the original cultt screens are the default app and the v5 screens
+go back behind `?v5=1` as an alternative (D-38, reversing D-36).
+
+- The v5 **intro** stays on by default — its cold-open animation is the one piece
+  that improved on the original. Legacy onboarding skips its own cold open when
+  it runs, fixing the double intro.
+- Intro readability: scrim + text-shadow behind the headline.
+- Cards enriched rather than replaced: layered depth, gradient ground, an image
+  vignette/sheen, and a filled category pill — addressing "too flat/plain".
+
+`v5-flags.test.ts` rewritten for the restored model; e2e points back at `?v5=1`.
+395 tests / 24 files green; tsc, eslint, build clean.

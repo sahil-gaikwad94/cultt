@@ -569,3 +569,27 @@ That path is served as the static SPA shell, and crawlers do not run JS, so the
 meta has to be injected server-side before the crawler sees it — an edge rewrite
 on the deploy target. The endpoint already takes the params; only the per-route
 HTML injection is outstanding, and it cannot be built or tested in this sandbox.
+
+### D-38 · The original screens are the app; v5 is the alternative
+
+D-36 made v5 the default. That was the wrong call: the v5 Gallery layout
+replaced a design that already worked, and the product owner's verdict was that
+the original cultt screens were the better base — "previous app layout was good,
+and you shifted hard on it." So the default is reverted.
+
+`readV5Config` now resolves the v5 *screens* off by default and on only under
+`?v5=1`; the original `renderFeed`/`renderMatchShell`/`renderPeople`/
+`renderArena`/`renderYou` own their hosts again. This reverses D-36 for the
+screens.
+
+The one v5 piece kept on by default is the **intro**. Its cold-open animation
+was explicitly liked ("good new animation"), and it replaced the legacy ~11s
+cold open — which is now skipped when the v5 intro runs, fixing the double intro
+both were playing back to back. Two readability fixes went with it: a scrim
+behind the headline and a text-shadow, because the gold type sat directly on the
+meme art and was unreadable.
+
+The lesson: a redesign is not automatically an improvement. The v5 work stays in
+the tree behind `?v5=1` so none of it is lost, but the shipping app is the
+original layout, with the cards enriched (depth, gradient ground, image vignette,
+filled category pill) rather than replaced.
