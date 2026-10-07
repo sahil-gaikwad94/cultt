@@ -23,6 +23,32 @@ import { SEED_MEMES } from './data/seed/memes';
 /* The seed track catalogue, used only to check whether an id can cross the
    adapter boundary without fabricating a vector. */
 import { SEED_TRACKS } from './data/seed/tracks';
+/* v5: the single persisted store. Every reaction, save and pin goes through
+   it, and every screen reads through its selectors. This is the fix for the
+   "You tab shows 0 after I liked and saved" bug — see docs/v5/DECISIONS.md
+   D-03. The seam still keeps its own shapes for its own markup, but it no
+   longer decides what the numbers are. */
+import { getStore } from './store';
+import {
+  laughedItemKeys as v5LaughedKeys,
+  laughsGivenCount as v5LaughsGiven,
+  pinsByKind as v5PinsByKind,
+  savedItemKeys as v5SavedKeys,
+  LEGACY_LAUGH_EMOJI as V5_LAUGH,
+  LEGACY_LIKE as V5_LIKE,
+} from './store/selectors';
+
+const V5 = getStore();
+/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
+const v5Resolve = key => {
+  const i = key.indexOf(':');
+  if (i < 0) return null;
+  const kind = key.slice(0, i), id = key.slice(i + 1);
+  if (POSTS[id]) return { kind, post: POSTS[id], id };
+  const m = MM.find(x => x.id === id);
+  if (m) return { kind, meme: m, id };
+  return null;
+};
 
 (()=>{
 'use strict';
@@ -553,16 +579,33 @@ const idOf=b=>b.closest('[data-id]').dataset.id;
 /* Like/save/share also count toward calibration; the Matrix shows its score
    only once there is enough of it to be worth showing. */
 const bumpCal=active=>{if(active){S.cal=(S.cal||0)+1;save()}};
-ACT.like=b=>{const id=idOf(b),st=rs(id);st.l=st.l?0:1;save();syncPost(id);repoCall('recordReaction',id,'like');bumpCal(st.l)};
-ACT.laugh=b=>{const id=idOf(b),st=rs(id);st.h=st.h?0:1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(st.h)};
-ACT.save=b=>{const id=idOf(b),st=rs(id);st.s=st.s?0:1;save();syncPost(id);repoCall('recordReaction',id,'save');bumpCal(st.s);toast(st.s?'Saved to your Fingerprint':'Removed from saved')};
+/* v5 store writes. The seam's own shapes are mirrored on write so its markup
+   keeps working, but the store is what the You tab, the Vault and the pin
+   board read. `kindOf(id)` maps the 10 hard-coded POSTS ids to meme|song. */
+const kindOf=id=>(POSTS[id]&&POSTS[id].kind==='music')?'song':'meme';
+ACT.like=b=>{
+  const id=idOf(b),st=rs(id),on=!st.l;st.l=on?1:0;
+  if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction(kindOf(id),id);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(on);
+};
+ACT.laugh=b=>{
+  const id=idOf(b),st=rs(id),on=!st.h;st.h=on?1:0;
+  if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});else V5.removeReaction(kindOf(id),id);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(on);
+};
+ACT.save=b=>{
+  const id=idOf(b),st=rs(id),on=!st.s;st.s=on?1:0;
+  V5.setSaved(kindOf(id),id,on);
+  save();syncPost(id);renderYou();repoCall('recordReaction',id,'save');bumpCal(on);
+  toast(on?'Kept.':'Let go.');
+};
 /* The long-press fan emits `micro:laugh` on the heart; the seam decides what
    that means, so the function exists with or without the animation. */
 document.addEventListener('micro:laugh',e=>{
   const btn=e.target;if(!btn||!btn.closest)return;
   const host=btn.closest('[data-id]');if(!host)return;
   const id=host.dataset.id,st=rs(id);
-  if(!st.h){st.h=1;save();syncPost(id);repoCall('recordReaction',id,'laugh');bumpCal(true)}
+  if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(true)}
   burst(btn,'#ffd166');haptic([8,30,8]);
 });
 ACT.share=b=>openShare(idOf(b));
@@ -1382,8 +1425,11 @@ ACT['s-recap']=()=>{
 function renderYou(){
   const pr=S.prof,mine=fpParams(mineSeed());
   const P=youPal(),bgS=pr.bg||'rings';
-  const saved=Object.keys(S.react).filter(id=>S.react[id].s&&POSTS[id]);
-  const laughs=Object.keys(S.react).filter(id=>S.react[id].h).length;
+  /* v5: both numbers come from the store, so a save made on a corpus meme in
+     "Today's memes" lands here too. The old filter dropped everything that was
+     not one of the 10 hard-coded POSTS ids — that was the "0" bug. */
+  const saved=v5SavedKeys(V5.getState()).map(v5Resolve).filter(Boolean);
+  const laughs=v5LaughsGiven(V5.getState());
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
     <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
@@ -1498,7 +1544,7 @@ ACT['saved-open']=b=>{
   openSheet(`<div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div><button class="cta" data-act="open-saved" data-id="${id}">Open</button><button class="cta ghostb" data-act="unsave" data-id="${id}">Remove from saved</button>`);
 };
 ACT['open-saved']=b=>{closeSheet();setTimeout(()=>openDetail(b.dataset.id,null),300);trackEvent('view','meme',b.dataset.id)};
-ACT.unsave=b=>{rs(b.dataset.id).s=0;save();syncPost(b.dataset.id);closeSheet();renderYou()};
+ACT.unsave=b=>{const id=b.dataset.id;rs(id).s=0;V5.setSaved(kindOf(id),id,false);save();syncPost(id);closeSheet();renderYou();toast('Let go.')};
 function trackView(id,type){const p=POSTS[id];if(!p)return;trackEvent('view',type||(p.kind==='music'?'track':'meme'),id,{label:p.kind==='music'?TRACKS[p.ref].title:p.text.split('\n')[0]})};
 ACT['mm-open']=b=>{trackView(b.dataset.id);openDetail(b.dataset.id,b)};
 SEG.vis=v=>{S.prof.vis=v;save();toast({all:'Everyone can see your Fingerprint',matches:'Only matches can see it',me:'Your Fingerprint is private'}[v])};
@@ -1506,7 +1552,7 @@ ACT['share-fp']=()=>{
   const saved=Object.keys(mmS().s).filter(k=>mmS().s[k]).map(k=>mmOf(k)).filter(Boolean).slice(0,3);
   const artists=S.prof.artists.slice(0,3);
   openSheet(`<h3 class="sh-t">Share your Fingerprint</h3>
-    <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
+    <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>Fingerprint clarity</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
     <p class="hint" style="margin:12px 0 16px">A live preview built from your current signals. Photos and location stay private.</p>
     <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 };
@@ -1602,7 +1648,10 @@ ACT.reset=()=>{
 };
 ACT['reset-go']=()=>{
   store.clear();S=merge(DEF(),{});S.threads=DEMO_DATA?BASE_THREADS():{};S.onboarded=true;save();applyCalm();DK.day=0;
-  closeSheet();closePage();renderAll();toast('Local data cleared');
+  /* The v5 store owns reactions/saves/pins too — clearing one and not the
+     other is how the counts went stale in the first place. */
+  shelfSeeded=false;
+  V5.clearLocalData().finally(()=>{closeSheet();closePage();renderAll();toast('Local data cleared')});
 };
 const applyCalm=()=>document.documentElement.classList.toggle('calm',!!S.set.calm);
 
@@ -1721,7 +1770,7 @@ function drawObNow(){
   const foot=label=>`<div class="ob-foot"><button class="cta" data-act="ob-next" ${label==='Continue'&&OB.step===1&&!OB.adult?'disabled':''}>${label}</button></div>`;
   /* the last step finishes on ob-done, not on a capped ob-next */
   const footDone=label=>`<div class="ob-foot"><button class="cta" data-act="ob-done">${label}</button></div>`;
-  const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% signal confidence</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
+  const calSide=`<div class="ob-cal-side"><div class="ob-fp" id="obFp"></div><div class="ob-conf"><b id="obConf">0</b><span>% Fingerprint clarity</span></div><p class="hint">The contours you’re building now are the ones your first Matrix card will wear.</p></div>`;
   if(OB.step===1){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Your age stays private</span><h1 class="ob-q">A little trust, first.</h1><p class="ob-s">cultured is 18+. Your date of birth is checked server-side and never shown on your profile.</p><label class="field"><span>Date of birth</span><input id="ob-dob" type="date" value="${OB.dob}" max="${new Date().toISOString().slice(0,10)}"></label><button class="agree" data-act="ob-adult" role="switch" aria-checked="${OB.adult}"><span class="sw" data-on="${OB.adult}" aria-hidden="true"></span><span>I’m 18 or older</span></button><div class="auth-rail"><button class="chip on" data-act="ob-auth" data-v="email">Email magic link</button><button class="chip" data-act="ob-auth" data-v="apple">Sign in with Apple</button><button class="chip" data-act="ob-auth" data-v="google">Google</button></div></div>${foot('Continue')}</div>`}
   else if(OB.step===2){body=`<div class="step"><div class="ob-body"><span class="eyebrow">Photo check</span><h1 class="ob-q">Show there’s a real person here.</h1><p class="ob-s">A quick on-device check keeps the Matrix human. This badge says <b>photo checked</b>, not verified identity.</p><div class="verify-orb ${OB.photoChecked?'done':''}">${OB.photoChecked?I.check:RING_GLYPH}</div><button class="cta ghostb" data-act="ob-photo">${OB.photoChecked?'Photo checked':'Run photo check'}</button></div>${foot('Continue')}</div>`}
   else if(OB.step===3){const providers=[['manual','Manual taste chips','Start without connecting anything.'],['lastfm','Last.fm username','Bring in public scrobbles later.'],['apple','Apple Music','Connect when MusicKit is configured.'],['spotify','Spotify · alpha only','Allowlisted testers only.']];body=`<div class="step"><div class="ob-body"><span class="eyebrow">Music signal</span><h1 class="ob-q">Where should your taste come from?</h1><p class="ob-s">Manual is the default. You can reconnect or rebuild this vector later.</p><div class="provider-list">${providers.map(p=>`<button class="provider ${OB.music===p[0]?'on':''}" data-act="ob-music" data-v="${p[0]}"><span>${p[0]==='manual'?I.note:I.link}</span><div><b>${p[1]}</b><small>${p[2]}</small></div>${OB.music===p[0]?I.check:''}</button>`).join('')}</div></div>${foot('Use this source')}</div>`}
@@ -1789,11 +1838,11 @@ ACT['ob-done']=()=>{
      the invitation. Tap jumps ahead; the buttons below do the work. */
   const pct=Math.round(obFrac()*100);
   o.innerHTML=`<div class="reveal">
-    <div class="rv rv-fp"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div><span class="eyebrow">Beat one · yours, from your answers</span><h2>Your Fingerprint.</h2><p>${pct}% signal confidence from ${S.cal||0} calibration events.</p></div>
-    <div class="rv rv-tc"><span class="eyebrow">Beat two · shareable, with real numbers</span>
-      <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${76+pct/4|0}%</b><span>signal confidence</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))||'unwritten'}</strong></div><div><small>on repeat</small><strong>${S.prof.artists.slice(0,2).map(esc).join(' · ')||'your first saves'}</strong></div></div><footer>cultured · find who else relates</footer></div>
+    <div class="rv rv-fp"><div class="gen-fp draw">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:18,w:1.4})}</div><span class="eyebrow">Yours, from your answers</span><h2>Your Fingerprint.</h2><p>${pct}% Fingerprint clarity from ${S.cal||0} calibration events.</p></div>
+    <div class="rv rv-tc"><span class="eyebrow">Shareable, with real numbers</span>
+      <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${76+pct/4|0}%</b><span>Fingerprint clarity</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))||'unwritten'}</strong></div><div><small>on repeat</small><strong>${S.prof.artists.slice(0,2).map(esc).join(' · ')||'your first saves'}</strong></div></div><footer>cultured · find who else relates</footer></div>
     </div>
-    <div class="rv rv-duel"><span class="eyebrow">Beat three · the only real test</span><h2>Prove it on someone.</h2><p>Duel a friend: same five prompts, no peeking, verdict only when both are in.</p><button class="cta" data-act="ob-duel">${I.pair}Duel a friend</button><button class="cta ghostb" data-act="ob-enter">Enter cultured</button></div>
+    <div class="rv rv-duel"><span class="eyebrow">The only real test</span><h2>Prove it on someone.</h2><p>Duel a friend: same five prompts, no peeking, verdict only when both are in.</p><button class="cta" data-act="ob-duel">${I.pair}Duel a friend</button><button class="cta ghostb" data-act="ob-enter">Enter cultured</button></div>
   </div>`;
   haptic([10,40,10,40,20]);
   RUN_REVEAL=runReveal(o,[
@@ -1868,8 +1917,19 @@ function mmCard(m,i){const st=mmS();return `<article class="mm-card ${m.img?'has
 function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in-house</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
 const mmId=b=>b.closest('[data-m]').dataset.m;
-ACT['mm-like']=b=>{const id=mmId(b),st=mmS();st.l[id]=st.l[id]?0:1;b.classList.toggle('on',!!st.l[id]);b.setAttribute('aria-pressed',!!st.l[id]);save();repoCall('recordReaction',id,'like');if(st.l[id]){burst(b,'#ff5d7a');haptic(10)}};
-ACT['mm-save']=b=>{const id=mmId(b),st=mmS();st.s[id]=st.s[id]?0:1;b.classList.toggle('on',!!st.s[id]);b.setAttribute('aria-pressed',!!st.s[id]);save();repoCall('recordReaction',id,'save');renderYou();toast(st.s[id]?'Pinned to your meme shelf':'Removed from shelf');haptic(8)};
+ACT['mm-like']=b=>{
+  const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
+  if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
+  if(on){burst(b,'#ff5d7a');haptic(10)}
+};
+ACT['mm-save']=b=>{
+  const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
+  V5.setSaved('meme',id,on);
+  if(on)V5.pin('meme',id);else V5.unpin('meme',id);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'save');
+  toast(on?'Kept.':'Let go.');haptic(8);
+};
 ACT['mm-share']=b=>{
   const id=mmId(b),ids=Object.keys(S.threads||{});
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
@@ -1878,10 +1938,13 @@ ACT['mm-send']=b=>{const pid=b.dataset.to;ensureThread(pid);S.threads[pid].msgs.
 function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}">${x.img?`<img src="${x.img}" alt="${esc(x.alt||x.t)}">`:`<span>${x.e}</span>`}${mmTxt(x.t)}</div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
-  const st=mmS();
-  const saved=MM.filter(m=>st.s[m.id]);
-  const liked=MM.filter(m=>st.l[m.id]&&st.s[m.id]===undefined);
-  const rest=MM.filter(m=>!st.s[m.id]&&!st.l[m.id]);
+  const state=V5.getState();
+  const strip=k=>k.slice('meme:'.length);
+  const savedSet=new Set(v5SavedKeys(state).filter(k=>k.startsWith('meme:')).map(strip));
+  const likedSet=new Set(v5LaughedKeys(state).filter(k=>k.startsWith('meme:')).map(strip));
+  const saved=MM.filter(m=>savedSet.has(m.id));
+  const liked=MM.filter(m=>!savedSet.has(m.id)&&likedSet.has(m.id));
+  const rest=MM.filter(m=>!savedSet.has(m.id)&&!likedSet.has(m.id));
   openSheet(`<h3 class="sh-t">Send a meme</h3>
     ${saved.length?`<span class="chipg" style="margin:6px 0 8px">Saved · ${saved.length}</span><div class="mm-grid">${saved.map(mmMiniRow).join('')}</div>`:''}
     ${liked.length?`<span class="chipg" style="margin:12px 0 8px">You laughed at · ${liked.length}</span><div class="mm-grid">${liked.slice(0,10).map(mmMiniRow).join('')}</div>`:''}
@@ -1891,14 +1954,30 @@ ACT['mm-chat']=b=>{const id=threadId();if(!id)return;S.threads[id].msgs.push({f:
 /* The shelf is the profile's pinned corner: memes AND songs, from saved and
    liked, in an order you can drag. Unpin peels the item off; pinning a card
    from the feed arcs it here (see data-fx="pin"). */
-function shelfIds(){
+/* v5: the pin board reads the store. `S.shelf` is seeded into it exactly once
+   (the migration usually already did this) so unpinning everything cannot
+   resurrect the old list. */
+let shelfSeeded=false;
+function shelfSeedOnce(){
+  if(shelfSeeded)return;shelfSeeded=true;
   if(!S.shelf){
     const ids=[];
     Object.keys(S.react).forEach(id=>{if(S.react[id].s&&POSTS[id]&&POSTS[id].kind==='music')ids.push('t:'+POSTS[id].ref)});
     const st=mmS();MM.forEach(m=>{if(st.s[m.id])ids.push('m:'+m.id)});
     S.shelf=ids;
   }
-  return S.shelf;
+  const pins=v5PinsByKind(V5.getState());
+  const have=new Set([...pins.meme,...pins.song].map(p=>(p.kind==='meme'?'m':'t')+':'+p.itemId));
+  S.shelf.forEach(k=>{
+    if(have.has(k))return;
+    const i=k.indexOf(':');if(i<1)return;
+    V5.pin(k[0]==='m'?'meme':'song',k.slice(i+1));
+  });
+}
+function shelfIds(){
+  shelfSeedOnce();
+  const pins=v5PinsByKind(V5.getState());
+  return [...pins.meme.map(p=>'m:'+p.itemId),...pins.song.map(p=>'t:'+p.itemId)];
 }
 function shelfEntry(id){
   const [kind,key]=id.split(':');
@@ -1907,7 +1986,7 @@ function shelfEntry(id){
 }
 function mmShelf(){
   const ids=shelfIds().map(shelfEntry).filter(Boolean);
-  const liked=Object.keys(S.react).filter(id=>S.react[id].h).length;
+  const liked=v5LaughsGiven(V5.getState());
   return `<div class="blk stg" style="--d:5"><h2>Pin board<small>drag to reorder</small></h2>
     <div class="mm-shelf" id="shelf">${ids.length?ids.map(x=>x.kind==='m'?
       `<button class="mm-mini sh" data-k="m:${x.m.id}" data-act="shelf-open">${x.m.img?`<img src="${x.m.img}" alt="${esc(x.m.alt||x.m.t)}">`:`<span>${x.m.e}</span>`}<i>${esc(String(x.m.t).split('\n')[0])}</i><em class="pin-x" data-act="shelf-unpin" data-k="m:${x.m.id}" aria-label="Unpin">✕</em></button>`:
@@ -1917,10 +1996,10 @@ function mmShelf(){
   </div>`;
 }
 ACT['shelf-unpin']=b=>{
-  const k=b.dataset.k,shelf=shelfIds();
+  const k=b.dataset.k,shelf=shelfIds(),isMeme=k.startsWith('m:'),id=k.slice(2);
   S.shelf=shelf.filter(x=>x!==k);
-  if(k.startsWith('m:')){const st=mmS();delete st.s[k.slice(2)]}
-  else{const id=k.slice(2);const post=Object.values(POSTS).find(p=>p.kind==='music'&&p.ref===id);if(post&&S.react[post.id])S.react[post.id].s=0}
+  if(isMeme){const st=mmS();delete st.s[id];V5.unpin('meme',id);V5.setSaved('meme',id,false)}
+  else{const post=Object.values(POSTS).find(p=>p.kind==='music'&&p.ref===id);if(post&&S.react[post.id])S.react[post.id].s=0;V5.unpin('song',id)}
   const item=b.closest('.mm-mini');
   const done=()=>{save();renderYou();renderFeed()};
   if(item&&!S.set.calm){

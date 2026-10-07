@@ -2,9 +2,19 @@ import './styles/tokens.css';
 import './styles/app.css';
 import { createRepo } from './data';
 import { installRepoBridge } from './components/phase1';
+import { getStore } from './store';
 
 const repo = createRepo();
 installRepoBridge(repo);
+
+/* The v5 store loads + migrates before the first screen paints, so the very
+   first render already has the user's real reactions, saves and pins instead
+   of zeros. The migration is read-only against `cultured2:*`. */
+const v5store = getStore();
+(window as Window & { Cultured?: Record<string, unknown> }).Cultured = {
+  ...((window as Window & { Cultured?: Record<string, unknown> }).Cultured ?? {}),
+  store: v5store,
+};
 
 /* Deep link: /d/:id (or ?d=id on static hosts without an SPA rewrite) opens the
    duel recipient page — no app shell, no account, no nav. */
@@ -27,10 +37,12 @@ const boot = async () => {
     const page = document.getElementById('duel-page');
     if (page) page.hidden = false;
     document.getElementById('phone')?.classList.add('duel-route');
+    await v5store.ready;
     const { bootDuelPage } = await import('./duel/page');
     void bootDuelPage(repo, duelMatch[1] as string);
     return;
   }
+  await v5store.ready;
   await import('./legacy');
 };
 

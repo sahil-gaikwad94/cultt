@@ -69,7 +69,7 @@ svg{display:block}
 @keyframes fadein{from{opacity:0;transform:translateY(12px) scale(.985)}}
 
 /* ---------- floating nav ---------- */
-#nav{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:2px;padding:6px;border-radius:32px;background:rgba(14,14,13,.72);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 50px rgba(0,0,0,.55);z-index:10;transition:transform .5s var(--ease),opacity .4s}
+#nav{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:2px;padding:6px;border-radius:32px;background:rgba(14,14,13,.72);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 50px rgba(0,0,0,.55);z-index:var(--z-nav);transition:transform .5s var(--ease),opacity .4s}
 #nav.hide{transform:translate(-50%,120px);opacity:0}
 .nv{position:relative;height:50px;min-width:50px;padding:0 14px;border-radius:25px;display:flex;align-items:center;justify-content:center;gap:0;color:var(--stone);border:1px solid transparent;transition:background .4s,color .3s,border-color .4s,padding .5s var(--ease),gap .5s var(--ease)}
 .nv svg{width:23px;height:23px;flex:none}
@@ -193,7 +193,7 @@ svg{display:block}
 .hint b{color:var(--bone)}
 
 /* ---------- detail pages ---------- */
-#pages{position:absolute;inset:0;z-index:20;pointer-events:none}
+#pages{position:absolute;inset:0;z-index:var(--z-modal);pointer-events:none}
 .page{position:absolute;inset:0;background:var(--ink);display:flex;flex-direction:column;overflow:hidden;transform:translateX(102%);transition:transform .55s var(--ease),opacity .45s;pointer-events:auto}
 .page.in{transform:none}
 .page.fade{transform:scale(.96);opacity:0}
@@ -250,7 +250,7 @@ svg{display:block}
 .fly .memeart .mtxt{--ms:36px}
 
 /* ---------- sheets + toast ---------- */
-#sheetwrap{position:absolute;inset:0;z-index:30;pointer-events:none}
+#sheetwrap{position:absolute;inset:0;z-index:var(--z-sheet);pointer-events:none}
 .scrim{position:absolute;inset:0;background:rgba(5,5,4,.6);opacity:0;transition:opacity .35s}
 .sheet{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow-y:auto;border-radius:34px 34px 0 0;background:rgba(22,22,20,.94);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--line);border-bottom:0;padding:0 20px calc(26px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .55s var(--ease)}
 #sheetwrap.open{pointer-events:auto}
@@ -260,7 +260,12 @@ svg{display:block}
 .grab::after{content:'';display:block;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.24);margin:0 auto}
 .sh-t{font-size:26px;font-weight:800;font-stretch:78%;letter-spacing:-.03em;margin-bottom:12px}
 .sub{font-size:16px;font-weight:700;margin:18px 0 8px}
-#toast{position:absolute;left:50%;bottom:100px;transform:translate(-50%,20px) scale(.96);opacity:0;padding:12px 20px;border-radius:99px;background:var(--bone);color:#141413;font-weight:700;font-size:14.5px;z-index:70;transition:opacity .35s,transform .5s var(--spring);pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+/* v5: the toast moves to the top and takes the shared z scale.
+   At bottom:100px it landed on the primary button of whatever sheet or modal
+   had just opened (the "Welcome to cultured" toast covering the duel modal's
+   CTA). Top-anchored and pointer-events:none, it can confirm an action
+   without ever sitting on one. */
+#toast{position:absolute;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-16px) scale(.96);opacity:0;padding:12px 20px;border-radius:99px;background:var(--bone);color:#141413;font-weight:700;font-size:14.5px;z-index:var(--z-toast);transition:opacity .35s,transform .5s var(--spring);pointer-events:none;max-width:92%;overflow-wrap:anywhere}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* ---------- controls ---------- */
@@ -318,7 +323,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 .cov:first-child{margin-left:0}
 .covrow span{margin-left:12px;font-size:13.5px;color:rgba(255,255,255,.85)}
 .dock{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 0 98px}
-#mini-player{position:absolute;left:14px;right:14px;bottom:82px;z-index:9;height:64px;padding:7px;border-radius:22px;background:rgba(18,18,17,.86);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border:1px solid rgba(239,233,218,.2);box-shadow:0 18px 45px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transform:translateY(18px) scale(.96);transition:opacity .45s var(--ease),transform .55s var(--spring)}
+#mini-player{position:absolute;left:14px;right:14px;bottom:82px;z-index:var(--z-minip);height:64px;padding:7px;border-radius:22px;background:rgba(18,18,17,.86);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border:1px solid rgba(239,233,218,.2);box-shadow:0 18px 45px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transform:translateY(18px) scale(.96);transition:opacity .45s var(--ease),transform .55s var(--spring)}
 #mini-player.on{opacity:1;pointer-events:auto;transform:none}
 .mini-art{position:relative;width:50px;height:50px;border-radius:16px;overflow:hidden;flex:none}.mini-art .art{position:absolute;inset:0}
 .mini-copy{min-width:0;flex:1}.mini-copy b,.mini-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mini-copy b{font-size:14px}.mini-copy span{font-size:12px;color:var(--mist);margin-top:2px}.mini-copy i{display:block;height:3px;border-radius:2px;background:rgba(255,255,255,.12);margin-top:7px;overflow:hidden}.mini-copy em{display:block;width:42%;height:100%;background:var(--sun);animation:mini-progress 3s linear infinite}
@@ -611,7 +616,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 .title.sm{font-size:24px}
 
 /* ---------- splash + onboarding ---------- */
-#splash{position:absolute;inset:0;z-index:90;background:var(--ink);display:grid;place-items:center;transition:opacity .7s ease .1s}
+#splash{position:absolute;inset:0;z-index:var(--z-splash);background:var(--ink);display:grid;place-items:center;transition:opacity .7s ease .1s}
 #splash.out{opacity:0;pointer-events:none}
 #splash .sp-in{display:flex;flex-direction:column;align-items:center;gap:18px}
 #splash .sp-fp{width:210px;height:210px;transition:transform 1.2s var(--ease)}
@@ -620,7 +625,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 .sp-w{display:flex;font-size:44px;font-weight:800;font-stretch:76%;letter-spacing:-.05em}
 .sp-w span{display:inline-block;overflow:hidden;height:1em;line-height:1}
 .sp-w i{display:block;font-style:normal;animation:roll .9s var(--ease) both;animation-delay:calc(.9s + var(--d)*55ms)}
-#onboard{position:absolute;inset:0;z-index:50;background:var(--ink);display:none;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+#onboard{position:absolute;inset:0;z-index:var(--z-onboard);background:var(--ink);display:none;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
 #onboard.on{display:flex}
 #onboard>*{position:relative}
 .ob-prog{display:flex;gap:6px;padding:22px 22px 0;flex:none;z-index:3}
@@ -1350,7 +1355,7 @@ pcard.notop{opacity:calc(1 - var(--k)*.12)}
 .duel-cardwrap{margin:14px 0 6px;position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line)}
 .duel-cardwrap .duel2-card{display:block;width:100%;height:auto;aspect-ratio:9/16;object-fit:cover;background:#0A0A09}
 .duel-cardwrap .chipg{position:absolute;right:10px;top:10px;background:rgba(10,10,9,.7)}
-#duel-page{position:absolute;inset:0;z-index:75;background:var(--ink);display:flex;flex-direction:column;overflow-y:auto;color:var(--bone)}
+#duel-page{position:absolute;inset:0;z-index:var(--z-duel);background:var(--ink);display:flex;flex-direction:column;overflow-y:auto;color:var(--bone)}
 #duel-page[hidden]{display:none}
 #phone.duel-route #nav,#phone.duel-route #mini-player,#phone.duel-route #splash{display:none!important}
 .dp-top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 4px}
