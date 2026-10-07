@@ -181,3 +181,22 @@ paint is unchanged at **150.9 kB gz** against the 180 kB budget.
 
 Tests: 13 files, **284 passing** (was 276). `home-*.js` grows to 16.21 kB gz;
 first paint is unchanged at 150.9 kB gz.
+
+## E2E — Pixel 7 and iPhone 14
+
+`playwright.config.ts` now runs two projects, `pixel7` (Android Chromium) and
+`iphone14` (WebKit), because the two differ in ways this app cares about:
+safe-area insets, `backdrop-filter` cost, haptics (Android only) and scroll
+chaining. Traces, screenshots and video are retained on failure only.
+
+`tests/e2e/v5.spec.ts` adds 11 specs: the shell mounts into `#s-feed`, the
+legacy tab rail still works, the budget shows 15 pips and spends one on a
+right-swipe, the enabled sub-pages page correctly, Verdict/Forecast stay hidden
+until configured, the Vault reads the same store as the deck, NHIE plays a full
+twelve with two buttons and no free text, the flag gate proves an unflagged
+build renders the pre-v5 app, and two budget checks (first-paint JS < 180 kB
+transferred, CLS < 0.05).
+
+`npx playwright test --list` resolves **50 tests across 5 files**. They cannot
+execute in this sandbox — the Playwright browser CDN is unreachable — so they
+are committed to run anywhere with `npx playwright install chromium webkit`.
