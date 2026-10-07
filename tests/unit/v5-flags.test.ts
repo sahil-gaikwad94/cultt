@@ -1,14 +1,15 @@
 /**
  * The v5 flag gate — the seam every v5 screen hangs off.
  *
- * This is the one piece of config that decides whether a user sees the old app
- * or the new one, and it was entirely untested. The two failures it guards
- * against are mirror images of each other:
+ * v5 *is* the app, so the shell is on by default. The flags survive only as a
+ * kill-switch: `?v5=0` drops the whole thing back to the legacy shell, and an
+ * explicit per-screen value overrides either way. The two failures this guards
+ * against are mirror images:
  *
- *   - a flag defaulting to `true` ships a half-built screen to everyone, which
- *     is the acceptance criterion "no half-built screens visible";
- *   - a flag failing to resolve from `?v5=1` means the work is invisible and
- *     the preview shows nothing.
+ *   - a screen silently defaulting off ships the legacy app to everyone, which
+ *     is the regression the v5 work exists to prevent;
+ *   - the kill-switch failing to resolve means a bad surface cannot be turned
+ *     off without a redeploy.
  *
  * Every key is asserted, not sampled: adding a sixth screen and forgetting to
  * wire its resolution is exactly the mistake this catches.
@@ -39,9 +40,9 @@ describe('the v5 flag gate', () => {
     delete (window as unknown as { CULTURED_CONFIG?: unknown }).CULTURED_CONFIG;
   });
 
-  it('defaults every screen off, so main ships nothing half-built', () => {
+  it('defaults every screen on, because v5 is the app', () => {
     const { v5 } = readV5Config();
-    for (const key of V5_KEYS) expect(v5[key], `${key} should default off`).toBe(false);
+    for (const key of V5_KEYS) expect(v5[key], `${key} should default on`).toBe(true);
   });
 
   it('matches DEFAULT_CONFIG, so the literal and the resolver cannot drift', () => {
@@ -51,42 +52,48 @@ describe('the v5 flag gate', () => {
     expect(Object.keys(v5).sort()).toEqual([...V5_KEYS].sort());
   });
 
-  it('turns the whole shell on with ?v5=1', () => {
+  it('stays on under ?v5=1 (the explicit form of the default)', () => {
     setUrl('?v5=1');
     const { v5 } = readV5Config();
     for (const key of V5_KEYS) expect(v5[key], `${key} should be on under ?v5=1`).toBe(true);
   });
 
-  it('ignores ?v5=0 and any other value', () => {
-    for (const search of ['?v5=0', '?v5=true', '?v5', '?v5=']) {
+  it('drops the whole shell back to legacy under ?v5=0', () => {
+    setUrl('?v5=0');
+    const { v5 } = readV5Config();
+    for (const key of V5_KEYS) expect(v5[key], `${key} should be off under ?v5=0`).toBe(false);
+  });
+
+  it('treats any other ?v5 value as the default (on)', () => {
+    for (const search of ['?v5=true', '?v5', '?v5=', '?v5=maybe']) {
       setUrl(search);
       const { v5 } = readV5Config();
-      for (const key of V5_KEYS) expect(v5[key], `${key} should stay off for ${search}`).toBe(false);
+      for (const key of V5_KEYS) expect(v5[key], `${key} should stay on for ${search}`).toBe(true);
     }
   });
 
-  it('lets one explicit key opt a single screen in on its own', () => {
-    setConfig({ home: true });
-    const { v5 } = readV5Config();
-    expect(v5.home).toBe(true);
-    expect(v5.matrix).toBe(false);
-    expect(v5.arena).toBe(false);
-  });
-
-  it('lets one explicit key opt a single screen back out of ?v5=1', () => {
-    setUrl('?v5=1');
+  it('lets one explicit key turn a single screen off on its own', () => {
     setConfig({ home: false });
     const { v5 } = readV5Config();
-    // The documented escape hatch: turn the shell on, take one screen back.
     expect(v5.home).toBe(false);
     expect(v5.matrix).toBe(true);
-    expect(v5.people).toBe(true);
+    expect(v5.arena).toBe(true);
+  });
+
+  it('lets one explicit key turn a single screen back on under ?v5=0', () => {
+    setUrl('?v5=0');
+    setConfig({ home: true });
+    const { v5 } = readV5Config();
+    // The escape hatch in reverse: kill the shell, keep one surface.
+    expect(v5.home).toBe(true);
+    expect(v5.matrix).toBe(false);
+    expect(v5.people).toBe(false);
   });
 
   it('survives a missing window.location without throwing', () => {
-    // hasParam wraps URLSearchParams in try/catch for non-browser contexts.
+    // getParam wraps URLSearchParams in try/catch for non-browser contexts.
     expect(() => readV5Config(null)).not.toThrow();
-    expect(readV5Config(null).v5.home).toBe(false);
+    expect(readV5Config(null).v5.home).toBe(true);
   });
 });
 
@@ -122,7 +129,7 @@ describe('the demo gate', () => {
 
   it('is independent of the v5 shell flag', () => {
     setUrl('?v5=1');
-    // ?v5=1 turns the screens on but must not smuggle in fake people.
+    // The shell being on must not smuggle in fake people.
     const config = readV5Config();
     expect(config.v5.home).toBe(true);
     expect(config.demo).toBe(false);

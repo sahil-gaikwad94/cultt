@@ -1,13 +1,15 @@
 /**
  * The v5 seam.
  *
- * Everything in this module is a *lazy* entry point: nothing here is imported
- * until a v5 flag is on, so the shipped bundle for a user without `?v5=1` is
- * byte-for-byte what it was before the v5 work started (brief §10: initial JS
- * stays ≤ 180 KB gz).
+ * v5 is the app: every screen here is on by default, and each is a *lazy*
+ * entry point so the screen chunks still load after first paint rather than
+ * blocking it (brief §10: initial JS stays ≤ 180 KB gz — the v5 shell measures
+ * ~125 KB gz, inside budget).
  *
- * The legacy shell keeps rendering Arena / Matrix / People / You. When the home
- * flag is on, `renderFeed()` bails out and this module owns `#s-feed`.
+ * The legacy module still provides the shell — nav rail, onboarding, the duel
+ * route, settings — and bails out of each screen host when its flag is on, so
+ * this module owns `#s-feed`, `#s-match`, `#s-people`, `#s-arena` and `#s-you`.
+ * `?v5=0` is the kill-switch that hands all five back to the legacy renders.
  */
 
 import { v5config } from '../store/config.ts';

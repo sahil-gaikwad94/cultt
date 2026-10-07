@@ -389,3 +389,23 @@ caught the empty-pool bug.
 
 Tests 22 files / **383 passing**; `tsc --noEmit`, eslint, and the
 `ALLOW_UNLICENSED=1` build all clean.
+
+## v5 is the app — the flags are now a kill-switch
+
+Every `v5config.v5` screen defaults **on**; `?v5=0` is the kill-switch back to
+the legacy shell, and an explicit per-screen `false` drops one surface. The
+default path `/` is the v5 app — no `?v5=1` needed (D-36).
+
+The last legacy screen is gone: the You tab now mounts the v5 profile-as-a-wall
+into `#s-you` (`mountProfile(host, { embedded: true })`), and `renderYou()` bails
+on `v5.profile`. The profile gained an `embedded` mode — no dialog role, no
+close button — for when the wall is the screen rather than a layer.
+
+`v5-flags.test.ts` was rewritten for the inverted default (on by default, `?v5=0`
+off, explicit keys override either way), and `v5-surfaces.test.ts` now covers the
+embedded profile. The e2e suite exercises `/` as the v5 app and `?v5=0` as the
+legacy fallback.
+
+Tests 22 files / **386 passing**; `tsc --noEmit`, eslint, and the
+`ALLOW_UNLICENSED=1` build all clean. First-paint JS on the default (v5) path is
+124.08 KiB gz, inside the 180 KiB budget.

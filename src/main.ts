@@ -95,6 +95,16 @@ const boot = async () => {
       mountArena(host);
     }
   }
+
+  /* The "You" tab is the last legacy screen; the v5 profile-as-a-wall owns it
+     now, mounted into #s-you through the same seam as the others. */
+  if (v5config.v5.profile) {
+    const host = document.getElementById('s-you');
+    if (host) {
+      const { mountProfile } = await import('./v5/profile');
+      mountProfile(host, { embedded: true });
+    }
+  }
 };
 
 void boot();

@@ -520,3 +520,31 @@ production build, so the personas tree-shake out of the shipped bundle —
 prefix would gate them at runtime but still ship them. In dev the personas now
 cost one query param instead of being on by default. This mirrors the v5 `demo`
 gate (`?demo=1`), so the invented population is never the default path anywhere.
+
+### D-36 · v5 is the app, not a flag
+
+Until now every v5 screen defaulted off and `?v5=1` turned the shell on, so the
+shipping app was the legacy one and v5 read as a prototype bolted to the side.
+That framing was wrong: v5 is the product. The defaults are flipped — every key
+in `v5config.v5` is `true` — and the flags survive only as a kill-switch.
+`?v5=0` hands all five screen hosts back to the legacy renders; an explicit
+per-screen `false` drops one surface without a redeploy. `readV5Config` resolves
+`shellDefault = getParam('v5') !== '0'`, so the default path `/` is the v5 app
+and the only way to reach legacy is to ask for it.
+
+This also retired the last legacy screen. The You tab was still `renderYou()`;
+`main.ts` now mounts `mountProfile(host, { embedded: true })` into `#s-you`, and
+`renderYou()` bails on `v5.profile`. The profile grew an `embedded` mode for
+this: no `role="dialog"`, no `aria-modal`, no close button, because when the wall
+*is* the screen there is nothing to close back to. Opened as a layer from the
+Home avatar it is still a modal.
+
+What did **not** change: the legacy module still provides the shell — nav rail,
+onboarding, the duel route, settings — and the honesty rules. The personas stay
+behind `?demo=1` (D-35), and the production bundle still tree-shakes them out
+(D-27). Flipping v5 on does not smuggle in fake people; the demo gate is
+independent of the shell flag, and `v5-flags.test.ts` asserts exactly that.
+
+The §4.1.3–§4.1.7 legacy screen bugs (D-33) are now reachable only through the
+`?v5=0` kill-switch rather than on the default path. Onboarding and the shell
+remain legacy for everyone, so the age gate (D-32) still matters.

@@ -138,6 +138,12 @@ export interface ProfileOptions {
   onClose?: () => void;
   /** Opens a slot's source item in the Deck. */
   onOpenItem?: (kind: ItemKind, id: string) => void;
+  /**
+   * Mounted as the "You" tab inside `#s-you` rather than as a modal layer.
+   * Drops the dialog semantics and the close button — there is nothing to
+   * close back to when the wall *is* the screen.
+   */
+  embedded?: boolean;
 }
 
 const tile = (slot: WallSlot, editing: boolean) => `<button type="button" class="v5-wall-tile ${editing ? 'is-editing' : ''}" data-key="${esc(slot.key)}" data-kind="${slot.kind}" data-id="${esc(slot.id)}" aria-label="${esc(slot.alt)}">
@@ -149,9 +155,14 @@ export const mountProfile = (host: HTMLElement, options: ProfileOptions = {}): P
   const store = getStore();
   let editing = false;
 
+  const embedded = options.embedded === true;
   const root = el<HTMLDivElement>('div', 'v5-profile');
-  root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-modal', 'true');
+  if (embedded) {
+    root.setAttribute('role', 'region');
+  } else {
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+  }
   root.setAttribute('aria-label', 'Your profile');
 
   /* The Fingerprint canvas is recreated on every repaint, so the previous
@@ -163,7 +174,11 @@ export const mountProfile = (host: HTMLElement, options: ProfileOptions = {}): P
 
     root.innerHTML = `
       <header class="v5-profile-head">
-        <button type="button" class="v5-icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        ${
+          embedded
+            ? ''
+            : '<button type="button" class="v5-icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'
+        }
         <h2>Your wall</h2>
         <button type="button" class="v5-icon-btn" data-edit aria-pressed="${editing}" aria-label="Edit the wall"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z"/></svg></button>
       </header>

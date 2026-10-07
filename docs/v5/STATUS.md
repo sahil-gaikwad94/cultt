@@ -108,18 +108,21 @@ Working branch: `arena/692eddb5-cultt`. Baseline commit: `53e05ea`.
 
 ### The flag gate
 
-Every v5 screen sits behind `v5config.v5.{intro,home,vault,profile,stories}`,
-all `false` by default, `?v5=1` turns the shell on. `main.ts` reaches
-`src/v5/mount.ts` only through a dynamic import and `legacy.ts` bails out of
-`renderFeed()` on the same flag, so an unflagged build renders byte-for-byte the
-pre-v5 app. `tests/e2e/v5.spec.ts` asserts exactly that.
+v5 is the app. Every screen in `v5config.v5.{intro,home,vault,profile,stories,
+matrix,people,arena}` defaults **on**; `main.ts` mounts each v5 screen into its
+tab host through a dynamic import, and `legacy.ts` bails out of the matching
+`render*()` on the same flag. The flags survive only as a kill-switch: `?v5=0`
+hands all five hosts back to the legacy renders, and an explicit per-screen
+`false` drops one surface without a redeploy. `tests/e2e/v5.spec.ts` exercises
+the default `/` path and asserts the `?v5=0` fallback still renders the legacy
+shell.
 
 ### Verified at HEAD
 
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 383 passed / 22 files   (baseline 140 / 6)
+npx vitest run     → 386 passed / 22 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
@@ -161,20 +164,22 @@ What was **not** executed: anything needing a real browser. See below.
   it runs with network.
 - Bugs §4.1.3–§4.1.7 are **not all fixed**: card ghosting during Deck swaps, the
   remaining overlap/clipping set, the `OB.photoChecked` state leak, the garbled
-  reveal name, and the "0%" flash. **The earlier note that these "live on
-  screens Phase 1–3 replace" no longer holds** — every v5 flag defaults off, so
-  `main` ships the legacy screens and these are live for every user (D-33). The
-  age-gate bypass in D-32 was found on exactly this path. Remaining ones should
-  be treated as production bugs, not deferred scaffolding.
+  reveal name, and the "0%" flash. These live on the *legacy* screen renders,
+  which v5 now replaces by default — so they are reachable only through the
+  `?v5=0` kill-switch, not on the default path. The exception is onboarding and
+  the app shell (nav, settings, the duel route), which are still legacy for
+  everyone; the age-gate bypass in D-32 was found on exactly that path and is
+  fixed. The remaining §4.1 items should be treated as kill-switch-path bugs,
+  not deferred scaffolding.
 - **Resolved since Phase 0.1:** the text-meme generator, its 122 generated
   cards and the 13 hand-written ones are deleted; `src/data/seed/memes.ts` is a
   70-line adapter over the real manifest, and the Deck renders the 20 real
   images in `public/memes/`.
-- **All five tabs now have a v5 screen**, each behind its own flag:
-  `v5.home`, `v5.matrix`, `v5.people`, `v5.arena`, plus `v5.vault`,
-  `v5.profile` and `v5.stories` as layers. Each mounts into the existing tab
-  host, so the nav rail, deep links and the legacy shell all keep working, and
-  `?v5=1` turns the whole set on at once.
+- **All five tabs are v5 screens, on by default**: `v5.home`, `v5.matrix`,
+  `v5.people`, `v5.arena` and `v5.profile` (the You tab, mounted into `#s-you`
+  in embedded mode), plus `v5.vault` and `v5.stories` as layers. Each mounts
+  into the existing tab host, so the nav rail, deep links and the legacy shell
+  keep working. `?v5=0` is the kill-switch back to the legacy renders.
 - **Phase 4's sharing/viral loops are partially landed.** The duel link
   (`/d/:id`) is the real viral loop and is intact; the v5 share sheet was
   narrowed to actions that actually work (D-30). What has *not* landed is new
@@ -208,8 +213,8 @@ production build.
 
 | configuration | first-paint JS | vs 180 KiB budget |
 |---|---:|---:|
-| v5 flags off | 87.57 KiB gz | +92.43 headroom |
-| v5 flags on (`?v5=1`) | 124.08 KiB gz | +55.92 headroom |
+| v5 app (default) | 124.08 KiB gz | +55.92 headroom |
+| legacy shell (`?v5=0` kill-switch) | 87.57 KiB gz | +92.43 headroom |
 
 Getting there took one change: making the Supabase client a dynamic import
 (D-29), after `src/data/index.ts` was found to be putting 63 KiB gz of an

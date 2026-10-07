@@ -47,6 +47,7 @@ const V5_VAULT=v5config.v5.vault;
 const V5_MATRIX=v5config.v5.matrix;
 const V5_PEOPLE=v5config.v5.people;
 const V5_ARENA=v5config.v5.arena;
+const V5_PROFILE=v5config.v5.profile;
 let v5VaultHandle=null;
 const openV5Vault=async()=>{
   if(v5VaultHandle)return;
@@ -1513,6 +1514,9 @@ ACT['s-recap']=()=>{
 
 /* ================= you (Cultural Fingerprint) ================= */
 function renderYou(){
+  /* The v5 profile owns #s-you when its flag is on (it is, by default). main.ts
+     mounts it into the host, same seam as Matrix/People/Arena. */
+  if(V5_PROFILE)return;
   const pr=S.prof,mine=fpParams(mineSeed());
   const P=youPal(),bgS=pr.bg||'rings';
   /* v5: both numbers come from the store, so a save made on a corpus meme in

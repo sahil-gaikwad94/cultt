@@ -31,9 +31,10 @@ export interface V5Config {
   /** `?demo=1` or an explicit opt-in. Never on by default. */
   demo: boolean;
   /**
-   * v5 screen rollout. Every v5 screen lives behind one of these so `main`
-   * stays deployable while the rest is still being built — a half-built screen
-   * is never reachable by default.
+   * v5 screen rollout. v5 *is* the app: every screen defaults on. The flags
+   * remain as a kill-switch — `?v5=0` (or an explicit `false` per screen) drops
+   * back to the legacy shell — so a regression on one surface can be turned off
+   * without a redeploy. They are no longer a rollout gate.
    */
   v5: {
     intro: boolean;
@@ -58,8 +59,9 @@ export const DEFAULT_CONFIG: V5Config = {
   },
   deferAuthToAfterReveal: true,
   demo: false,
-  /* Off by default: the v5 shell is opt-in (`?v5=1`) until Phase 2 is signed off. */
-  v5: { intro: false, home: false, vault: false, profile: false, stories: false, matrix: false, people: false, arena: false },
+  /* v5 is the app: every screen is on by default. `?v5=0` is the kill-switch
+     back to the legacy shell; see readV5Config. */
+  v5: { intro: true, home: true, vault: true, profile: true, stories: true, matrix: true, people: true, arena: true },
 };
 
 interface RawConfig {
@@ -75,14 +77,16 @@ interface RawConfig {
 
 const isFinitePositive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
 
-const hasParam = (name: string): boolean => {
-  if (typeof window === 'undefined') return false;
+const getParam = (name: string): string | null => {
+  if (typeof window === 'undefined') return null;
   try {
-    return new URLSearchParams(window.location.search).get(name) === '1';
+    return new URLSearchParams(window.location.search).get(name);
   } catch {
-    return false;
+    return null;
   }
 };
+
+const hasParam = (name: string): boolean => getParam(name) === '1';
 
 const hasDemoOptIn = (): boolean => hasParam('demo');
 
@@ -120,20 +124,22 @@ export const readV5Config = (raw?: RawConfig | null): V5Config => {
     deferAuthToAfterReveal:
       source?.deferAuthToAfterReveal === undefined ? DEFAULT_CONFIG.deferAuthToAfterReveal : !!source.deferAuthToAfterReveal,
     demo: source?.demo === true || hasDemoOptIn(),
-    /* `?v5=1` turns the whole shell on; a single key can opt one screen in or
-       out on its own (`?v5=0&...` is not supported — the config object is). */
+    /* v5 is the app, so the shell is on by default. `?v5=0` is the kill-switch
+       back to the legacy shell; an explicit per-screen value in the config
+       object overrides either way (so one surface can be turned off, or turned
+       back on under `?v5=0`, without touching the others). */
     v5: (() => {
-      const optIn = hasParam('v5');
+      const shellDefault = getParam('v5') !== '0';
       const explicit = source?.v5;
       return {
-        intro: explicit?.intro ?? optIn,
-        home: explicit?.home ?? optIn,
-        vault: explicit?.vault ?? optIn,
-        profile: explicit?.profile ?? optIn,
-        stories: explicit?.stories ?? optIn,
-        matrix: explicit?.matrix ?? optIn,
-        people: explicit?.people ?? optIn,
-        arena: explicit?.arena ?? optIn,
+        intro: explicit?.intro ?? shellDefault,
+        home: explicit?.home ?? shellDefault,
+        vault: explicit?.vault ?? shellDefault,
+        profile: explicit?.profile ?? shellDefault,
+        stories: explicit?.stories ?? shellDefault,
+        matrix: explicit?.matrix ?? shellDefault,
+        people: explicit?.people ?? shellDefault,
+        arena: explicit?.arena ?? shellDefault,
       };
     })(),
   };

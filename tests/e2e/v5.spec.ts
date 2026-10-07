@@ -3,12 +3,14 @@ import { expect, test } from '@playwright/test';
 /**
  * The v5 shell, end to end.
  *
- * Everything here runs with `?v5=1`, which is the only way the v5 screens are
- * reachable: without the flag the app must render exactly what it rendered
- * before the v5 work started, and the last test in this file asserts that.
+ * v5 is the app, so the default path `/` renders the v5 screens — that is what
+ * these tests exercise. `?v5=0` is the kill-switch that hands the five screen
+ * hosts back to the legacy renders; the last test in this file asserts that
+ * fallback still works.
  */
 
-const V5 = '/?v5=1';
+const V5 = '/';
+const LEGACY = '/?v5=0';
 
 test.describe('v5 shell', () => {
   test.beforeEach(async ({ page }) => {
@@ -25,12 +27,13 @@ test.describe('v5 shell', () => {
     await expect(page.locator('.v5-logo')).toContainText('cultured');
   });
 
-  test('keeps the legacy tab rail working underneath', async ({ page }) => {
+  test('keeps the tab rail working over the v5 screens', async ({ page }) => {
     await page.goto(V5);
     await expect(page.locator('#nav')).toBeVisible();
-    // The other screens are still the legacy ones and still render.
+    // The nav still drives the hosts; the You tab is the v5 wall now.
     await page.locator('#nav button, #nav a').nth(4).click();
     await expect(page.locator('#s-you')).toBeVisible();
+    await expect(page.locator('#s-you .v5-profile')).toBeVisible();
   });
 
   test('shows the laugh budget as 15 pips and spends one on a laugh', async ({ page }) => {
@@ -123,9 +126,9 @@ test.describe('v5 shell', () => {
 });
 
 test.describe('the flag gate', () => {
-  test('renders the pre-v5 app with no flag at all', async ({ page }) => {
+  test('hands the screens back to the legacy shell under ?v5=0', async ({ page }) => {
     await page.addInitScript(() => localStorage.clear());
-    await page.goto('/');
+    await page.goto(LEGACY);
     // No v5 chrome anywhere.
     await expect(page.locator('.v5-home')).toHaveCount(0);
     await expect(page.locator('.v5-topbar')).toHaveCount(0);
