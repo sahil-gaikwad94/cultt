@@ -215,3 +215,32 @@ state instead of mid-flight.
 
 This is also what makes the v5 screens testable in jsdom without stubbing
 WAAPI: `v5-nhie.test.ts` drives the whole round by clicking.
+
+
+### D-19 · All four Home sub-pages exist; the two chosen are enabled
+The brief fixes `HOME_YESTERDAY_SUBPAGE=Y1 (Receipts)` and
+`HOME_TOMORROW_SUBPAGE=T1 (The Draft)`, and requires the other two to exist
+behind flags. Until now the pager offered `verdict` and `forecast` labels while
+the render switch fell through to `renderDraft()` — so flipping
+`homeYesterdaySubPage` to `verdict` would have shown the Draft under a Verdict
+tab. Both are now real:
+
+- **Y2 The Verdict** (`verdictFor`) reads yesterday's reactions back as an
+  archetype, a ranked axis breakdown, a top reaction and a Fingerprint clarity
+  percentage. It is pure over `(state, now)`, so the tests pin it. Clarity is
+  the top axis's share of the day: 1 for a day on one axis, ~0.17 for a day
+  spread across six. Below two axes it says "Still developing" rather than
+  naming an archetype from noise.
+- **T2 Forecast** (`forecastIndex`) is a deterministic FNV-1a hash of the local
+  day key over the six weather lines in the copy deck, so everyone gets the same
+  forecast on the same day and it does not reshuffle on every render.
+
+Both are reachable only by setting `window.CULTURED_CONFIG.homeYesterdaySubPage`
+/ `homeTomorrowSubPage`; the defaults are still Receipts and The Draft.
+
+### D-20 · Axis ids never reach the screen
+`dry_wit` is a storage and matching-engine id. `axisLabel()` in
+`src/copy/taxonomy.ts` maps all six to display words, and the Verdict test
+asserts no rendered label contains an underscore. The helper lives in the copy
+layer, not inline in the screen, so the next surface that shows an axis gets the
+same words.

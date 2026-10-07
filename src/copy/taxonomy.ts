@@ -11,6 +11,22 @@
 export const HUMOR_AXES = ['deadpan', 'absurdist', 'dry_wit', 'chaotic', 'wholesome', 'niche_refs'] as const;
 export type HumorAxis = (typeof HUMOR_AXES)[number];
 
+/**
+ * Axis id → the words a user reads. The ids are snake_case for storage and for
+ * the matching engine; nobody should ever see `dry_wit` on a screen.
+ */
+const AXIS_LABELS: Record<HumorAxis, string> = {
+  deadpan: 'Deadpan',
+  absurdist: 'Absurdist',
+  dry_wit: 'Dry wit',
+  chaotic: 'Chaotic',
+  wholesome: 'Wholesome',
+  niche_refs: 'Niche refs',
+};
+
+export const axisLabel = (axis: string): string =>
+  AXIS_LABELS[axis as HumorAxis] ?? axis.replace(/_/g, ' ');
+
 /** Single-letter codes used by the archetype table. */
 export const AXIS_CODE: Record<HumorAxis, string> = {
   deadpan: 'D',

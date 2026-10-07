@@ -166,3 +166,18 @@ WAAPI guard.
 
 Bundle: `nhie-screen-*.js` is a separate lazy chunk at **2.02 kB gz**. First
 paint is unchanged at **150.9 kB gz** against the 180 kB budget.
+
+## Phase 2 (completed) — the last two Home sub-pages
+
+- **The Verdict** (Y2) and **Forecast** (T2) are implemented, so all four Home
+  sub-pages exist as the brief requires and only the chosen pair is enabled.
+  Previously the pager offered both labels while the render switch fell through
+  to the Draft, so flipping the config would have shown the wrong screen.
+- `verdictFor(state, now)` is pure: archetype, ranked axes, top reaction and
+  Fingerprint clarity, over the yesterday window only.
+- `forecastIndex(dayKey, options)` is a deterministic FNV-1a hash, so the
+  forecast is stable per day for everyone and never reshuffles on re-render.
+- `axisLabel()` added to the copy layer; axis ids no longer reach a screen.
+
+Tests: 13 files, **284 passing** (was 276). `home-*.js` grows to 16.21 kB gz;
+first paint is unchanged at 150.9 kB gz.

@@ -13,17 +13,17 @@
  */
 
 import { copy } from '../copy/index.ts';
-import { memeCategoryName } from '../copy/taxonomy.ts';
+import { archetypeFor, axisLabel, memeCategoryName } from '../copy/taxonomy.ts';
 import { getStore } from '../store/index.ts';
 import type { StoreState } from '../store/index.ts';
 import { laughBudget } from '../store/selectors.ts';
 import { v5config } from '../store/config.ts';
 import { contentStats, servableMemes, songs as songManifest, toPlayable } from '../content/index.ts';
 import { getAudio } from './audio.ts';
-import { createDeck, decideGesture, dragRotation, impactFor, limitSheetCopy, memeArt, placardFor, rubberBand } from './deck.ts';
+import { axisAffinity, createDeck, decideGesture, dragRotation, impactFor, limitSheetCopy, memeArt, placardFor, rubberBand } from './deck.ts';
 import type { DeckItem } from './deck.ts';
 import { createContour } from './contour.ts';
-import { createFxLayer, openReactionTray, reactionName, trayFor } from './reactions.ts';
+import { axisVector, createFxLayer, openReactionTray, reactionName, trayFor } from './reactions.ts';
 import { haptics } from '../lib/haptics.ts';
 import { animate } from '../lib/waapi.ts';
 import { getQuality } from './quality.ts';
@@ -570,6 +570,147 @@ const renderDraft = (): HTMLElement => {
   return node;
 };
 
+/* ---------------------------------------------------------------- verdict */
+
+export interface Verdict {
+  /** The archetype the day's reactions point at, or null below two axes. */
+  archetype: { name: string; line: string } | null;
+  /** Ranked axes with a share of the day's reactions, highest first. */
+  axes: { axis: string; label: string; share: number }[];
+  laughs: number;
+  saves: number;
+  topReaction: { emoji: string; count: number } | null;
+  /** 0..1 — how far the day's reactions concentrate on one axis. */
+  clarity: number;
+}
+
+/**
+ * Yesterday's reactions, read back as a verdict.
+ *
+ * Pure, so the tests can pin it: same state and same window, same verdict.
+ * Clarity is the top axis's share of the day — a day spent entirely on one axis
+ * reads 1, a day spread evenly across six reads ~0.17.
+ */
+export const verdictFor = (
+  state: Parameters<typeof axisAffinity>[0],
+  now: number = Date.now(),
+): Verdict => {
+  const start = new Date(now - 86400000);
+  const from = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const to = from + 86400000;
+
+  const reactions = state.reactions.filter((r) => r.ts >= from && r.ts < to);
+  const saves = state.saves.filter((sv) => sv.ts >= from && sv.ts < to);
+
+  const vector = axisVector(reactions);
+  const total = Object.values(vector).reduce((sum, v) => sum + (v ?? 0), 0) || 1;
+  const axes = Object.entries(vector)
+    .map(([axis, value]) => ({ axis, label: axisLabel(axis), share: (value ?? 0) / total }))
+    .sort((a, b) => b.share - a.share);
+
+  const tally = new Map<string, number>();
+  for (const reaction of reactions) tally.set(reaction.emoji, (tally.get(reaction.emoji) ?? 0) + 1);
+  const topReaction = [...tally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([emoji, count]) => ({ emoji, count }))[0] ?? null;
+
+  const found = archetypeFor(vector);
+  return {
+    archetype: found ? { name: found.archetype.name, line: found.archetype.line } : null,
+    axes,
+    laughs: reactions.length,
+    saves: saves.length,
+    topReaction,
+    clarity: axes[0]?.share ?? 0,
+  };
+};
+
+const renderVerdict = (): HTMLElement => {
+  const node = el<HTMLDivElement>('div', 'v5-subpage v5-verdict');
+  const verdict = verdictFor(getStore().getState());
+
+  if (!verdict.laughs && !verdict.saves) {
+    node.innerHTML = '<div class="v5-empty"><h3>No verdict yet.</h3><p>React to something yesterday-shaped and this fills in.</p></div>';
+    return node;
+  }
+
+  const bars = verdict.axes
+    .filter((axis) => axis.share > 0)
+    .slice(0, 4)
+    .map(
+      (axis) => `<div class="v5-v-row">
+        <span class="v5-v-label">${esc(axis.label)}</span>
+        <span class="v5-v-track"><i style="transform:scaleX(${axis.share.toFixed(3)})"></i></span>
+        <span class="v5-v-pct">${Math.round(axis.share * 100)}%</span>
+      </div>`,
+    )
+    .join('');
+
+  node.innerHTML = `
+    <header class="v5-verdict-head">
+      <span class="v5-kicker">Yesterday's verdict</span>
+      <h3>${esc(verdict.archetype?.name ?? 'Still developing')}</h3>
+      <p>${esc(verdict.archetype?.line ?? 'Two distinct axes and an archetype appears.')}</p>
+    </header>
+    <div class="v5-verdict-body">
+      <div class="v5-v-bars">${bars}</div>
+      <dl class="v5-v-totals">
+        <div><dt>laughs</dt><dd>${verdict.laughs}</dd></div>
+        <div><dt>saves</dt><dd>${verdict.saves}</dd></div>
+        <div><dt>${esc(copy.fingerprintClarity)}</dt><dd>${Math.round(verdict.clarity * 100)}%</dd></div>
+      </dl>
+      ${
+        verdict.topReaction
+          ? `<p class="v5-v-top">Most used: <b>${esc(verdict.topReaction.emoji)}</b> ×${verdict.topReaction.count}</p>`
+          : ''
+      }
+    </div>`;
+  return node;
+};
+
+/* --------------------------------------------------------------- forecast */
+
+/** Deterministic per local day, so everyone gets the same forecast today. */
+export const forecastIndex = (dayKey: string, options: number): number => {
+  let hash = 2166136261;
+  for (let i = 0; i < dayKey.length; i += 1) {
+    hash ^= dayKey.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash) % Math.max(1, options);
+};
+
+const renderForecast = (): HTMLElement => {
+  const node = el<HTMLDivElement>('div', 'v5-subpage v5-forecast');
+  const tomorrow = new Date(Date.now() + 86400000);
+  const dayKey = `${tomorrow.getFullYear()}${tomorrow.getMonth()}${tomorrow.getDate()}`;
+  const weather = copy.forecast.weather[forecastIndex(dayKey, copy.forecast.weather.length)]!;
+  const stats = contentStats();
+  const pool = servableMemes(true);
+  const teaser = pool[forecastIndex(dayKey, Math.max(1, pool.length))];
+
+  node.innerHTML = `
+    <header class="v5-forecast-head">
+      <span class="v5-kicker">${esc(tomorrow.toLocaleDateString([], { weekday: 'long' }))}</span>
+      <p class="v5-f-emoji" aria-hidden="true">${esc(weather.emoji)}</p>
+      <h3>${esc(weather.label)}</h3>
+    </header>
+    <dl class="v5-f-facts">
+      <div><dt>arriving</dt><dd>${stats.memes + stats.songs}</dd></div>
+      <div><dt>at</dt><dd>09:00</dd></div>
+      <div><dt>laughs</dt><dd>${v5config.laughsPerDay}</dd></div>
+    </dl>
+    ${
+      teaser
+        ? `<figure class="v5-f-teaser">
+            <div class="v5-frame"><img src="${esc(memeArt(teaser).src)}" alt=""></div>
+            <figcaption>A hint. That's all you get.</figcaption>
+          </figure>`
+        : ''
+    }`;
+  return node;
+};
+
 const renderToday = (context: CardContext): HTMLElement => {
   const node = el<HTMLDivElement>('div', 'v5-subpage v5-today');
   const stats = contentStats();
@@ -729,7 +870,16 @@ export const renderHome = (host: HTMLElement, hooks: { onOpenVault: () => void; 
   const buildPage = (tab: string): HTMLElement => {
     const existing = pages.get(tab);
     if (existing) return existing;
-    const page = tab === 'today' ? renderToday(context) : tab === 'receipts' ? renderReceipts() : renderDraft();
+    const page =
+      tab === 'today'
+        ? renderToday(context)
+        : tab === 'receipts'
+          ? renderReceipts()
+          : tab === 'verdict'
+            ? renderVerdict()
+            : tab === 'forecast'
+              ? renderForecast()
+              : renderDraft();
     page.dataset.tab = tab;
     pages.set(tab, page);
     return page;

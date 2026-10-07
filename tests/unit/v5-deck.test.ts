@@ -23,6 +23,7 @@ import { CAPS, classify } from '../../src/v5/quality';
 import { fisheye, layoutTray, trayFor } from '../../src/v5/reactions';
 import { waveformFor } from '../../src/v5/audio';
 import { createStore } from '../../src/store';
+import { forecastIndex, verdictFor } from '../../src/v5/home';
 import { HUMOR_AXES, MEME_CATEGORY_SLUGS } from '../../src/copy/taxonomy';
 import type { MemeEntry, SongEntry } from '../../src/content/types';
 
@@ -337,5 +338,109 @@ describe('waveformFor', () => {
   it('never touches a network — no audio element, no fetch', () => {
     // jsdom has neither; if the module reached for one it would throw here.
     expect(() => waveformFor('x', 16)).not.toThrow();
+  });
+});
+
+describe('the Verdict sub-page', () => {
+  const T0 = Date.parse('2026-10-07T12:00:00.000Z');
+  /* store.react() stamps `ts` with the store clock, which is T0 — today. The
+     verdict reads yesterday, so the fixture backdates each reaction into that
+     window rather than pretending the clock did it. */
+  const IN_WINDOW = T0 - 26 * 3600_000;
+  const OUT_OF_WINDOW = T0 - 5 * 86400000;
+
+  const storeWith = (reactions: { emoji: string; itemId: string; ts?: number }[]) => {
+    const store = createStore({ storage: null, legacy: null, now: () => T0 });
+    for (const reaction of reactions) {
+      store.react({ kind: 'meme', itemId: reaction.itemId, emoji: reaction.emoji });
+    }
+    const state = store.getState();
+    reactions.forEach((reaction, index) => {
+      const stored = state.reactions.find((r) => r.itemId === reaction.itemId);
+      if (stored) stored.ts = reaction.ts ?? IN_WINDOW;
+      void index;
+    });
+    return store;
+  };
+
+  it('reports nothing when yesterday was quiet', () => {
+    const store = createStore({ storage: null, legacy: null, now: () => T0 });
+    const verdict = verdictFor(store.getState(), T0);
+    expect(verdict.laughs).toBe(0);
+    expect(verdict.saves).toBe(0);
+    expect(verdict.archetype).toBe(null);
+    expect(verdict.axes).toEqual([]);
+    expect(verdict.clarity).toBe(0);
+  });
+
+  it('counts only the yesterday window, not the whole history', () => {
+    const store = storeWith([
+      { emoji: '🗿', itemId: 'a' },
+      { emoji: '🗿', itemId: 'b', ts: OUT_OF_WINDOW },
+    ]);
+    const verdict = verdictFor(store.getState(), T0);
+    expect(verdict.laughs).toBe(1);
+  });
+
+  it('names an archetype once two axes are in play', () => {
+    const store = storeWith([
+      { emoji: '🗿', itemId: 'a' }, // deadpan
+      { emoji: '🫠', itemId: 'b' }, // dry wit
+      { emoji: '🫠', itemId: 'c' },
+    ]);
+    const verdict = verdictFor(store.getState(), T0);
+    expect(verdict.laughs).toBe(3);
+    expect(verdict.archetype?.name).toBeTruthy();
+    expect(verdict.axes[0]?.axis).toBe('dry_wit');
+    expect(verdict.topReaction).toEqual({ emoji: '🫠', count: 2 });
+  });
+
+  it('stays honest with a single axis: no archetype, full clarity', () => {
+    const store = storeWith([
+      { emoji: '🗿', itemId: 'a' },
+      { emoji: '🗿', itemId: 'b' },
+    ]);
+    const verdict = verdictFor(store.getState(), T0);
+    expect(verdict.archetype).toBe(null);
+    expect(verdict.clarity).toBe(1);
+    expect(verdict.axes).toHaveLength(1);
+  });
+
+  it('spreads clarity across axes when the day was varied', () => {
+    const store = storeWith([
+      { emoji: '🗿', itemId: 'a' },
+      { emoji: '🫠', itemId: 'b' },
+    ]);
+    const verdict = verdictFor(store.getState(), T0);
+    expect(verdict.clarity).toBeLessThan(1);
+    expect(verdict.axes.reduce((sum, axis) => sum + axis.share, 0)).toBeCloseTo(1, 6);
+  });
+
+  it('labels axes in words, never in snake_case ids', () => {
+    const store = storeWith([{ emoji: '🧠', itemId: 'a' }]);
+    const verdict = verdictFor(store.getState(), T0);
+    const labels = verdict.axes.map((axis) => axis.label);
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) expect(label).not.toContain('_');
+    expect(labels).toContain('Niche refs');
+  });
+});
+
+describe('the Forecast sub-page', () => {
+  it('picks a stable forecast per day and covers the whole range', () => {
+    const options = 6;
+    expect(forecastIndex('20261007', options)).toBe(forecastIndex('20261007', options));
+    const seen = new Set<number>();
+    for (let day = 1; day <= 40; day += 1) seen.add(forecastIndex(`202610${String(day).padStart(2, '0')}`, options));
+    expect(seen.size).toBeGreaterThan(1);
+    for (const index of seen) {
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(options);
+    }
+  });
+
+  it('never divides by zero on a degenerate option count', () => {
+    expect(forecastIndex('20261007', 0)).toBe(0);
+    expect(forecastIndex('20261007', 1)).toBe(0);
   });
 });
