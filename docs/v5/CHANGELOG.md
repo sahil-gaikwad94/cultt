@@ -409,3 +409,21 @@ legacy fallback.
 Tests 22 files / **386 passing**; `tsc --noEmit`, eslint, and the
 `ALLOW_UNLICENSED=1` build all clean. First-paint JS on the default (v5) path is
 124.08 KiB gz, inside the 180 KiB budget.
+
+## Phase 4 — Open Graph cards for the share loop
+
+Shared links now preview as a branded card instead of a bare URL.
+
+- `src/lib/og.ts` — pure `renderOgCard()` draws a 1200×630 SVG in the app's own
+  language (ink ground, fingerprint contour, coral accent, bone type) from only
+  the text it is given. Every value is XML-escaped; the accent is hex-validated.
+- `api/og.ts` — Vercel function that rasterises the SVG to PNG with `sharp`
+  (crawlers do not render SVG `og:image`), immutable-cached, with an SVG
+  fallback if no rasteriser is present.
+- `index.html` — site-level `og:`/`twitter:` tags pointing at `/api/og`.
+
+Per-duel meta injection on `/d/:id` still needs an edge rewrite on the deploy
+target (crawlers do not run JS); the endpoint already accepts the params.
+
+Tests 24 files / **395 passing**, including the handler rasterising a non-blank
+PNG; `tsc --noEmit`, eslint, and the `ALLOW_UNLICENSED=1` build all clean.

@@ -122,7 +122,7 @@ shell.
 ```
 npx tsc --noEmit   → 0 errors
 npx eslint .       → 0 problems
-npx vitest run     → 386 passed / 22 files   (baseline 140 / 6)
+npx vitest run     → 395 passed / 24 files   (baseline 140 / 6)
 npm run build      → OK (content:gate fails correctly without ALLOW_UNLICENSED)
 npx playwright test --list → 50 tests / 5 files, 2 device projects
 GET / on :4173     → 200; /src/v5/{home,nhie-screen,profile,stories}.ts all 200
@@ -180,10 +180,17 @@ What was **not** executed: anything needing a real browser. See below.
   in embedded mode), plus `v5.vault` and `v5.stories` as layers. Each mounts
   into the existing tab host, so the nav rail, deep links and the legacy shell
   keep working. `?v5=0` is the kill-switch back to the legacy renders.
-- **Phase 4's sharing/viral loops are partially landed.** The duel link
-  (`/d/:id`) is the real viral loop and is intact; the v5 share sheet was
-  narrowed to actions that actually work (D-30). What has *not* landed is new
-  viral surface beyond that — no invite flows, no OG-card generation.
+- **Phase 4's sharing/viral loops.** The duel link (`/d/:id`) is the real viral
+  loop and is intact; the v5 share sheet was narrowed to actions that actually
+  work (D-30). **OG-card generation has landed**: `src/lib/og.ts` draws a
+  branded 1200×630 card from live data (pure, escaped, tested) and `api/og.ts`
+  rasterises it to PNG with `sharp`, because crawlers do not render SVG
+  `og:image`. `index.html` carries the site-level `og:`/`twitter:` tags pointing
+  at `/api/og`, so any shared link gets a branded preview. **Not landed:** the
+  per-duel `og:title`/`og:image` injection — `/d/:id` is served as the static
+  SPA shell, so a per-route card needs an edge rewrite on the deploy target to
+  inject the meta before the crawler sees it; the endpoint already accepts the
+  params. No invite flow beyond the duel link.
 - **`vercel.json` now exists** (D-31): SPA rewrite for the `/d/:id` duel deep
   link, immutable caching on content-hashed `/assets/*` and the generated media,
   `must-revalidate` on `index.html`, `/api/*` excluded so `api/preview.ts` keeps

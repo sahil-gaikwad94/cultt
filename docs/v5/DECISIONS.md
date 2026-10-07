@@ -548,3 +548,24 @@ independent of the shell flag, and `v5-flags.test.ts` asserts exactly that.
 The §4.1.3–§4.1.7 legacy screen bugs (D-33) are now reachable only through the
 `?v5=0` kill-switch rather than on the default path. Onboarding and the shell
 remain legacy for everyone, so the age gate (D-32) still matters.
+
+### D-37 · OG cards are generated, not stored, and rasterised at the edge
+
+A shared duel link with no `og:image` previews as a bare URL, and the viral loop
+dies at the share sheet. The card is generated on request rather than baked per
+duel: `src/lib/og.ts` is a pure `renderOgCard(input) → svg` with no I/O and no
+state, so it is trivially testable and impossible to go stale. `api/og.ts`
+rasterises it to PNG with `sharp` (already a dependency) because Facebook and
+Twitter do not render SVG `og:image`.
+
+Two safety points, both pinned by tests: every dynamic string is XML-escaped and
+the accent is validated as a 6-digit hex, so a crafted `?title=</svg><script>`
+cannot inject markup; and the rasterised PNG is asserted non-blank (peak luma
+above the ink ground), which is what catches a missing font in the deploy
+environment silently shipping an empty card.
+
+What this does **not** do: per-duel `og:title`/`og:image` on the `/d/:id` route.
+That path is served as the static SPA shell, and crawlers do not run JS, so the
+meta has to be injected server-side before the crawler sees it — an edge rewrite
+on the deploy target. The endpoint already takes the params; only the per-route
+HTML injection is outstanding, and it cannot be built or tested in this sandbox.
