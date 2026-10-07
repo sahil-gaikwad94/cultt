@@ -24,8 +24,12 @@ const SOURCE = join(CONTENT_DIR, 'nhie_questions.json');
 const OUT_DIR = join(ROOT, 'src', 'content');
 const OUT = join(OUT_DIR, 'nhie.manifest.json');
 
-/** One round is 12 cards; the bank must hold several rounds without repeats. */
-export const ROUND_SIZE = 12;
+/* One definition, two consumers: the runtime helpers live in src/content so
+   the app never imports from scripts/. Re-exported here for the script's own
+   callers and for the tests. */
+export { ROUND_SIZE, cardText, pickRound, roundCount, spiceLabel } from '../src/content/nhie.ts';
+export type { PickRoundOptions, Round } from '../src/content/nhie.ts';
+import { ROUND_SIZE } from '../src/content/nhie.ts';
 
 export interface NhieQuestion {
   id: string;
@@ -92,55 +96,6 @@ export const validateBank = (raw: RawBank): NhieManifest => {
     rounds: Math.floor(questions.length / ROUND_SIZE),
   };
 };
-
-/**
- * Picks 12 cards for a round: filtered by category and spice, minus anything
- * already asked, with no repeats until the filtered bank is exhausted.
- *
- * Deterministic for a given seed so a shared friend-mode link deals the same
- * twelve cards to both players.
- */
-export const pickRound = (
-  bank: NhieManifest,
-  options: { asked?: readonly string[]; categories?: readonly string[]; maxSpice?: number; seed?: number } = {},
-): { questions: NhieQuestion[]; bankExhausted: boolean } => {
-  const asked = new Set(options.asked ?? []);
-  const pool = bank.questions.filter((question) => {
-    if (options.categories?.length && !options.categories.includes(question.category)) return false;
-    if (options.maxSpice !== undefined && question.spice > options.maxSpice) return false;
-    return true;
-  });
-
-  let available = pool.filter((question) => !asked.has(question.id));
-  let exhausted = false;
-  if (available.length < ROUND_SIZE) {
-    // The filtered bank ran out: start it over rather than repeating inside a
-    // round, and tell the caller so the UI can say the bank was exhausted.
-    exhausted = true;
-    available = pool;
-  }
-
-  let a = (options.seed ?? 0x9e3779b9) >>> 0;
-  const random = () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-
-  // Fisher–Yates on a copy, then take the first ROUND_SIZE.
-  const deck = [...available];
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-
-  return { questions: deck.slice(0, ROUND_SIZE), bankExhausted: exhausted };
-};
-
-/** Card text as the UI shows it: `prefix + text`. */
-export const cardText = (bank: NhieManifest, question: NhieQuestion): string =>
-  `${bank.prefix}${question.text.startsWith('…') ? question.text : `… ${question.text}`}`;
 
 const main = (): void => {
   const raw = JSON.parse(readFileSync(SOURCE, 'utf8')) as RawBank;

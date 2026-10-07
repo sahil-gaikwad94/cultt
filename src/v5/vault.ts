@@ -13,6 +13,7 @@ import { isSaved, laughedItemKeys, pinsByKind, savedItemKeys } from '../store/se
 import { memeById, songById } from '../content/index.ts';
 import type { ItemKind, StoreState } from '../store/index.ts';
 import { haptics } from '../lib/haptics.ts';
+import { animate } from '../lib/waapi.ts';
 
 type VaultTab = 'saved' | 'laughed' | 'pinned';
 
@@ -176,7 +177,7 @@ export const mountVault = (host: HTMLElement, options: { onClose?: () => void } 
 
   paint();
   host.appendChild(root);
-  root.animate([{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }], {
+  animate(root, [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }], {
     duration: 300,
     easing: 'cubic-bezier(.22,.61,.36,1)',
   });

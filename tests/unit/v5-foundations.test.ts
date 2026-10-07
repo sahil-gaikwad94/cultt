@@ -7,6 +7,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { PATTERNS, createHaptics } from '../../src/lib/haptics';
+import { animate } from '../../src/lib/waapi';
 import { compatLabel, copy, impactLine, nhieRank } from '../../src/copy';
 import { ARCHETYPES, GENRES, GENRE_SLUGS, MEME_CATEGORIES, archetypeFor, rarityLine } from '../../src/copy/taxonomy';
 
@@ -119,5 +120,28 @@ describe('copy', () => {
   it('uses "Fingerprint clarity", never "signal confidence"', () => {
     expect(copy.fingerprintClarity).toBe('Fingerprint clarity');
     expect(JSON.stringify(copy).toLowerCase()).not.toContain('signal confidence');
+  });
+});
+
+describe('the WAAPI guard', () => {
+  it('no-ops on an element with no animate method instead of throwing', async () => {
+    const node = document.createElement('div');
+    // jsdom has no Element.animate, which is exactly the case being guarded.
+    expect(typeof (node as HTMLElement & { animate?: unknown }).animate).toBe('undefined');
+    const animation = animate(node, [{ opacity: 0 }, { opacity: 1 }], { duration: 100 });
+    await expect(animation.finished).resolves.toBeUndefined();
+    expect(() => animation.cancel()).not.toThrow();
+  });
+
+  it('no-ops on a null target', async () => {
+    await expect(animate(null, [{ opacity: 0 }, { opacity: 1 }]).finished).resolves.toBeUndefined();
+    await expect(animate(undefined, [{ opacity: 0 }, { opacity: 1 }]).finished).resolves.toBeUndefined();
+  });
+
+  it('delegates to the real API when one exists', () => {
+    const animation = { finished: Promise.resolve(), cancel: () => {} };
+    const node = { animate: vi.fn(() => animation) } as unknown as Element;
+    expect(animate(node, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 })).toBe(animation);
+    expect(node.animate).toHaveBeenCalledWith([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
   });
 });

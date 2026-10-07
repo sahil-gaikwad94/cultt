@@ -190,3 +190,28 @@ in the manifest is the *hand-written* line for that specific image
 (`memes.meta.json` overrides), which is what `alt` is built from
 (`title. placard`). Two different jobs, deliberately: the template is the
 museum furniture, the override is the real alt text.
+
+
+### D-17 · The NHIE runtime helpers live in `src/content`, not `scripts/`
+`pickRound`, `cardText`, `ROUND_SIZE`, `roundCount` and `spiceLabel` were first
+written inside `scripts/build-nhie.ts`. The app needs them at runtime, and an
+app importing from `scripts/` inverts the dependency. They now live in
+`src/content/nhie.ts` and the script re-exports them — the same arrangement as
+`types.ts`, one definition and two consumers. `validateBank` stays in the
+script: it validates raw JSON on the way in and the app never sees raw JSON.
+
+`cardText` also flipped to `cardText(question, bank = nhie)`, because at runtime
+the bank is the constant and the question is the variable.
+
+### D-18 · Every WAAPI call goes through `src/lib/waapi.ts`
+`Element.animate` is universal in the browsers cultured ships to, but absent in
+jsdom and in the odd embedded webview, and an unguarded call throws — which
+would take the interaction down with it, not just the animation. All eighteen
+call sites in `src/v5/` now go through one guarded `animate(target, keyframes,
+options)` that returns an `AnimationLike` whose `finished` resolves immediately
+when there is no API. The two sites that await `finished` (the deck fly-out and
+the tray dismiss) therefore still resolve, and the element lands in its final
+state instead of mid-flight.
+
+This is also what makes the v5 screens testable in jsdom without stubbing
+WAAPI: `v5-nhie.test.ts` drives the whole round by clicking.

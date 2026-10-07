@@ -144,3 +144,25 @@ Conventional commits. Newest first.
 
 Deleting the 122-card text corpus *reduced* first-paint JS by 4.9 kB gz, so the
 v5 shell lands with ~29 kB of headroom instead of ~24 kB.
+
+## Phase 2 (continued) — Never Have I Ever
+
+- `src/content/nhie.ts` holds the runtime half of the NHIE pipeline
+  (`pickRound`, `cardText`, `ROUND_SIZE`, `roundCount`, `spiceLabel`);
+  `scripts/build-nhie.ts` re-exports it and keeps `validateBank` for itself, so
+  the app never imports from `scripts/`.
+- `src/v5/nhie-screen.ts` — twelve cards, Guilty or Clean and nothing else, a
+  stamp per answer, a progress bar, and a rank at the end from the copy deck's
+  five bands. Every answer goes straight to `store.markNhieAsked`, so a reload
+  mid-round still knows what was asked, and the next round skips it. Friend mode
+  takes a `seed` so both players are dealt the same twelve.
+- `src/lib/waapi.ts` — one guarded entry point to the Web Animations API. All
+  eighteen `.animate()` call sites in `src/v5/` go through it; a missing API
+  resolves `finished` immediately instead of throwing.
+
+Tests: 13 files, **276 passing** (was 262). New `v5-nhie.test.ts` (10) drives
+the screen through jsdom by clicking; `v5-foundations.test.ts` gained 3 for the
+WAAPI guard.
+
+Bundle: `nhie-screen-*.js` is a separate lazy chunk at **2.02 kB gz**. First
+paint is unchanged at **150.9 kB gz** against the 180 kB budget.

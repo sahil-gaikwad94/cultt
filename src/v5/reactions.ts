@@ -18,6 +18,7 @@
 import { copy } from '../copy/index.ts';
 import type { HumorAxis } from '../copy/taxonomy.ts';
 import { haptics } from '../lib/haptics.ts';
+import { animate } from '../lib/waapi.ts';
 import { getQuality } from './quality.ts';
 import { getPerfHud } from './perfHud.ts';
 
@@ -310,27 +311,28 @@ export const createFxLayer = (options: FxOptions) => {
     if (getQuality().tier === 'C' || reduced()) {
       const target = options.target;
       if (target) {
-        target.animate([{ filter: 'brightness(1.6)' }, { filter: 'brightness(1)' }], { duration: 220, easing: 'ease-out' });
+        animate(target, [{ filter: 'brightness(1.6)' }, { filter: 'brightness(1)' }], { duration: 220, easing: 'ease-out' });
       }
       return new Promise((resolve) => setTimeout(resolve, 220));
     }
 
     const target = options.target;
-    const animate = (keyframes: Keyframe[], timing: KeyframeAnimationOptions) =>
-      target?.animate(keyframes, { easing: 'cubic-bezier(.22,.61,.36,1)', ...timing });
+    // Local wrapper so the switch below reads as choreography, not plumbing.
+    const runFx = (keyframes: Keyframe[], timing: KeyframeAnimationOptions) =>
+      animate(target, keyframes, { easing: 'cubic-bezier(.22,.61,.36,1)', ...timing });
 
     switch (fx) {
       case 'dead':
-        animate?.([{ transform: 'translateY(0) rotate(0)', filter: 'saturate(1)' }, { transform: 'translateY(10px) rotate(-3deg)', filter: 'saturate(0.15)', offset: 0.45 }, { transform: 'translateY(0) rotate(0)', filter: 'saturate(1)' }], { duration: 900 });
+        runFx([{ transform: 'translateY(0) rotate(0)', filter: 'saturate(1)' }, { transform: 'translateY(10px) rotate(-3deg)', filter: 'saturate(0.15)', offset: 0.45 }, { transform: 'translateY(0) rotate(0)', filter: 'saturate(1)' }], { duration: 900 });
         burstAt(at.x, at.y, 10, (i) => ({ glyph: '💀', vy: -3 - i * 0.2, vx: (i % 3) - 1, maxLife: 900, size: 11 }));
         break;
       case 'cant-breathe':
-        animate?.([{ transform: 'translate(0,0)' }, { transform: 'translate(-3px,2px)', offset: 0.12 }, { transform: 'translate(3px,-2px)', offset: 0.24 }, { transform: 'translate(0,0)', offset: 0.36 }, { transform: 'translate(-3px,1px)', offset: 0.5 }, { transform: 'translate(0,0)' }], { duration: 700 });
+        runFx([{ transform: 'translate(0,0)' }, { transform: 'translate(-3px,2px)', offset: 0.12 }, { transform: 'translate(3px,-2px)', offset: 0.24 }, { transform: 'translate(0,0)', offset: 0.36 }, { transform: 'translate(-3px,1px)', offset: 0.5 }, { transform: 'translate(0,0)' }], { duration: 700 });
         burstAt(at.x, at.y, 16, (i) => ({ glyph: i % 4 === 0 ? '😭' : null, colour: '#8fb4ff', vx: (i % 5) - 2, vy: -2.5, maxLife: 850, size: i % 4 === 0 ? 10 : 3 }));
         haptics.play('laugh');
         break;
       case 'deadpan':
-        animate?.([{ transform: 'translateY(-14px) scale(1.02)' }, { transform: 'translateY(0) scale(1)', offset: 0.35 }, { transform: 'translateY(0) scale(1)' }], { duration: 480 });
+        runFx([{ transform: 'translateY(-14px) scale(1.02)' }, { transform: 'translateY(0) scale(1)', offset: 0.35 }, { transform: 'translateY(0) scale(1)' }], { duration: 480 });
         burstAt(at.x, at.y + 18, 14, (i) => ({ colour: '#b9b5aa', vx: (i % 7) - 3, vy: -1, maxLife: 700, size: 4 }));
         haptics.play('thud');
         break;
@@ -344,7 +346,7 @@ export const createFxLayer = (options: FxOptions) => {
         });
         break;
       case 'existential':
-        animate?.([{ transform: 'scaleY(1)' }, { transform: 'scaleY(0.9) translateY(6px)', offset: 0.5 }, { transform: 'scaleY(1)' }], { duration: 900 });
+        runFx([{ transform: 'scaleY(1)' }, { transform: 'scaleY(0.9) translateY(6px)', offset: 0.5 }, { transform: 'scaleY(1)' }], { duration: 900 });
         burstAt(at.x, at.y, 10, (i) => ({ colour: '#8e8b83', vx: (i % 3) - 1, vy: 1.5, maxLife: 1000, size: 3 }));
         break;
       case 'soft':
@@ -464,13 +466,13 @@ export const openReactionTray = (options: OpenTrayOptions): Promise<TrayResult> 
   if (reduced) {
     tray.classList.add('is-visible');
   } else {
-    tray.animate([{ opacity: 0, transform: 'translateY(10px) scale(.82)' }, { opacity: 1, transform: 'none' }], {
+    animate(tray, [{ opacity: 0, transform: 'translateY(10px) scale(.82)' }, { opacity: 1, transform: 'none' }], {
       duration: 260,
       easing: 'cubic-bezier(.34,1.3,.5,1)',
       fill: 'forwards',
     });
     [...tray.querySelectorAll<HTMLElement>('.tray-item')].forEach((node, index) => {
-      node.animate([{ opacity: 0, transform: 'translateY(8px) scale(.6)' }, { opacity: 1, transform: 'none' }], {
+      animate(node, [{ opacity: 0, transform: 'translateY(8px) scale(.6)' }, { opacity: 1, transform: 'none' }], {
         duration: 300,
         delay: index * STAGGER_MS,
         easing: 'cubic-bezier(.34,1.3,.5,1)',
@@ -495,7 +497,7 @@ export const openReactionTray = (options: OpenTrayOptions): Promise<TrayResult> 
       };
       if (reduced) remove();
       else {
-        const animation = tray.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(6px) scale(.9)' }], {
+        const animation = animate(tray, [{ opacity: 1 }, { opacity: 0, transform: 'translateY(6px) scale(.9)' }], {
           duration: 160,
           easing: 'ease-in',
           fill: 'forwards',
@@ -578,7 +580,7 @@ export const attachReactionTrigger = (
     ring.className = 'hold-ring';
     ring.style.cssText = `left:${event.clientX}px;top:${event.clientY}px`;
     doc.body.appendChild(ring);
-    ring.animate([{ transform: 'translate(-50%,-50%) scale(.4)', opacity: 0.2 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }], {
+    animate(ring, [{ transform: 'translate(-50%,-50%) scale(.4)', opacity: 0.2 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }], {
       duration: LONG_PRESS_MS,
       easing: 'linear',
       fill: 'forwards',

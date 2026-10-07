@@ -25,6 +25,7 @@ import type { DeckItem } from './deck.ts';
 import { createContour } from './contour.ts';
 import { createFxLayer, openReactionTray, reactionName, trayFor } from './reactions.ts';
 import { haptics } from '../lib/haptics.ts';
+import { animate } from '../lib/waapi.ts';
 import { getQuality } from './quality.ts';
 
 const el = <T extends HTMLElement>(tag: string, className?: string, html?: string): T => {
@@ -67,7 +68,7 @@ const popPip = (meter: HTMLElement, index: number): void => {
   const pip = meter.querySelectorAll<HTMLElement>('.v5-pip')[index];
   if (!pip) return;
   pip.dataset.spent = 'true';
-  pip.animate(
+  animate(pip, 
     [{ transform: 'scale(1.5)', opacity: 1 }, { transform: 'scale(0.4)', opacity: 0.35 }],
     { duration: 320, easing: 'cubic-bezier(.34,1.3,.5,1)' },
   );
@@ -247,13 +248,13 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     const label = reactionName(kind, emoji);
     const existing = chips.querySelector<HTMLElement>(`[data-emoji="${emoji}"]`);
     if (existing) {
-      existing.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 260 });
+      animate(existing, [{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 260 });
       return;
     }
     const chip = el<HTMLSpanElement>('span', 'v5-chip', `${emoji} <small>${esc(label)}</small>`);
     chip.dataset.emoji = emoji;
     chips.appendChild(chip);
-    chip.animate([{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], {
+    animate(chip, [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }], {
       duration: 340,
       easing: 'cubic-bezier(.34,1.3,.5,1)',
     });
@@ -278,7 +279,7 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
       context.onOpenVault();
     });
     document.body.appendChild(node);
-    node.animate([{ opacity: 0, transform: 'translateY(24px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.22,.61,.36,1)' });
+    animate(node, [{ opacity: 0, transform: 'translateY(24px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.22,.61,.36,1)' });
   };
 
   const wireCard = (card: HTMLElement, item: DeckItem, index: number) => {
@@ -331,7 +332,7 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
       pointer = null;
 
       if (decision.blocked) {
-        card.animate([{ transform: card.style.transform }, { transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.34,1.3,.5,1)' });
+        animate(card, [{ transform: card.style.transform }, { transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.34,1.3,.5,1)' });
         card.classList.remove('is-blocked');
         haptics.play('thud');
         showLimitSheet();
@@ -339,7 +340,7 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
       }
 
       if (!decision.committed) {
-        card.animate([{ transform: card.style.transform }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.22,.61,.36,1)' });
+        animate(card, [{ transform: card.style.transform }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.22,.61,.36,1)' });
         return;
       }
 
@@ -426,7 +427,7 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     }
 
     const flyOut = action === 'pass' ? -1 : 1;
-    const animation = card.animate(
+    const animation = animate(card, 
       [
         { transform: card.style.transform || 'none', opacity: 1 },
         { transform: `translate(${action === 'save' ? 0 : flyOut * 420}px, ${action === 'save' ? -520 : 40}px) rotate(${action === 'save' ? 0 : flyOut * 24}deg) scale(.9)`, opacity: 0 },
@@ -465,7 +466,7 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     const node = el<HTMLDivElement>('div', 'v5-toast', esc(message));
     node.setAttribute('role', 'status');
     document.body.appendChild(node);
-    node.animate([{ opacity: 0, transform: 'translate(-50%,-14px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], {
+    animate(node, [{ opacity: 0, transform: 'translate(-50%,-14px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], {
       duration: 240,
       easing: 'cubic-bezier(.22,.61,.36,1)',
       fill: 'forwards',

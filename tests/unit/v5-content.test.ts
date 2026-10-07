@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { validateBank, pickRound, cardText, ROUND_SIZE } from '../../scripts/build-nhie';
+import { validateBank } from '../../scripts/build-nhie';
+import { ROUND_SIZE, cardText, pickRound, roundCount, spiceLabel } from '../../src/content/nhie';
 import { MEME_CATEGORY_SLUGS, HUMOR_AXES } from '../../src/copy/taxonomy';
 import { contentStats, memes, nhie, servableMemes, songs } from '../../src/content';
 import { memeArt } from '../../src/v5/deck';
@@ -21,6 +22,7 @@ describe('validateBank', () => {
     expect(bank.categories).toHaveLength(10);
     expect(bank.prefix).toBe('Never have I ever');
     expect(bank.rounds).toBe(Math.floor(100 / ROUND_SIZE));
+    expect(roundCount(bank)).toBe(bank.rounds);
   });
 
   it('rejects a duplicate id', () => {
@@ -101,10 +103,16 @@ describe('pickRound', () => {
     expect(exhausted.questions).toHaveLength(ROUND_SIZE);
   });
 
+  it('names the spice level from the bank legend', () => {
+    const question = bank.questions.find((q) => q.spice === 2)!;
+    expect(spiceLabel(question, bank)).toBe(bank.spiceLegend['2']);
+    expect(spiceLabel({ ...question, spice: 99 }, bank)).toBe('');
+  });
+
   it('prefixes card text without doubling the ellipsis', () => {
     const question = bank.questions[0]!;
-    expect(cardText(bank, question)).toBe(`Never have I ever${question.text}`);
-    expect(cardText(bank, { ...question, text: 'gone full send' })).toBe('Never have I ever… gone full send');
+    expect(cardText(question, bank)).toBe(`Never have I ever${question.text}`);
+    expect(cardText({ ...question, text: 'gone full send' }, bank)).toBe('Never have I ever… gone full send');
   });
 });
 

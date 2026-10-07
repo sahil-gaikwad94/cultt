@@ -28,6 +28,29 @@ export interface V5HomeHandle {
 }
 
 /**
+ * Opens NHIE as its own layer. Friend mode passes a `seed` so both players are
+ * dealt the same twelve cards.
+ */
+export const mountV5Nhie = async (options: { seed?: number; onClose?: () => void } = {}): Promise<void> => {
+  const { mountNhie } = await import('./nhie-screen.ts');
+
+  const layer = document.createElement('div');
+  layer.id = 'v5-nhie-layer';
+  document.body.appendChild(layer);
+
+  let handle: { destroy(): void } | null = null;
+  handle = mountNhie(layer, {
+    ...options,
+    onClose: () => {
+      handle?.destroy();
+      handle = null;
+      layer.remove();
+      options.onClose?.();
+    },
+  });
+};
+
+/**
  * Mounts the v5 Home into `host` (normally `#s-feed`) and owns it for the
  * lifetime of the page. Returns a handle so tests can tear it down.
  */
@@ -56,10 +79,16 @@ export const mountV5Home = async (host: HTMLElement): Promise<V5HomeHandle> => {
   const home = renderHome(host, {
     onOpenVault: openVault,
     onOpenGame: (game: string) => {
-      // NHIE and duels are still the legacy screens in Phase 2.
-      const action = game === 'nhie' ? 'open-nhie' : 'open-duel';
-      const button = document.querySelector<HTMLElement>(`[data-act="${action}"]`);
-      button?.click();
+      if (game === 'nhie') {
+        void mountV5Nhie();
+        return;
+      }
+      if (game === 'vault') {
+        openVault();
+        return;
+      }
+      // Duels are still the legacy screen in Phase 2.
+      document.querySelector<HTMLElement>('[data-act="open-duel"]')?.click();
     },
   });
 
