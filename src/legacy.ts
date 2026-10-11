@@ -51,6 +51,12 @@ import {
   LEGACY_LIKE as V5_LIKE,
 } from './store/selectors';
 
+/* Test seam. `fitMeme` measures real layout, which jsdom does not do at all —
+   scrollHeight and clientHeight are both 0 there, so every test that renders
+   the feed exercises only its early return. The holder lives out here because
+   `fitMeme` is declared inside the IIFE below and an `export` cannot reach into
+   it; the function assigns itself in on the way past. */
+export const seamInternals={};
 const V5 = getStore();
 /* v5 rollout flags. Off by default, so a build without `?v5=1` (or an explicit
    `window.CULTURED_CONFIG.v5`) renders exactly the pre-v5 app. */
@@ -723,19 +729,35 @@ function layoutDeck(){
 }
 /* auto-fit kinetic typography: shrink-to-measure, capped iterations, never
    below the readable floor — text memes stop overflowing without a scroll. */
+/* Shrinks overflowing meme captions until they fit.
+ *
+ * Same result as before, batched. The old version reset the font size and then
+ * read `scrollHeight` inside one loop per node, up to six times — and every
+ * read after a write forces a synchronous layout. This runs on every feed
+ * render, every deck swap and every gallery page, so the cost was the
+ * interleaving, not the measuring: with a dozen cards on screen that was up to
+ * 72 forced layouts where 6 will do.
+ *
+ * Now: reset everything, read every base size in one pass, then take at most
+ * one layout per round for the whole batch. Most renders exit after the first
+ * round, because almost nothing overflows. */
 function fitMeme(host){
   if(!host)return;
-  $$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host).forEach(pEl=>{
-    pEl.style.fontSize='';
-    let k=0;
-    while(pEl.scrollHeight>pEl.clientHeight+2&&k<6){
-      const fs=parseFloat(getComputedStyle(pEl).fontSize)||20;
-      if(fs<12)break;
-      pEl.style.fontSize=(fs-2)+'px';
-      k++;
-    }
-  });
+  const nodes=$$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host);
+  if(!nodes.length)return;
+  nodes.forEach(p=>{p.style.fontSize=''});
+  /* Read the batch once. This is the single unavoidable layout of the reset. */
+  const size=new Map(nodes.map(p=>[p,parseFloat(getComputedStyle(p).fontSize)||20]));
+  for(let round=0;round<6;round++){
+    /* `> 10`, not `>= 14`: the old loop broke on `fs < 12`, which still let it
+       write one more step from 12 to 10. Keeping that exact floor so this is a
+       batching change and nothing else. */
+    const over=nodes.filter(p=>p.scrollHeight>p.clientHeight+2&&(size.get(p)||20)>10);
+    if(!over.length)break;
+    over.forEach(p=>{const next=(size.get(p)||20)-2;size.set(p,next);p.style.fontSize=next+'px'});
+  }
 }
+seamInternals.fitMeme=fitMeme;
 function deckFly(dir){
   if(DK.busy)return;DK.busy=true;stopPlay();haptic(8);
   const id=DK.order[0],card=$(`#hdeck .dcard[data-id="${id}"]`);

@@ -544,3 +544,71 @@ destination to save 1.9 kB, which is the wrong trade.
 
 `tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **568 passed / 31 files** (was
 541 / 30) · build OK, `legacy` 202.00 kB / **69.46 kB gz**.
+
+## Optimization pass (ask #8)
+
+Three findings from the brief, all three real, all three fixed.
+
+### `vercel.json` was caching un-hashed files as immutable
+
+```
+{ "source": "/(.*).(webp|avif|mp4|webm)",
+  "headers": [{ "value": "public, max-age=31536000, immutable" }] }
+```
+
+`immutable` is a promise that a URL's bytes will never change. `/assets/*` can
+make it — Vite content-hashes those filenames. `/memes/gen/*` cannot: the
+pipeline writes `meme-01-480.webp`, so regenerating a meme keeps the same URL
+and every browser that ever loaded it holds the old bytes for a year. That is
+not a slow cache, it is a cache that never expires, on exactly the assets most
+likely to be regenerated.
+
+The unescaped `.` in the pattern also matched `fooXwebp`. `/memes/*` now gets
+`max-age=86400, stale-while-revalidate=604800, must-revalidate` — still at most
+one request a day, and a rebuild actually lands. `immutable` stays only where a
+content hash backs it.
+
+### `fitMeme()` forced a layout per node per round
+
+The old loop reset `fontSize` and read `scrollHeight` inside a `while` per
+element, up to six times. Every read after a write is a forced synchronous
+layout, and this runs on every feed render, every deck swap and every gallery
+page. On a six-card feed that was up to a dozen forced layouts per render.
+
+Now: reset all, read every base size once, then at most one layout per round
+for the whole batch. Same result, and the round cap and the 10px floor are
+unchanged — `> 10`, not `>= 14`, because the old `if (fs < 12) break` still let
+one more step through from 12 to 10.
+
+`tests/unit/fit-meme.test.ts` verifies it. jsdom does no layout at all, so
+`scrollHeight` and `clientHeight` are both 0 there and every pre-existing test
+that rendered the feed exercised only the early return — which is how this
+could have been rewritten wrongly and stayed green. The test defines the
+geometry by hand and counts read-after-write transitions as the proxy for a
+forced layout, with the flag shared across nodes because a layout is a property
+of the pass, not of the element. The load-bearing assertion is that 12 captions
+cost exactly as many layouts as 4.
+
+`fitMeme` is exposed through `seamInternals` for this, following the
+`microPublic` precedent. It is declared inside the seam's IIFE and an `export`
+cannot reach into it, so the holder lives at module top and the function
+assigns itself in.
+
+### `TOPIC_FOR_CATEGORY` is duplicated — left alone, now guarded
+
+It exists in `src/data/seed/memes.ts` (mock repo, seed SQL) and in
+`src/screens/feed.ts` (topic tabs). They cannot import each other: the feed
+module has a documented rule against pulling the data barrel onto first paint,
+and the seed module is not on that path. So the duplication stays and a test
+compares the derived `topic` on every seeded meme against `FEED.topicOf()`,
+with a count guard so the loop cannot pass by matching nothing.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **576 passed / 32 files** ·
+build OK, `legacy` 202.19 kB / **69.53 kB gz**.
+
+Not verified: the caching headers. Vercel is not reachable from this sandbox,
+so `vercel.json` was validated as JSON and reasoned about, not deployed. And no
+browser is available here, so the layout counts are measured against a
+hand-defined geometry rather than a real rendering engine.

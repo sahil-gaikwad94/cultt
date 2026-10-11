@@ -167,3 +167,33 @@ describe('the shipped meme URLs', () => {
     expect(raw.count).toBe(raw.items.length);
   });
 });
+
+/**
+ * `TOPIC_FOR_CATEGORY` exists twice: once in `src/data/seed/memes.ts` (for the
+ * mock repo and the seed SQL) and once in `src/screens/feed.ts` (for the feed's
+ * topic tabs). They cannot simply import each other — the feed module has a
+ * documented rule against pulling the data barrel onto the first-paint path,
+ * and the seed module is not on that path at all.
+ *
+ * So the duplication stays and this test is what keeps it honest. Neither map
+ * is exported from the seed module, so the comparison goes through the derived
+ * `topic` on each seeded meme instead.
+ */
+describe('the two category→topic maps agree', () => {
+  it('assigns every corpus meme the same topic in both places', async () => {
+    const { SEED_MEMES } = await import('../../src/data/seed/memes');
+    const FEED = await import('../../src/screens/feed');
+
+    expect(SEED_MEMES.length).toBeGreaterThan(0);
+    let compared = 0;
+    for (const meme of SEED_MEMES) {
+      const source = FEED.memeById(meme.id);
+      if (!source) continue;
+      compared += 1;
+      expect(FEED.topicOf(source), `topic for ${meme.id}`).toBe(meme.topic);
+    }
+    /* Without this the loop could pass by matching nothing — an id mismatch
+       between the seed and the manifest would make the whole test vacuous. */
+    expect(compared).toBe(SEED_MEMES.length);
+  });
+});
