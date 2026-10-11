@@ -182,8 +182,31 @@ const I={
 const SEAT='<svg viewBox="0 0 24 24"><path d="M7 11V8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V11"/><rect x="4.5" y="11" width="15" height="7" rx="2.5"/><path d="M7 18v1.5M17 18v1.5"/></svg>';
 const RING_GLYPH=`<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="2.6"/><circle cx="14" cy="14" r="7.6" stroke-dasharray="36 12"/><circle cx="14" cy="14" r="12.2" stroke-dasharray="54 23" transform="rotate(40 14 14)"/></svg>`;
 const ASSETS=(window as Window & { CulturedAssets?: Record<string,string> }).CulturedAssets||{};
-function mediaKick(){$$('.media-layer.is-video video').forEach(v=>{if(v.paused)v.play().catch(()=>{})})}
-const mediaLayer=(key,extra='')=>{const u=ASSETS[key];if(!u)return '';return u.endsWith('.mp4')?`<div class="media-layer ${extra} is-video" aria-hidden="true"><video src="${u}" autoplay muted loop playsinline preload="auto" tabindex="-1"></video></div>`:`<div class="media-layer ${extra}" aria-hidden="true" style="--media-url:url('${u}')"></div>`};
+/* Ambient video is the heaviest thing on the feed: a decoded 1080p loop. It is
+   now `preload="metadata"` (PERF_AUDIT #6) and only plays while it is actually
+   on screen — an IntersectionObserver pauses it the moment it scrolls away or
+   its screen is hidden. One playing video at a time, and none in a background
+   tab. */
+let mediaIO=null;
+function mediaKick(){
+  const vids=$$('.media-layer.is-video video');
+  if(!('IntersectionObserver' in window)){vids.forEach(v=>{if(v.paused)v.play().catch(()=>{})});return}
+  if(!mediaIO){
+    mediaIO=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        const v=e.target;
+        if(e.isIntersecting&&e.intersectionRatio>=.35){if(v.paused)v.play().catch(()=>{})}
+        else if(!v.paused)v.pause();
+      });
+    },{threshold:[0,.35,.7]});
+  }
+  vids.forEach(v=>{if(v.dataset.io)return;v.dataset.io='1';mediaIO.observe(v)});
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)$$('.media-layer.is-video video').forEach(v=>{if(!v.paused)v.pause()});
+  else mediaKick();
+});
+const mediaLayer=(key,extra='')=>{const u=ASSETS[key];if(!u)return '';return u.endsWith('.mp4')?`<div class="media-layer ${extra} is-video" aria-hidden="true"><video src="${u}" autoplay muted loop playsinline preload="metadata" tabindex="-1"></video></div>`:`<div class="media-layer ${extra}" aria-hidden="true" style="--media-url:url('${u}')"></div>`};
 
 /* ================= data ================= */
 const TRACKS={
@@ -270,7 +293,7 @@ const DEF=()=>({
   onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,cal:0,city:'Lisbon',wait:false,
   react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
-    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings'},
+    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings',accent:'',avatar:'',seed:0,banner:'',nameStyle:'tight',fpStyle:'rings',status:'',anthem:''},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
   pulse:{duel:false,seen:0},duelLink:null
 });
@@ -679,6 +702,9 @@ function fitMeme(host){
   if(!host)return;
   $$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host).forEach(pEl=>{
     pEl.style.fontSize='';
+    /* A section skipped by `content-visibility` measures as 0 — shrinking to the
+       floor would be measuring nothing, so leave it alone until it paints. */
+    if(!pEl.clientHeight)return;
     let k=0;
     while(pEl.scrollHeight>pEl.clientHeight+2&&k<6){
       const fs=parseFloat(getComputedStyle(pEl).fontSize)||20;
@@ -1751,17 +1777,24 @@ function renderYou(){
   youDirty=false;
   const pr=S.prof,mine=fpParams(mineSeed());
   const P=youPal(),bgS=pr.bg||'rings';
+  /* Customization reads here, so the hero, the avatar and the Fingerprint all
+     agree with the sheet without a second source of truth. */
+  const accent=pr.accent||P[1]||'#ff8a5b';
+  const banner=pr.banner?mmOf(pr.banner):null;
+  const anthem=pr.anthem?(v5Resolve('song:'+pr.anthem)||null):null;
+  const fpOpts={n:pr.fpStyle==='dense'?30:pr.fpStyle==='wave'?12:18,w:pr.fpStyle==='wave'?2.2:1.4};
+  const avatarHTML=pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:(pr.avatar?`<span class="you-emoji" aria-hidden="true">${esc(pr.avatar)}</span>`:orb({name:pr.name,pal:P.slice(1)},64));
   /* v5: both numbers come from the store, so a save made on a corpus meme in
      "Today's memes" lands here too. The old filter dropped everything that was
      not one of the 10 hard-coded POSTS ids — that was the "0" bug. */
   const saved=v5SavedKeys(V5.getState()).map(v5Resolve).filter(Boolean);
   const laughs=v5LaughsGiven(V5.getState());
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
-    <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
-    <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
-      <div class="you-id stg"><div class="you-av">${pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:orb({name:pr.name,pal:P.slice(1)},64)}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
-        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
-        <div class="you-chips">${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="customize" aria-label="Customize your profile">${I.sliders}</button><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
+    <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${banner?`<div class="you-banner" aria-hidden="true"><img src="${esc(banner.img)}" alt=""></div>`:''}${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307+(pr.seed||0)*97)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',accent,fpOpts)}<span class="fp-story-hint">the story ${I.chevr}</span></button>
+      <div class="you-id stg"><div class="you-av">${avatarHTML}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
+        <div class="you-meta nm-${esc(pr.nameStyle||'tight')}"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
+        ${pr.status?`<p class="you-status"><i aria-hidden="true"></i>${esc(pr.status)}</p>`:''}<div class="you-chips">${anthem?`<span class="chipg anthem">♪ ${esc(anthem.post?labelOf(anthem.post):'anthem')}</span>`:''}${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
     <div class="stats stg" style="--d:1"><div><b>${Object.keys(S.threads).length}</b><span>Resonances</span></div><div><b>${saved.length}</b><span>Saved</span></div><div><b>${laughs}</b><span>Laughs given</span></div></div>
     <div class="stage2">
     <div class="blk stg" style="--d:2"><h2>Look and feel<small>Changes your wash, not your worth</small></h2>
@@ -1778,9 +1811,9 @@ function renderYou(){
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
   drawPhotos();shelfWire();
-  const sc=$('#s-you');sc.style.setProperty('--acc',P[1]||'#ff8a5b');sc.onscroll=()=>{const f=$('#fpb');if(f)f.style.translate=`0 ${sc.scrollTop*.25}px`};
+  const sc=$('#s-you');sc.style.setProperty('--acc',accent);sc.onscroll=()=>{const f=$('#fpb');if(f)f.style.translate=`0 ${sc.scrollTop*.25}px`};
 }
-function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',(youPal()||[])[1]||'#ff8a5b',{n:18,w:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
+function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',S.prof.accent||(youPal()||[])[1]||'#ff8a5b',{n:S.prof.fpStyle==='dense'?30:S.prof.fpStyle==='wave'?12:18,w:S.prof.fpStyle==='wave'?2.2:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
 function drawPhotos(){
   const g=$('#photos');if(!g)return;
   g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}"><button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<9?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
@@ -1789,6 +1822,7 @@ document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='pf-name'){S.prof.name=t.value;save()}
   else if(t.id==='pf-bio'){S.prof.bio=t.value;save()}
+  else if(t.id==='pf-status'){S.prof.status=t.value;save();renderYou()}
   else if(t.dataset&&t.dataset.pq!==undefined){S.prof.prompts[+t.dataset.pq].a=t.value;save()}
   else if(t.id==='radius'){S.set.radius=+t.value;t.style.setProperty('--p',((t.value-1)/99*100)+'%');$('#radv').textContent=t.value+' km';save();fpDirty=true;if($('#deck'))renderDeck()}
 });
@@ -1807,6 +1841,44 @@ document.addEventListener('keydown',e=>{
 });
 ACT['prof-tint']=b=>{S.prof.tint=b.dataset.k;save();renderYou();haptic(6)};
 ACT['prof-bg']=b=>{S.prof.bg=b.dataset.k;save();renderYou();haptic(6)};
+/* ---- "Make it yours" (customization) ------------------------------------
+   Everything here is presentation: accent, avatar, name style, Fingerprint
+   style, hero art, banner, anthem and a status line. None of it is a matching
+   signal, and none of it leaves the device. The sheet edits S.prof directly and
+   re-renders the You tab behind it, so the preview is the real thing. */
+const CUST_AVATARS=['🫠','🦋','🎧','🌙','🔥','🩰','🍒','🛸','🧃','🐛','🥀','🪐'];
+const CUST_ACCENTS=[['#ff8a5b','Coral'],['#ff5d7a','Heart'],['#ffd166','Sun'],['#9be8bf','Mint'],['#7d7bff','Iris'],['#35f2ff','Ice'],['#E8C77E','Gold'],['#EFE9DA','Bone']];
+function custPick(b,key){
+  S.prof[key]=b.dataset.k||b.dataset.e||'';save();
+  const row=b.parentNode;if(row)$$('button',row).forEach(x=>{x.classList.remove('on');x.setAttribute('aria-pressed','false')});
+  b.classList.add('on');b.setAttribute('aria-pressed','true');
+  renderYou();haptic(6);
+}
+ACT['prof-accent']=b=>custPick(b,'accent');
+ACT['prof-name-style']=b=>custPick(b,'nameStyle');
+ACT['prof-fp-style']=b=>{custPick(b,'fpStyle');updateFP()};
+ACT['prof-avatar']=b=>{S.prof.avatar=b.dataset.e||'';S.prof.pfp='';save();custPick(b,'avatar')};
+ACT['prof-avatar-clear']=()=>{S.prof.avatar='';S.prof.pfp='';save();renderYou();ACT['customize']();toast('Back to your generated mark')};
+ACT['prof-seed']=()=>{S.prof.seed=(S.prof.seed||0)+1;save();updateFP();renderYou();toast('New art, same you');haptic(8)};
+ACT['prof-banner']=b=>{S.prof.banner=b.dataset.id||'';save();renderYou();ACT['customize']();haptic(6)};
+ACT['prof-anthem']=b=>{S.prof.anthem=b.dataset.id||'';save();renderYou();ACT['customize']();haptic(6)};
+ACT['customize']=()=>{
+  const pr=S.prof,cur=pr.accent||'#ff8a5b',banner=pr.banner||'',anthem=pr.anthem||'';
+  const songs=v5SavedKeys(V5.getState()).filter(k=>k.indexOf('song:')===0).map(v5Resolve).filter(Boolean).slice(0,6);
+  const row=(body)=>`<div class="cust-row">${body}</div>`;
+  const grp=(label,body,note)=>`<div class="cust"><span class="cust-l">${label}${note?`<small>${note}</small>`:''}</span>${body}</div>`;
+  openSheet(`<h3 class="sh-t">Make it yours</h3>
+    <p class="hint" style="margin:-4px 0 14px;font-size:14px">Presentation only. None of this changes what the match reads, and none of it leaves this device.</p>
+    ${grp('Accent',row(CUST_ACCENTS.map(a=>`<button class="csw ${cur===a[0]?'on':''}" data-act="prof-accent" data-k="${a[0]}" aria-pressed="${cur===a[0]}" aria-label="${a[1]} accent" style="--sw:${a[0]}"></button>`).join('')))}
+    ${grp('Avatar',row(CUST_AVATARS.map(e=>`<button class="cav ${pr.avatar===e?'on':''}" data-act="prof-avatar" data-e="${e}" aria-pressed="${pr.avatar===e}" aria-label="Use this avatar">${e}</button>`).join('')+`<button class="cav cav-photo" data-act="pfp-pick" aria-label="Use a photo instead">${I.plus}</button>`+`<button class="cnm" data-act="prof-avatar-clear">Clear</button>`),'A sticker, or a photo')}
+    ${grp('Your name',row([['tight','Tight'],['normal','Normal'],['wide','Wide']].map(o=>`<button class="cnm ${(pr.nameStyle||'tight')===o[0]?'on':''}" data-act="prof-name-style" data-k="${o[0]}" aria-pressed="${(pr.nameStyle||'tight')===o[0]}">${o[1]}</button>`).join('')))}
+    ${grp('Fingerprint',row([['rings','Rings'],['wave','Wave'],['dense','Dense']].map(o=>`<button class="cfp ${(pr.fpStyle||'rings')===o[0]?'on':''}" data-act="prof-fp-style" data-k="${o[0]}" aria-pressed="${(pr.fpStyle||'rings')===o[0]}">${o[1]}</button>`).join('')+`<button class="cnm" data-act="prof-seed" data-fx="spin">Shuffle art</button>`))}
+    ${grp('Banner',`<div class="cust-grid"><button class="cban ${banner?'':'on'}" data-act="prof-banner" data-id="" aria-pressed="${!banner}">None</button>${MM.slice(0,9).map(m=>`<button class="cban ${banner===m.id?'on':''}" data-act="prof-banner" data-id="${esc(m.id)}" aria-pressed="${banner===m.id}" aria-label="Use this meme as your banner"><img src="${esc(m.img)}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div>`,'A saved meme, or nothing at all')}
+    ${grp('Anthem',songs.length?row(songs.map(x=>`<button class="cnm ${anthem===x.id?'on':''}" data-act="prof-anthem" data-id="${esc(x.id)}" aria-pressed="${anthem===x.id}">${esc(labelOf(x.post))}</button>`).join('')+'<button class="cnm" data-act="prof-anthem" data-id="">Clear</button>'):'<p class="hint" style="margin:6px 0 0;font-size:13.5px">Save a song and it can be your anthem here.</p>')}
+    ${grp('Status',`<input class="cust-in" id="pf-status" maxlength="48" placeholder="Up for something tonight?" value="${esc(pr.status||'')}" aria-label="Your status line">`)}
+    <button class="cta ghostb" data-act="closesheet" style="margin-top:14px">Done</button>`);
+};
+
 ACT['pfp-remove']=()=>{S.prof.pfp='';save();renderYou();toast('Profile photo removed from this device');haptic(6)};
 ACT['pfp-pick']=()=>{
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';

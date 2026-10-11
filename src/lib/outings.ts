@@ -34,9 +34,15 @@ export interface Outing {
 const KEY = 'cultured2:outings';
 const listeners = new Set<() => void>();
 
-const isOuting = (value: unknown): value is Outing => {
-  const o = value as Outing | null;
-  return !!o && typeof o.id === 'string' && (o.kind === 'concert' || o.kind === 'dine') && typeof o.refId === 'string';
+const isOuting = (value: unknown): boolean => {
+  const o = value as Partial<Outing> | null;
+  return !!o && (o.kind === 'concert' || o.kind === 'dine') && typeof o.refId === 'string';
+};
+
+/** Normalises a stored record: an id is derived when a build forgot to write one. */
+const asOuting = (value: unknown): Outing => {
+  const o = value as Outing;
+  return { ...o, date: o.date ?? '', time: o.time ?? '', id: o.id ?? outingId(o.kind, o.refId, o.date ?? ''), createdAt: o.createdAt ?? 0 };
 };
 
 const read = (): Outing[] => {
@@ -44,7 +50,7 @@ const read = (): Outing[] => {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isOuting) : [];
+    return Array.isArray(parsed) ? parsed.filter(isOuting).map(asOuting) : [];
   } catch {
     return [];
   }
