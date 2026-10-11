@@ -1,0 +1,875 @@
+/* ==========================================================================
+   Concerts — "Live near you"
+   The home feed's going-out surface. Dark only, tokens only, every class
+   scoped under `.v5-concerts` and prefixed `cx-`. Motion is transform/opacity
+   only and every loop collapses under `prefers-reduced-motion`.
+   ========================================================================== */
+
+.v5-concerts {
+  position: relative;
+  min-height: 100%;
+  color: var(--bone, #efe9da);
+  font-family: inherit;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+}
+
+.v5-concerts .cx-stage {
+  display: block;
+}
+
+/* -------------------------------------------------------------- internal toast */
+
+.v5-concerts .cx-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-toast, 120);
+  max-width: min(88vw, 420px);
+  padding: 10px 16px;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: var(--elev-2);
+  color: var(--bone, #efe9da);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  pointer-events: none;
+  transition:
+    opacity var(--t-micro, 150ms) var(--ease-out, ease),
+    transform var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-toast.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ------------------------------------------------------------------ header */
+
+.v5-concerts .cx-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: calc(var(--sp-3, 12px) + env(safe-area-inset-top, 0px)) var(--sp-4, 16px) var(--sp-2, 8px);
+  background: linear-gradient(var(--gallery-bg, #0a0a09) 68%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.v5-concerts .cx-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3, 12px);
+}
+
+.v5-concerts .cx-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold, #e8c77e);
+}
+
+.v5-concerts .cx-title {
+  margin: 2px 0 0;
+  font-size: 27px;
+  font-weight: 800;
+  font-stretch: 82%;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.v5-concerts .cx-sample-chip {
+  flex: none;
+  align-self: center;
+  padding: 5px 11px;
+  border-radius: var(--r-chip, 999px);
+  border: 1px dashed var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+  color: var(--mist, #b9b5aa);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.v5-concerts .cx-cities {
+  display: flex;
+  gap: var(--sp-2, 8px);
+  margin-top: var(--sp-3, 12px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.v5-concerts .cx-cities::-webkit-scrollbar {
+  display: none;
+}
+
+.v5-concerts .cx-city {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--sp-4, 16px);
+  border: 0;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  color: var(--mist, #b9b5aa);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color var(--t-micro, 150ms) var(--ease-out, ease),
+    transform var(--t-micro, 150ms) var(--ease-out, ease),
+    background var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-city.is-on {
+  background: var(--bone, #efe9da);
+  color: var(--ink, #0a0a09);
+}
+.v5-concerts .cx-city:active {
+  transform: scale(0.96);
+}
+
+/* -------------------------------------------------------------------- hero */
+
+.v5-concerts .cx-hero {
+  position: relative;
+  margin: var(--sp-3, 12px) var(--sp-4, 16px) var(--sp-5, 24px);
+  min-height: 460px;
+  border-radius: var(--r-card, 28px);
+  overflow: hidden;
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-2);
+  isolation: isolate;
+}
+
+.v5-concerts .cx-hero-media {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, var(--parallax, 0px), 0);
+  will-change: transform;
+}
+
+.v5-concerts .cx-ambience {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.42;
+}
+
+.v5-concerts .cx-hero-art {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.06);
+  animation: cx-kenburns 22s var(--ease-out, ease) infinite alternate;
+}
+
+.v5-concerts .cx-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 9, 0.15) 0%,
+    rgba(10, 10, 9, 0.55) 46%,
+    rgba(10, 10, 9, 0.92) 100%
+  );
+}
+
+.v5-concerts .cx-hero-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2, 8px);
+  min-height: 460px;
+  padding: var(--sp-6, 32px) var(--sp-5, 24px) var(--sp-5, 24px);
+  justify-content: flex-end;
+}
+
+.v5-concerts .cx-hero-title {
+  margin: 0;
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+}
+
+.v5-concerts .cx-hero-artist {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--paper, #fbf7ec);
+}
+
+.v5-concerts .cx-hero-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mist, #b9b5aa);
+}
+
+.v5-concerts .cx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--sp-1, 4px);
+}
+
+.v5-concerts .cx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-chip, 999px);
+  background: rgba(10, 10, 9, 0.42);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline, rgba(239, 233, 218, 0.11));
+  color: var(--bone, #efe9da);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.v5-concerts .cx-chip-energy {
+  color: var(--gold, #e8c77e);
+}
+.v5-concerts .cx-chip-energy[data-energy='wild'] {
+  color: var(--heart, #ff5d7a);
+}
+.v5-concerts .cx-chip-energy[data-energy='intimate'] {
+  color: var(--ok, #9be8bf);
+}
+
+.v5-concerts .cx-hero-doors {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+  margin: var(--sp-2, 8px) 0 var(--sp-1, 4px);
+  font-size: 13px;
+  color: var(--mist, #b9b5aa);
+}
+
+.v5-concerts .cx-doors-label {
+  font-weight: 600;
+}
+
+/* The countdown: a pulsing dot, then a monospace clock. */
+.v5-concerts .cx-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 14px/1 ui-monospace, 'Space Mono', monospace;
+  letter-spacing: 0.02em;
+  color: var(--bone, #efe9da);
+  font-variant-numeric: tabular-nums;
+}
+.v5-concerts .cx-countdown::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--heart, #ff5d7a);
+  animation: cx-pulse 1.4s var(--ease-out, ease) infinite;
+}
+.v5-concerts .cx-countdown.is-live::before {
+  background: var(--ok, #9be8bf);
+  animation: none;
+}
+
+/* Equaliser bars. */
+.v5-concerts .cx-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.v5-concerts .cx-eq i {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--sun, #ffd166);
+  transform-origin: bottom;
+  animation: cx-eq 1.05s var(--ease-out, ease) infinite alternate;
+}
+.v5-concerts .cx-eq i:nth-child(1) {
+  animation-delay: -0.1s;
+}
+.v5-concerts .cx-eq i:nth-child(2) {
+  animation-delay: -0.5s;
+}
+.v5-concerts .cx-eq i:nth-child(3) {
+  animation-delay: -0.28s;
+}
+.v5-concerts .cx-eq i:nth-child(4) {
+  animation-delay: -0.72s;
+}
+
+.v5-concerts .cx-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 8px);
+  width: 100%;
+  margin-top: var(--sp-3, 12px);
+}
+
+
+/* ----------------------------------------------------------------- buttons */
+
+.v5-concerts .cx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 var(--sp-4, 16px);
+  border: 0;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: var(--elev-1);
+  color: var(--bone, #efe9da);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--t-micro, 150ms) var(--ease-out, ease),
+    background var(--t-micro, 150ms) var(--ease-out, ease),
+    color var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-btn:active {
+  transform: scale(0.965);
+}
+.v5-concerts .cx-btn-primary {
+  background: var(--heart, #ff5d7a);
+  color: #1a0509;
+  box-shadow: var(--elev-2);
+}
+.v5-concerts .cx-btn-ghost {
+  background: rgba(10, 10, 9, 0.42);
+  color: var(--bone, #efe9da);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+}
+.v5-concerts .cx-btn-ghost.is-saved {
+  color: var(--ok, #9be8bf);
+  box-shadow: inset 0 0 0 1px rgba(155, 232, 191, 0.5);
+}
+.v5-concerts .cx-btn-quiet {
+  background: transparent;
+  color: var(--mist, #b9b5aa);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline, rgba(239, 233, 218, 0.11));
+}
+.v5-concerts .cx-btn-small {
+  min-height: 44px;
+  padding: 0 var(--sp-3, 12px);
+  font-size: 13px;
+}
+.v5-concerts .cx-btn.is-busy {
+  color: var(--bone, #efe9da);
+  opacity: 0.85;
+}
+.v5-concerts .cx-btn.is-done {
+  color: var(--ok, #9be8bf);
+}
+
+/* The stub-tear: a hairline splits the button for a beat. */
+.v5-concerts .cx-btn.is-tearing {
+  position: relative;
+}
+.v5-concerts .cx-btn.is-tearing::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 1px;
+  background: var(--bone, #efe9da);
+  opacity: 0.7;
+  animation: cx-tear 0.42s var(--ease-out, ease);
+}
+
+.v5-concerts .cx-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  color: var(--bone, #efe9da);
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* ------------------------------------------------------------------ filters */
+
+.v5-concerts .cx-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  margin: 0 0 var(--sp-5, 24px);
+}
+
+.v5-concerts .cx-genres {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  margin: 0 var(--sp-4, 16px);
+  padding: 4px;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.v5-concerts .cx-genres::-webkit-scrollbar {
+  display: none;
+}
+
+.v5-concerts .cx-genre-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: var(--r-chip, 999px);
+  background: var(--bone, #efe9da);
+  transition:
+    transform var(--t-standard, 280ms) var(--ease-spring, ease),
+    width var(--t-standard, 280ms) var(--ease-spring, ease);
+}
+
+.v5-concerts .cx-pill {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--sp-4, 16px);
+  border: 0;
+  border-radius: var(--r-chip, 999px);
+  background: transparent;
+  color: var(--mist, #b9b5aa);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-pill.is-on {
+  color: var(--ink, #0a0a09);
+}
+.v5-concerts .cx-pill-quiet {
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+}
+.v5-concerts .cx-pill-quiet.is-on {
+  background: var(--gallery-raised, #1b1b19);
+  color: var(--bone, #efe9da);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+}
+
+.v5-concerts .cx-windows,
+.v5-concerts .cx-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 var(--sp-4, 16px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.v5-concerts .cx-windows::-webkit-scrollbar,
+.v5-concerts .cx-sort::-webkit-scrollbar {
+  display: none;
+}
+.v5-concerts .cx-sort-label {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--stone, #8e8b83);
+}
+
+
+/* --------------------------------------------------------------------- list */
+
+.v5-concerts .cx-section-title {
+  margin: 0 var(--sp-4, 16px) var(--sp-3, 12px);
+  font-size: 15px;
+  font-weight: 800;
+  font-stretch: 84%;
+  letter-spacing: -0.01em;
+  color: var(--bone, #efe9da);
+}
+
+.v5-concerts .cx-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  margin: 0 var(--sp-4, 16px);
+  padding: 0;
+  list-style: none;
+}
+
+.v5-concerts .cx-card {
+  display: flex;
+  gap: var(--sp-3, 12px);
+  padding: var(--sp-2, 8px);
+  border-radius: var(--r-card, 28px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  animation: cx-rise var(--t-standard, 280ms) var(--ease-out, ease) backwards;
+  animation-delay: calc(var(--i, 0) * var(--stagger, 32ms));
+  transition: transform var(--t-micro, 150ms) var(--ease-out, ease);
+}
+.v5-concerts .cx-card:active {
+  transform: scale(0.985);
+}
+
+.v5-concerts .cx-card-art {
+  flex: none;
+  width: 92px;
+  height: 108px;
+  border-radius: var(--r-tile, 18px);
+  object-fit: cover;
+  background: var(--gallery-raised, #1b1b19);
+}
+
+.v5-concerts .cx-card-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px var(--sp-2, 8px);
+  min-width: 0;
+  flex: 1;
+  padding: var(--sp-1, 4px) var(--sp-2, 8px) var(--sp-1, 4px) 0;
+}
+
+.v5-concerts .cx-date-badge {
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-height: 52px;
+  border-radius: var(--r-tile, 18px);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline, rgba(239, 233, 218, 0.11));
+}
+.v5-concerts .cx-date-badge b {
+  font: 800 18px/1 ui-monospace, 'Space Mono', monospace;
+  color: var(--bone, #efe9da);
+}
+.v5-concerts .cx-date-badge span {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold, #e8c77e);
+}
+
+.v5-concerts .cx-card-main {
+  grid-row: 1 / span 2;
+  min-width: 0;
+}
+.v5-concerts .cx-card-artist {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  font-stretch: 86%;
+  letter-spacing: -0.01em;
+  color: var(--bone, #efe9da);
+}
+.v5-concerts .cx-card-venue {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mist, #b9b5aa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v5-concerts .cx-card-main .cx-chips {
+  margin-top: 6px;
+}
+.v5-concerts .cx-card-main .cx-chip {
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: none;
+}
+.v5-concerts .cx-chip-count {
+  color: var(--ok, #9be8bf);
+}
+.v5-concerts .cx-chip-count .cx-countdown {
+  font-size: 11px;
+}
+.v5-concerts .cx-chip-count .cx-countdown::before {
+  width: 5px;
+  height: 5px;
+}
+
+.v5-concerts .cx-price {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold, #e8c77e);
+  white-space: nowrap;
+}
+
+.v5-concerts .cx-card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+}
+.v5-concerts .cx-card-actions .cx-btn {
+  flex: 1;
+}
+
+/* --------------------------------------------------------------- empty state */
+
+.v5-concerts .cx-empty {
+  margin: 0 var(--sp-4, 16px) var(--sp-5, 24px);
+  padding: var(--sp-6, 32px) var(--sp-5, 24px);
+  border-radius: var(--r-card, 28px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  text-align: center;
+}
+.v5-concerts .cx-empty h2 {
+  margin: 0 0 var(--sp-2, 8px);
+  font-size: 19px;
+  font-weight: 800;
+  font-stretch: 84%;
+}
+.v5-concerts .cx-empty p {
+  margin: 0 0 var(--sp-4, 16px);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mist, #b9b5aa);
+}
+
+
+/* --------------------------------------------------------------- your plans */
+
+.v5-concerts .cx-plans {
+  margin-top: var(--sp-6, 32px);
+}
+
+.v5-concerts .cx-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  margin: 0 var(--sp-4, 16px);
+  padding: 0;
+  list-style: none;
+}
+
+.v5-concerts .cx-plan {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 12px);
+  padding: var(--sp-3, 12px);
+  border-radius: var(--r-tile, 18px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+  border-left: 2px solid var(--heart, #ff5d7a);
+}
+
+.v5-concerts .cx-plan-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.v5-concerts .cx-plan-main strong {
+  font-size: 14px;
+  font-weight: 800;
+  font-stretch: 86%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v5-concerts .cx-plan-main > span {
+  font-size: 12px;
+  color: var(--mist, #b9b5aa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v5-concerts .cx-plan-when {
+  color: var(--gold, #e8c77e) !important;
+  font-weight: 600;
+}
+
+.v5-concerts .cx-plans-empty {
+  margin: 0 var(--sp-4, 16px);
+  padding: var(--sp-4, 16px);
+  border-radius: var(--r-tile, 18px);
+  border: 1px dashed var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mist, #b9b5aa);
+}
+.v5-concerts .cx-plans-empty b {
+  color: var(--bone, #efe9da);
+}
+
+/* ------------------------------------------------------------------- sheet */
+
+.v5-concerts .cx-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet, 80);
+  background: rgba(6, 6, 5, 0.66);
+}
+
+.v5-concerts .cx-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal, 90);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  padding: var(--sp-5, 24px) var(--sp-4, 16px) calc(var(--sp-5, 24px) + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--r-sheet, 32px) var(--r-sheet, 32px) 0 0;
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: var(--elev-3);
+}
+
+.v5-concerts .cx-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3, 12px);
+}
+.v5-concerts .cx-sheet-head h3 {
+  margin: 2px 0 0;
+  font-size: 21px;
+  font-weight: 800;
+  font-stretch: 82%;
+  letter-spacing: -0.02em;
+}
+
+.v5-concerts .cx-sheet-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mist, #b9b5aa);
+}
+
+.v5-concerts .cx-sheet-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v5-concerts .cx-sheet-links .cx-btn {
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------- keyframes */
+
+@keyframes cx-kenburns {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.16) translate3d(-2.5%, -2%, 0);
+  }
+}
+
+@keyframes cx-eq {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes cx-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.7);
+    opacity: 0.4;
+  }
+}
+
+@keyframes cx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cx-tear {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  40% {
+    opacity: 0.85;
+    transform: scaleX(1);
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+/* -------------------------------------------------------------------- focus */
+
+.v5-concerts .cx-btn:focus-visible,
+.v5-concerts .cx-city:focus-visible,
+.v5-concerts .cx-pill:focus-visible,
+.v5-concerts .cx-icon-btn:focus-visible {
+  outline: 2px solid var(--gold, #e8c77e);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------- reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .v5-concerts .cx-hero-art,
+  .v5-concerts .cx-eq i,
+  .v5-concerts .cx-countdown::before,
+  .v5-concerts .cx-card {
+    animation: none;
+  }
+  .v5-concerts .cx-card {
+    opacity: 1;
+    transform: none;
+  }
+  .v5-concerts .cx-genre-indicator {
+    transition: none;
+  }
+  .v5-concerts .cx-toast {
+    transition: none;
+  }
+}
+

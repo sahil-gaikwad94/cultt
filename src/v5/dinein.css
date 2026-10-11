@@ -1,0 +1,757 @@
+/* ==========================================================================
+   v5 — Dine-in
+   A planner and a catalogue. Chrome stays quiet (Gallery tokens); the food is
+   the only warm thing on screen. Everything is scoped under .v5-dinein and
+   every class is dn- prefixed.
+   ========================================================================== */
+
+.v5-dinein {
+  --dn-gutter: var(--sp-4, 16px);
+  --dn-gap: var(--sp-3, 12px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5, 24px);
+  min-height: 100%;
+  padding: 0 var(--dn-gutter) calc(var(--sp-7, 48px) + env(safe-area-inset-bottom, 0px));
+  color: var(--bone, #efe9da);
+  font-family: inherit;
+}
+
+/* ------------------------------------------------------------------- head - */
+
+.v5-dinein .dn-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  margin: 0 calc(-1 * var(--dn-gutter));
+  padding: calc(var(--sp-3, 12px) + env(safe-area-inset-top, 0px)) var(--dn-gutter) var(--sp-3, 12px);
+  background: linear-gradient(var(--gallery-bg, #0a0a09) 68%, transparent);
+}
+
+.v5-dinein .dn-head-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 12px);
+}
+
+.v5-dinein .dn-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  font-stretch: 80%;
+  letter-spacing: -0.02em;
+}
+
+.v5-dinein .dn-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--stone, #8e8b83);
+}
+
+.v5-dinein .dn-sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-chip, 999px);
+  background: color-mix(in srgb, var(--sun, #ffd166) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sun, #ffd166) 40%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold, #e8c77e);
+}
+
+.v5-dinein .dn-sample-card {
+  position: absolute;
+  left: var(--sp-2, 8px);
+  bottom: var(--sp-2, 8px);
+}
+
+/* -------------------------------------------------------------- chips/btns - */
+
+.v5-dinein .dn-cities,
+.v5-dinein .dn-chips {
+  display: flex;
+  gap: var(--sp-2, 8px);
+}
+
+.v5-dinein .dn-cities,
+.v5-dinein .dn-chips-scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.v5-dinein .dn-cities::-webkit-scrollbar,
+.v5-dinein .dn-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.v5-dinein .dn-chips {
+  flex-wrap: wrap;
+}
+
+.v5-dinein .dn-cities,
+.v5-dinein .dn-chips-scroll {
+  flex-wrap: nowrap;
+}
+
+.v5-dinein .dn-city,
+.v5-dinein .dn-chip,
+.v5-dinein .dn-clear,
+.v5-dinein .dn-slot,
+.v5-dinein .dn-btn,
+.v5-dinein .dn-step,
+.v5-dinein .dn-share,
+.v5-dinein .dn-icon-btn {
+  font: inherit;
+  color: var(--bone, #efe9da);
+  background: var(--gallery-raised, #1b1b19);
+  border: 0;
+  border-radius: var(--r-chip, 999px);
+  box-shadow: var(--elev-1);
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 var(--sp-4, 16px);
+  transition:
+    transform var(--t-micro, 150ms) var(--ease-spring, ease),
+    background var(--t-micro, 150ms) var(--ease-out, ease),
+    box-shadow var(--t-micro, 150ms) var(--ease-out, ease);
+}
+
+.v5-dinein .dn-city,
+.v5-dinein .dn-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--mist, #b9b5aa);
+}
+
+.v5-dinein .dn-city.is-on,
+.v5-dinein .dn-chip.is-on {
+  color: var(--ink, #0a0a09);
+  background: var(--bone, #efe9da);
+  box-shadow: var(--elev-2);
+}
+
+.v5-dinein .dn-clear {
+  min-height: 36px;
+  padding: 0 var(--sp-3, 12px);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--stone, #8e8b83);
+  background: transparent;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.v5-dinein .dn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.v5-dinein .dn-btn-primary {
+  color: var(--ink, #0a0a09);
+  background: var(--sun, #ffd166);
+}
+
+.v5-dinein .dn-btn-ghost {
+  color: var(--mist, #b9b5aa);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, 0.11));
+}
+
+.v5-dinein .dn-btn-save.is-on {
+  color: var(--ink, #0a0a09);
+  background: var(--ok, #9be8bf);
+}
+
+.v5-dinein .dn-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.v5-dinein .dn-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 var(--sp-3, 12px);
+  font-size: 12px;
+  color: var(--stone, #8e8b83);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, 0.11));
+}
+
+.v5-dinein .dn-city:focus-visible,
+.v5-dinein .dn-chip:focus-visible,
+.v5-dinein .dn-clear:focus-visible,
+.v5-dinein .dn-slot:focus-visible,
+.v5-dinein .dn-btn:focus-visible,
+.v5-dinein .dn-step:focus-visible,
+.v5-dinein .dn-share:focus-visible,
+.v5-dinein .dn-icon-btn:focus-visible,
+.v5-dinein .dn-date:focus-visible {
+  outline: 2px solid var(--gold, #e8c77e);
+  outline-offset: 2px;
+}
+
+.v5-dinein .dn-city:active,
+.v5-dinein .dn-chip:active,
+.v5-dinein .dn-btn:active,
+.v5-dinein .dn-step:active {
+  transform: scale(0.95);
+}
+
+/* ----------------------------------------------------------------- planner */
+
+.v5-dinein .dn-planner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4, 16px);
+  padding: var(--sp-5, 24px) var(--sp-4, 16px) var(--sp-4, 16px);
+  border-radius: var(--r-card, 28px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-2);
+  overflow: hidden;
+}
+
+.v5-dinein .dn-planner-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--sp-4, 16px);
+  align-items: start;
+}
+
+.v5-dinein .dn-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  min-width: 0;
+}
+
+.v5-dinein .dn-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stone, #8e8b83);
+}
+
+.v5-dinein .dn-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1, 4px);
+  align-self: flex-start;
+  padding: 4px;
+  border-radius: var(--r-chip, 999px);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: var(--elev-1);
+}
+
+.v5-dinein .dn-step {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 20px;
+  font-weight: 700;
+  background: transparent;
+  box-shadow: none;
+}
+
+.v5-dinein .dn-party {
+  min-width: 44px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.v5-dinein .dn-date {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--sp-3, 12px);
+  color: var(--bone, #efe9da);
+  background: var(--gallery-raised, #1b1b19);
+  border: 0;
+  border-radius: var(--r-input, 14px);
+  box-shadow: var(--elev-1);
+  font: inherit;
+}
+.v5-dinein .dn-date[hidden] {
+  display: none;
+}
+
+/* Slot wheel: a sliding pill plus a glow on the chosen time. */
+.v5-dinein .dn-slots {
+  position: relative;
+  display: flex;
+  gap: var(--sp-2, 8px);
+  overflow-x: auto;
+  padding: var(--sp-1, 4px) 0 var(--sp-2, 8px);
+  scrollbar-width: none;
+}
+.v5-dinein .dn-slots::-webkit-scrollbar {
+  display: none;
+}
+
+.v5-dinein .dn-slot-pill {
+  position: absolute;
+  top: var(--sp-1, 4px);
+  left: 0;
+  height: 44px;
+  border-radius: var(--r-chip, 999px);
+  background: color-mix(in srgb, var(--heart, #ff5d7a) 26%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heart, #ff5d7a) 55%, transparent);
+  transition:
+    transform var(--t-standard, 280ms) var(--ease-spring, ease),
+    width var(--t-standard, 280ms) var(--ease-spring, ease);
+  pointer-events: none;
+}
+
+.v5-dinein .dn-slot {
+  position: relative;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--mist, #b9b5aa);
+  background: var(--gallery-raised, #1b1b19);
+}
+
+.v5-dinein .dn-slot.is-on {
+  color: var(--bone, #efe9da);
+  background: transparent;
+  box-shadow: none;
+  animation: dn-glow 2.4s var(--ease-out, ease) infinite;
+}
+
+.v5-dinein .dn-slots-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--stone, #8e8b83);
+}
+
+.v5-dinein .dn-summary {
+  margin: 0;
+  padding-top: var(--sp-2, 8px);
+  border-top: 1px solid var(--gallery-hairline, rgba(239, 233, 218, 0.11));
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold, #e8c77e);
+}
+
+/* Steam wisps — CSS only, skipped entirely on reduced motion. */
+.v5-dinein .dn-steam {
+  position: absolute;
+  top: var(--sp-2, 8px);
+  right: var(--sp-5, 24px);
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.v5-dinein .dn-wisp {
+  width: 6px;
+  height: 26px;
+  border-radius: var(--r-chip, 999px);
+  background: linear-gradient(to top, transparent, var(--mist, #b9b5aa));
+  opacity: 0;
+  animation: dn-rise 3.6s var(--ease-out, ease) infinite;
+}
+.v5-dinein .dn-wisp:nth-child(2) {
+  animation-delay: 1.2s;
+}
+.v5-dinein .dn-wisp:nth-child(3) {
+  animation-delay: 2.4s;
+}
+
+@keyframes dn-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scaleY(0.6);
+  }
+  40% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-26px) scaleY(1.1);
+  }
+}
+
+@keyframes dn-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--heart, #ff5d7a) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--heart, #ff5d7a) 22%, transparent);
+  }
+}
+
+/* ----------------------------------------------------------------- filters */
+
+.v5-dinein .dn-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+}
+
+.v5-dinein .dn-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+}
+
+
+/* ----------------------------------------------------------------- results */
+
+.v5-dinein .dn-results {
+  min-height: 120px;
+}
+
+.v5-dinein .dn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4, 16px);
+}
+
+.v5-dinein .dn-finding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3, 12px);
+  min-height: 160px;
+  color: var(--stone, #8e8b83);
+}
+.v5-dinein .dn-finding p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* A plate, spinning on its rim. */
+.v5-dinein .dn-plate {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+  border-top-color: var(--sun, #ffd166);
+  animation: dn-spin 0.9s linear infinite;
+}
+
+@keyframes dn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.v5-dinein .dn-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3, 12px);
+  padding: var(--sp-5, 24px);
+  border-radius: var(--r-card, 28px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+}
+.v5-dinein .dn-empty p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mist, #b9b5aa);
+}
+
+/* ------------------------------------------------------------------- cards */
+
+.v5-dinein .dn-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-card, 28px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-2);
+  overflow: hidden;
+  transition: transform var(--t-micro, 150ms) var(--ease-spring, ease);
+}
+.v5-dinein .dn-card:active {
+  transform: scale(0.99);
+}
+
+.v5-dinein .dn-card-art {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  background-color: var(--gallery-raised, #1b1b19);
+  background-size: cover;
+  background-position: center;
+}
+
+.v5-dinein .dn-share {
+  position: absolute;
+  top: var(--sp-2, 8px);
+  right: var(--sp-2, 8px);
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--bone, #efe9da);
+  background: color-mix(in srgb, var(--ink, #0a0a09) 55%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline-strong, rgba(239, 233, 218, 0.2));
+}
+.v5-dinein .dn-share svg {
+  width: 18px;
+  height: 18px;
+}
+
+.v5-dinein .dn-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  padding: var(--sp-4, 16px);
+}
+
+.v5-dinein .dn-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3, 12px);
+}
+
+.v5-dinein .dn-card-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.v5-dinein .dn-card-price {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold, #e8c77e);
+  white-space: nowrap;
+}
+
+.v5-dinein .dn-card-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--stone, #8e8b83);
+}
+
+.v5-dinein .dn-vibes,
+.v5-dinein .dn-menu,
+.v5-dinein .dn-diet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v5-dinein .dn-vibes li,
+.v5-dinein .dn-menu li,
+.v5-dinein .dn-diet span {
+  padding: 3px 9px;
+  border-radius: var(--r-chip, 999px);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mist, #b9b5aa);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: inset 0 0 0 1px var(--gallery-hairline, rgba(239, 233, 218, 0.11));
+}
+
+.v5-dinein .dn-menu li {
+  color: var(--bone, #efe9da);
+  background: transparent;
+}
+
+.v5-dinein .dn-diet span {
+  color: var(--ok, #9be8bf);
+}
+
+.v5-dinein .dn-why {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mist, #b9b5aa);
+}
+
+.v5-dinein .dn-card-plan {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold, #e8c77e);
+}
+
+.v5-dinein .dn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 8px);
+  margin-top: var(--sp-1, 4px);
+}
+.v5-dinein .dn-actions .dn-btn {
+  flex: 1 1 auto;
+}
+
+
+/* ------------------------------------------------------------------- shelf */
+
+.v5-dinein .dn-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+}
+
+.v5-dinein .dn-shelf-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  font-stretch: 82%;
+}
+
+.v5-dinein .dn-shelf-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--stone, #8e8b83);
+}
+
+.v5-dinein .dn-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v5-dinein .dn-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+  padding: var(--sp-3, 12px) var(--sp-4, 16px);
+  border-radius: var(--r-tile, 18px);
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-1);
+}
+
+.v5-dinein .dn-plan-when {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold, #e8c77e);
+  font-variant-numeric: tabular-nums;
+}
+
+.v5-dinein .dn-plan-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.v5-dinein .dn-plan-open {
+  margin-left: auto;
+}
+
+/* -------------------------------------------------------------------- sheet */
+
+.v5-dinein .dn-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet, 80);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.v5-dinein .dn-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--ink, #0a0a09) 74%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.v5-dinein .dn-sheet-card {
+  position: relative;
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  padding: var(--sp-5, 24px);
+  padding-bottom: calc(var(--sp-5, 24px) + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--r-sheet, 32px) var(--r-sheet, 32px) 0 0;
+  background: var(--gallery-surface, #121211);
+  box-shadow: var(--elev-3);
+}
+
+.v5-dinein .dn-sheet-art {
+  height: 120px;
+  border-radius: var(--r-tile, 18px);
+  background-size: cover;
+  background-position: center;
+}
+
+.v5-dinein .dn-sheet-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.v5-dinein .dn-sheet-plan {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gold, #e8c77e);
+}
+
+.v5-dinein .dn-sheet-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 8px);
+}
+
+.v5-dinein .dn-sheet-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--stone, #8e8b83);
+}
+
+/* ---------------------------------------------------------- reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .v5-dinein .dn-wisp {
+    display: none;
+  }
+  .v5-dinein .dn-slot.is-on {
+    animation: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heart, #ff5d7a) 55%, transparent);
+  }
+  .v5-dinein .dn-slot-pill {
+    transition: none;
+  }
+  .v5-dinein .dn-plate {
+    animation-duration: 2.4s;
+  }
+  .v5-dinein .dn-card {
+    transition: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .v5-dinein .dn-planner-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

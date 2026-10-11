@@ -1667,3 +1667,31 @@ button.fp-bleed{border:0;padding:0;font:inherit;color:inherit;text-align:left;cu
 /* The nav rail, topbar and sheets stay fully rendered: they are always visible
    and skipping them would cost more than it saves. */
 #nav,.topbar,#sheetwrap,#overlay{content-visibility:visible}
+
+/* ===== Tonight (feed): the bridge to Concerts and Dine-in =================
+   Two cards, one night. Art is procedural (src/lib/poster.ts), so there is no
+   licensed photography in the feed and nothing to wait for. */
+.tonight{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.tn-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.tn-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;scroll-snap-type:x mandatory}
+.tn-row::-webkit-scrollbar{display:none}
+.tn-card{position:relative;flex:none;width:min(78%,300px);scroll-snap-align:start;border-radius:22px;overflow:hidden;background:var(--coal);border:1px solid var(--line);display:flex;flex-direction:column;transition:transform .22s var(--spring),border-color .2s}
+.tn-card:active{transform:scale(.98)}
+.tn-card.tn-sk{height:214px;background:linear-gradient(100deg,var(--ash) 0%,var(--ash2) 40%,var(--ash) 80%);background-size:200% 100%;animation:tnSk 1.4s linear infinite}
+@keyframes tnSk{to{background-position:-200% 0}}
+.tn-art{position:relative;aspect-ratio:16/9;overflow:hidden}
+.tn-art img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02)}
+.tn-badge{position:absolute;left:10px;top:10px;font-size:10px;font-weight:800;letter-spacing:.12em;padding:5px 9px;border-radius:99px;background:rgba(10,10,9,.68);color:var(--bone);backdrop-filter:blur(6px)}
+.tn-card.table .tn-badge{background:rgba(255,209,102,.9);color:#1a1408}
+.tn-body{padding:13px 14px 14px;display:flex;flex-direction:column;gap:5px}
+.tn-body h3{font-size:16px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.tn-body p{font-size:12.5px;color:var(--mist)}
+.tn-meta{font-size:11.5px;color:var(--stone)}
+.tn-acts{display:flex;gap:8px;align-items:center;margin-top:9px}
+.tn-go{flex:1;height:42px;border-radius:99px;border:0;background:var(--bone);color:#141413;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.tn-card.table .tn-go{background:var(--sun);color:#1a1408}
+.tn-go:active{transform:scale(.97)}
+.tn-book{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--ash);color:var(--bone);display:grid;place-items:center;cursor:pointer}
+.tn-book svg{width:16px;height:16px}
+.tn-plans{align-self:flex-start;height:36px;padding:0 14px;border-radius:99px;border:1px dashed rgba(239,233,218,.3);background:transparent;color:var(--mist);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:2px}
+@media (prefers-reduced-motion:reduce){.tn-card.tn-sk{animation:none}.tn-card:active{transform:none}}

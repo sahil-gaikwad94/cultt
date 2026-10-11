@@ -539,92 +539,67 @@ function ccardHTML(p,i){
       ${isM?`<div class="cc-bot"><h3>${esc(r.title)}</h3><p>${esc(p.note||r.artist)}</p></div>`:''}</div>
     <div class="arow">${reactions(p,false)}</div></article>`;
 }
-function tomorrowHTML(){
-  /* The locked day is a scene, not an empty stub: the night-drive slot sits
-     behind a scrim with a slow ken-burns push, the tease cards float on top,
-     and the countdown reads left-aligned like the rest of the drop. If the
-     manifest leaves the slot empty the procedural gradient still carries it. */
-  return `<div class="drow stg">${bigDateHTML(1)}<span class="cnt">Locked</span></div>
-  <div class="tm stg" style="--d:1"><div class="tm-bg" aria-hidden="true"><div class="tm-bg-art">${posterSVG('dusk',palFrom('late-night drive'),1307)}</div>${ASSETS.tomorrowBg?`<i class="tm-bg-photo" style="--media-url:url(${ASSETS.tomorrowBg})"></i>`:''}</div><div class="tm-art"><div class="tm-inner">
-    <span class="tm-kicker">Tomorrow’s drop</span>
-    <div class="tm-cards" aria-hidden="true"><div class="tmc" style="--r:-8deg;--x:-34px;--dl:-1s">?</div><div class="tmc" style="--r:7deg;--x:34px;--dl:-2.5s">?</div><div class="tmc" style="--r:0deg;--x:0px;--dl:-4s">?</div></div>
-    <h2>Drops at 9:00 AM</h2><p class="hint">Tomorrow’s song and meme unlock together. Tonight’s hint: <b>late-night drive</b>.</p>
-    <div class="cd" id="cd">00:00:00</div>
-    <div class="group"><div class="row"><div class="tx" style="text-align:left"><b>Remind me</b><span>A quiet nudge when it lands.</span></div>${swHTML('tog','remind',S.set.remind,'Remind me')}</div></div>
-  </div></div></div>`;
+/* ---- Going out: Concerts (day −1) and Dine-in (day +1) ----------------
+   The Rewind receipt and The Draft are gone: the two days either side of Today
+   are now the two things you would actually do with a match — a gig and a
+   table. Both are real modules with their own art, motion and partner links
+   (src/v5/concerts.ts, src/v5/dinein.ts); the seam keeps the day tabs and
+   hands them a host. */
+function goingOutHTML(){
+  if(DK.day===-1)return '<div class="go-mount" id="go-mount" data-go="concerts"></div>';
+  if(DK.day===1)return '<div class="go-mount" id="go-mount" data-go="dinein"></div>';
+  return '';
 }
-/* ---- Y1 Receipts: yesterday as a thermal-paper receipt (brief §8.1) ----
-   Line items, totals, peak chaos and a PAID IN FULL stamp, read from the real
-   store. Under ?demo=1 with no history it prints a sample so the surface is
-   testable; in production an empty day is the honest empty state. */
-const rcDemoLines=()=>{const y=new Date(Date.now()-86400000);const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();return MM.slice(0,5).map((m,i)=>({ts:start+(9+i)*36e5+i*7e5,itemId:m.id,emoji:m.e||'🔥'}))};
-function rewindHTML(){
-  const st=V5.getState();
-  const y=new Date(Date.now()-86400000);
-  const start=new Date(y.getFullYear(),y.getMonth(),y.getDate()).getTime();
-  const end=start+86400000;
-  const rx=(st.reactions||[]).filter(r=>r.ts>=start&&r.ts<end);
-  const sv=(st.saves||[]).filter(s=>s.ts>=start&&s.ts<end);
-  const demo=DEMO_DATA&&!rx.length&&!sv.length;
-  const src=rx.length?rx.slice(0,12):(demo?rcDemoLines():[]);
-  const dateStr=y.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
-  if(!src.length){
-    return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div></div>
-    <div class="rcpt-empty stg"><span class="rcpt-emoji" aria-hidden="true">📼</span><h2>Nothing to rewind. Yet.</h2><p class="hint">React to a few drops today and your rewind lands here tomorrow.</p></div>`;
+let goHandle=null,goKind=null;
+/* A story from a listing: sticker + a line. No image bytes are copied into a
+   story (the layer model only references manifest ids), so this is honest about
+   what it is rather than faking a poster. */
+function postListingStory(emoji,line){
+  const now=Date.now();
+  V5.putStory({id:'story-'+now.toString(36),ownerId:'me',createdAt:now,expiresAt:now+storyTtlMs(),layers:[{type:'sticker',name:emoji},{type:'text',body:line}],audience:'everyone',hideFrom:[],replyRule:'react'});
+  renderStoriesRail();toast('Added to your story');haptic([10,30,10]);track('story_posted',{from:'listing'});
+}
+function sendPlanToMatch(line){
+  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
+  if(!ids.length){toast('Match with someone first, then send the plan');return}
+  const id=ids[0];ensureThread(id);
+  S.threads[id].msgs.push({f:'me',t:line,ts:Date.now()});save();
+  toast('Plan sent to '+person(id).name);haptic([10,30,10]);reply(id);
+}
+function mountGoingOut(){
+  const host=$('#go-mount');
+  if(!host){if(goHandle){try{goHandle.destroy()}catch(_){}goHandle=null;goKind=null}return}
+  const kind=host.dataset.go;
+  if(goHandle&&goKind===kind)return;
+  if(goHandle){try{goHandle.destroy()}catch(_){}goHandle=null}
+  goKind=kind;
+  const options={
+    onToast:toast,
+    onAddToStory:(item)=>{kind==='concerts'?postListingStory('🎟',[item.artist,item.title,item.venue,item.city].filter(Boolean).join(' · ')):postListingStory('🍽',[item.name,item.cuisine,item.area,item.city].filter(Boolean).join(' · '))},
+  };
+  if(kind==='concerts'){
+    import('./v5/concerts').then(({mountConcerts})=>{
+      if(!$('#go-mount'))return;
+      goHandle=mountConcerts(host,Object.assign({},options,{
+        onShare:(ev)=>{import('./lib/poster').then(({posterDataUri})=>{openV5Share({kind:'concert',id:ev.id,title:ev.artist+' · '+ev.title,subtitle:ev.genre,image:posterDataUri(ev.posterSeed,{width:480,height:640,detail:1}),url:location.href,facts:[ev.venue+' · '+ev.city,'from ₹'+ev.priceFrom]})}).catch(()=>toast('Sharing is not available right now'))},
+      }));
+    }).catch(()=>{host.innerHTML='<p class="empty">Live listings are not available right now.</p>'});
+    return;
   }
-  const VIBES=[['Chaotic','🌀'],['Deadpan','🗿'],['Wholesome','🥹'],['Unhinged','🤡'],['Soft','🫠'],['Niche','🧠']];
-  const vibe=VIBES[fnv1a('vibe'+start)%VIBES.length];
-  const laughs=rx.length||(demo?src.length:0),saves=sv.length||(demo?3:0);
-  const seen={},strip=[];
-  src.forEach(r=>{const m=mmOf(r.itemId);if(m&&!seen[m.id]){seen[m.id]=1;strip.push(`<div class="rw-tile">${mmVisual(m)}<span class="rw-tile-e">${esc(r.emoji||m.e||'✨')}</span></div>`)}});
-  const topMeme=mmOf(src[0].itemId);
-  return `<div class="drow stg"><div><span class="eyebrow">Your culture · rewind</span>${bigDateHTML(-1)}</div><button class="cnt" data-act="share-receipt" aria-label="Share rewind">Share</button></div>
-  <div class="rewind stg" style="--d:1">
-    <div class="rw-hero">
-      <span class="rw-kicker">${esc(dateStr)}</span>
-      <h2 class="rw-title">Your Rewind</h2>
-      <p class="rw-vibe">Vibe of the day <b>${vibe[0]}</b> ${vibe[1]}</p>
-    </div>
-    <div class="rw-stats">
-      <div><b>${laughs}</b><span>laughs ${esc(V5_LAUGH||'🔥')}</span></div>
-      <div><b>${saves}</b><span>saves 🔖</span></div>
-      <div><b>${src.length}</b><span>reacts</span></div>
-    </div>
-    ${topMeme?`<div class="rw-top"><span class="eyebrow">Most you</span><div class="rw-top-art">${mmVisual(topMeme)}</div></div>`:''}
-    ${strip.length?`<div class="rw-strip">${strip.join('')}</div>`:''}
-  </div>`;
-}
-/* ---- T1 The Draft: vote once on tomorrow's drop (brief §8.1) ----
-   Two blurred candidate memes and two song teasers (genre + vibe only). The
-   pick is deterministic per day so it is stable across renders; with no backend
-   it is labelled Practice Mode rather than pretending to tally real votes. */
-const fnv1a=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0};
-function draftHTML(){
-  const today=new Date().toISOString().slice(0,10);
-  const h=fnv1a('draft'+today);
-  const np=Math.max(1,MM.length),nt=Math.max(1,Object.keys(TRACKS).length);
-  const a=MM[h%np],b=MM[(h>>>4)%np]||MM[(h+1)%np];
-  const tracks=Object.values(TRACKS);
-  const s1=tracks[h%nt],s2=tracks[(h>>>6)%nt]||tracks[(h+1)%nt];
-  const vote=(S.draftVote&&S.draftVote.day===today)?S.draftVote.pick:null;
-  const winner=h%2;
-  const cand=(m,i)=>m?`<button class="dcand ${vote===i?'picked':''}" data-act="draft-vote" data-v="${i}" ${vote!==null?'disabled':''} aria-label="Vote for candidate ${i+1}"><span class="dcand-art">${mmVisual(m)}</span><span class="dcand-tag">${esc(m.k||'unlisted')}</span>${vote===i?'<span class="dcand-check" aria-hidden="true">✓</span>':''}</button>`:'';
-  const teaser=t=>t?`<div class="dtease"><b>${esc(t.genre||'Track')}</b><span>${esc(t.style||'')}</span></div>`:'';
-  return `<div class="drow stg"><div><span class="eyebrow">Tomorrow · the draft</span>${bigDateHTML(1)}</div><span class="cnt" id="cd">00:00:00</span></div>
-  <div class="draft stg" style="--d:1">
-    <p class="draft-q">Which meme drops tomorrow? Vote once — it's free.</p>
-    <div class="draft-cands">${cand(a,0)}${cand(b,1)}</div>
-    <div class="draft-songs"><span class="eyebrow">Song teasers</span>${teaser(s1)}${teaser(s2)}</div>
-    <p class="draft-mode">Practice mode: results arrive at 9:00 once voting is live.</p>
-    ${vote!==null?(vote===winner?'<div class="called">🎯 Called it — +1 to your profile</div>':'<div class="called-no">Not this time. Tomorrow is a new draft.</div>'):''}
-  </div>`;
+  import('./v5/dinein').then(({mountDinein,planSummary})=>{
+    if(!$('#go-mount'))return;
+    goHandle=mountDinein(host,Object.assign({},options,{
+      onShare:(r)=>{import('./lib/poster').then(({posterDataUri})=>{openV5Share({kind:'dine',id:r.id,title:r.name,subtitle:r.cuisine+' · '+r.area,image:posterDataUri(r.posterSeed,{width:480,height:640,detail:1}),url:location.href,facts:[r.city,'est. ₹'+r.priceForTwo+' for two']})}).catch(()=>toast('Sharing is not available right now'))},
+      onSendPlan:(r,plan)=>{try{sendPlanToMatch(planSummary(r,plan))}catch(_){sendPlanToMatch(r.name+' · '+r.area)}},
+    }));
+  }).catch(()=>{host.innerHTML='<p class="empty">Tables are not available right now.</p>'});
 }
 function homeBodyHTML(){
-  if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
-  if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
+  if(DK.day===1){DK.items=[];DK.order=[];return goingOutHTML()}
+  if(DK.day===-1){DK.items=[];DK.order=[];return goingOutHTML()}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
-    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
+    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?tonightHTML()+mmHTML():'');
 }
 /* ---- Stories (brief §6.6): a rail on the feed that opens the v5 Stories
    overlay. The compose/view/12-hour-expiry component is reused as-is; the seam
@@ -666,16 +641,19 @@ function syncDemoStories(){
 function renderFeed(){
   if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
-    <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
+    <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="open-stories" aria-label="Stories">${I.you}</button><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
+    <div id="stories-rail">${storiesRailHTML()}</div>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
+      ${ftabsHTML('day',[['-1','Concerts'],['0','Today'],['1','Dine-in']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
   layoutTabs($('#s-feed'));afterHome();
 }
 function afterHome(){
+  hydrateTonight();
+  mountGoingOut();
   fitMeme($('#s-feed'));
   const d=$('#hdeck');
   if(d){
@@ -742,25 +720,8 @@ FT.day=v=>{
   $('#circles').style.display=DK.day===0?'':'none';haptic(6);afterHome();
 };
 ACT.refresh=()=>{$('#s-feed').scrollTo({top:0,behavior:'smooth'});refresh()};
-/* The Draft: one free vote per day, then the card locks and shows the verdict. */
-ACT['draft-vote']=b=>{
-  const today=new Date().toISOString().slice(0,10);
-  if(S.draftVote&&S.draftVote.day===today){toast('You already voted today');return}
-  S.draftVote={day:today,pick:+b.dataset.v};save();haptic(8);
-  const hb=$('#hbody');if(hb)hb.innerHTML=homeBodyHTML();
-  track('draft_voted',{pick:+b.dataset.v});
-};
-/* Share the receipt. Uses the real Web Share / clipboard so the control never
-   claims a share it did not perform (honesty rule D-30). */
-ACT['share-receipt']=async()=>{
-  const st=V5.getState();const n=(st.reactions||[]).length;
-  const txt=`My cultured receipt — ${n} laughs, ${v5SavedKeys(st).length} saves. Match on your humor, not your headshot.`;
-  try{
-    if(navigator.share){await navigator.share({title:'cultured receipt',text:txt});track('receipt_shared',{via:'share'})}
-    else if(navigator.clipboard){await navigator.clipboard.writeText(txt);toast('Receipt copied to clipboard');track('receipt_shared',{via:'copy'})}
-    else toast('Sharing is not available on this device');
-  }catch(e){/* user dismissed the share sheet — not an error */}
-};
+/* The Draft and the Receipt are gone: day −1 and day +1 are the two going-out
+   pages now, so both of their handlers went with them. */
 function skel(n){return `<div class="sk-deck">${Array.from({length:n},(_,i)=>`<div class="sk sk-card" style="--d:${i}"></div>`).join('')}</div>`}
 function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);
@@ -1986,6 +1947,7 @@ function drawSet(tab){
     <div class="group">
       <div class="row"><div class="tx"><b>Co-listening invites</b><span>Matches can ask you to listen together for 15 minutes.</span></div>${swHTML('tog','invites',s.invites,'Co-listening invites')}</div>
       <div class="row"><div class="tx"><b>Quiet hours</b><span>No invites or nudges during this window.</span></div>${swHTML('tog','quiet',s.quiet,'Quiet hours')}</div>
+      <div class="row"><div class="tx"><b>Daily Drop reminder</b><span>A quiet nudge when it lands. Off is a fine answer.</span></div>${swHTML('tog','remind',s.remind,'Daily Drop reminder')}</div>
       <div class="row two" id="qrow" style="${s.quiet?'':'display:none'}"><div class="tx"><span>From</span><select class="sel" data-k="qFrom" aria-label="Quiet hours start">${hrs.map(h=>`<option ${h===s.qFrom?'selected':''}>${h}</option>`).join('')}</select></div><div class="tx"><span>Until</span><select class="sel" data-k="qTo" aria-label="Quiet hours end">${hrs.map(h=>`<option ${h===s.qTo?'selected':''}>${h}</option>`).join('')}</select></div></div>
     </div>
     <div class="blk"><h2>Privacy</h2></div>
@@ -2292,6 +2254,57 @@ function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg
 function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
 function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
+/* ================= tonight: the bridge to going out =================
+   Two ways out of the house, on the feed the user already opens. The strip is
+   rendered as a skeleton and hydrated after paint from the lazy seeds, so the
+   event and restaurant catalogues never land in the first-paint chunk. */
+function tonightHTML(){
+  return `<section class="tonight stg" style="--d:2" id="tonight"><div class="tn-h"><h2 class="sec" style="padding:0">Tonight</h2><span class="mm-n" id="tnplans"></span></div><div class="tn-row" id="tnrow"><div class="tn-card tn-sk"></div><div class="tn-card tn-sk"></div></div></section>`;
+}
+let tonightMods=null;
+function tonightCity(){
+  try{const c=localStorage.getItem('cultured2:concerts-city');if(c)return c}catch(_){}
+  return 'Mumbai';
+}
+function tnDateLabel(offset){
+  if(offset<=0)return 'TONIGHT';
+  const d=new Date();d.setDate(d.getDate()+offset);
+  return d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase();
+}
+function tnCard(kind,art,eyebrow,title,sub,meta,day,id,cta){
+  return `<article class="tn-card ${kind}"><div class="tn-art" aria-hidden="true"><img src="${esc(art)}" alt="" loading="lazy" decoding="async"><span class="tn-badge">${esc(eyebrow)}</span></div>`+
+    `<div class="tn-body"><h3>${esc(title)}</h3><p>${esc(sub)}</p><span class="tn-meta">${esc(meta)}</span>`+
+    `<div class="tn-acts"><button class="tn-go" data-act="goto-day" data-v="${day}">${esc(cta)}</button><button class="tn-book" data-act="tn-book" data-kind="${kind}" data-id="${esc(id)}" data-fx="chip" aria-label="Open the booking partner">${I.link}</button></div></div></article>`;
+}
+function hydrateTonight(){
+  const row=$('#tnrow');if(!row)return;
+  const paint=([E,D,P,O])=>{
+    const host=$('#tnrow');if(!host)return;
+    const city=tonightCity();
+    const pool=E.EVENTS.filter(e=>e.city===city).slice().sort((a,b)=>a.dayOffset-b.dayOffset);
+    const ev=pool[0]||E.EVENTS[0];
+    const rest=D.RESTAURANTS.filter(r=>r.city===city)[0]||D.RESTAURANTS[0];
+    const plans=O.listOutings().length;
+    const planEl=$('#tnplans');if(planEl)planEl.textContent=plans?(plans+(plans===1?' plan saved':' plans saved')):'two ways out of the house';
+    host.innerHTML=[
+      tnCard('live',P.posterDataUri(ev.posterSeed,{width:420,height:260,detail:.7}),tnDateLabel(ev.dayOffset),ev.artist+' · '+ev.title,ev.venue+' · '+city,'from ₹'+ev.priceFrom+' · '+ev.genre,-1,ev.id,'See the night'),
+      tnCard('table',P.posterDataUri(rest.posterSeed,{width:420,height:260,detail:.7}),'TABLE',rest.name,rest.cuisine+' · '+rest.area+' · '+city,'est. ₹'+rest.priceForTwo+' for two',1,rest.id,'Find a table'),
+    ].join('');
+    if(plans&&!host.querySelector('.tn-plans')){const note=document.createElement('button');note.className='tn-plans';note.dataset.act='goto-day';note.dataset.v=plans?'-1':'1';note.textContent='Open your plans';note.setAttribute('data-fx','chip');note.addEventListener('click',()=>FT.day('-1'));host.parentNode.appendChild(note)}
+  };
+  if(tonightMods){paint(tonightMods);return}
+  Promise.all([import('./data/seed/events'),import('./data/seed/dining'),import('./lib/poster'),import('./lib/outings')]).then(mods=>{tonightMods=mods;paint(mods)}).catch(()=>{const s=$('#tonight');if(s)s.remove()});
+}
+ACT['goto-day']=b=>{FT.day(String(b.dataset.v));const sc=$('#s-feed');if(sc)sc.scrollTo({top:0,behavior:'smooth'})};
+ACT['tn-book']=b=>{
+  const kind=b.dataset.kind,id=b.dataset.id;
+  Promise.all([import('./data/seed/events'),import('./data/seed/dining'),import('./lib/partners')]).then(([E,D,P])=>{
+    const city=tonightCity();
+    const link=kind==='live'?P.ticketLinks((()=>{const e=E.EVENTS.find(x=>x.id===id)||E.EVENTS[0];return{city:e.city,title:e.searchTitle,genre:e.searchGenre}})())[0]:P.tableLinks((()=>{const r=D.RESTAURANTS.find(x=>x.id===id)||D.RESTAURANTS[0];return{city:r.city,name:r.searchName,cuisine:r.searchCuisine}})())[0];
+    P.openPartnerLink(link);toast(link.label);haptic(8);track('partner_opened',{from:'tonight',kind:kind,partner:link.id});
+  }).catch(()=>toast('That listing is not available right now'));
+};
+
 const mmId=b=>b.closest('[data-m]').dataset.m;
 ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
