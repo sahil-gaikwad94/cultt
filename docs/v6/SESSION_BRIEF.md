@@ -521,17 +521,19 @@ Ranked by (impact ÷ effort), and all compatible with the no-fake-data rule:
 |---|---|---|---|
 | 0 | ~~Meme images~~ | — | **done** |
 | 1 | ~~Drop deck uses the real corpus; feed pagination + topic tabs on~~ | S | **done** — `src/screens/feed.ts`, plus three crashes fixed on the save path |
-| 2 | Save animation + like polish + combos | S | — |
-| 3 | Share sheet: story / match / Web-Share file / placard card | M | — |
-| 4 | Stories: `object-fit` fix, multi-slice, playback, drag stickers, blurhash | L | — |
-| 5 | `ProfileTheme` in the store, then themes + accents + reorder + preview | M | — |
-| 6 | Concerts sub-page: adapter + Ticketmaster + seeded pack + UI | L | DB migration |
-| 7 | Dine-in sub-page: adapter + Google Places + seeded pack + UI | L | DB migration |
-| 8 | `legacy.ts` extraction, one screen at a time | XL | — |
+| 2 | ~~Save animation + like polish + combos~~ | S | **done** — combo moved to the card double-tap; a toggle can never escalate |
+| 3 | ~~Share sheet: story / match / Web-Share file / placard card~~ | M | **done** — `src/lib/share.ts`, capability-probed; no button promises an Instagram Story |
+| 4 | Stories: ~~`object-fit` fix~~, multi-slice, playback, drag stickers, blurhash | L | **partly done** — the crop is fixed. Note: the recorded diagnosis was wrong, `object-fit: cover` was already there; the real cause was `flex: 1` plus a composer at a third ratio |
+| 5 | ~~Profile: prompt bank + humor cap + pronouns + lead photo + completeness~~ | M | **done** — `src/screens/profile.ts`. Not done: `ProfileTheme` in the store |
+| 6 | ~~Concerts sub-page: adapter + Ticketmaster + seeded pack + UI~~ | L | **done** — `src/screens/live.ts`. No DB migration; Ticketmaster is a documented stub, booking is a deep link |
+| 7 | ~~Dine-in sub-page: adapter + seeded pack + UI~~ | L | **done** — `src/screens/dining.ts`. Google Places replaced by Zomato/Swiggy deep links; neither has a public API |
+| 8 | `legacy.ts` extraction, one screen at a time | XL | **in progress** — feed, Live, Dine-in, share, profile rules and combos are all out of it |
+| 9 | ~~Perf: `fitMeme` layout thrash, `immutable` on un-hashed memes~~ | S | **done** |
 
 S = a session, M = a day or two, L = several days, XL = the rest of the quarter.
 
-**Done this session:** 0 and 1, plus the feed extraction from `legacy.ts`.
+**Done this session:** all of 0–7 and 9, plus the feed extraction from
+`legacy.ts`. Test count went 407 → 576 across 25 → 32 files.
 Also fixed along the way: `v5Resolve` out of scope (saving anything killed the
 You tab), the Saved-culture grid reading resolved entries as ids, and
 `burst()`'s unguarded `Element.animate` on the like path.
