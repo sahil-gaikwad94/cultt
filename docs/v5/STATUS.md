@@ -286,3 +286,60 @@ production build all clean. `dist/memes` goes from 0 to 64 media files.
 
 Full read of the codebase and the plan for the next round:
 `docs/v6/SESSION_BRIEF.md`.
+
+## The Culture Feed: typed core extracted, real art, working tabs and pager
+
+`src/screens/feed.ts` now owns every rule about what the feed shows; the seam
+keeps the gestures, the tint layer and the delegated `data-act` listener. It
+imports the meme manifest directly and never the `src/content` barrel, the v5
+screens or the store, so nothing new lands on the first-paint path —
+`index-*.js` moved 79.62 → 79.71 kB and 82.67 → 82.93 kB.
+
+What changed for the user:
+
+- **The Daily Drop leads with licensed art.** It drew its memes from four
+  hand-written text cards (`MEMES`, `legacy.ts:204`) rendered as procedural
+  typography, while the real corpus sat in a strip below. `planDrop` now picks
+  from the corpus, deterministic per local day, rotating categories and
+  weighted by the axes the user actually reacts to. Music still comes from the
+  seed tracks: **0 of the 208 manifest songs are resolved** (no artwork, no
+  preview), so real album art would have to be invented.
+- **The gallery is no longer capped at six of twenty.** `planGallery` pages it,
+  and "Show more" accumulates — the header count and the card count are the same
+  number by construction.
+- **The topic tabs work.** They were `toast('Topic tabs are off in this phase')`.
+  `nonEmptyTopics()` means a topic with nothing behind it is never offered.
+- Drop memes are excluded from the gallery, so nothing repeats on one screen.
+
+`legacy.ts` lost `mmCard` and `mmList`; both were dead once the planner arrived.
+
+### Three bugs found by driving the feed in jsdom
+
+`tests/unit/feed-screen.test.ts` is the first test in this repo to import
+`src/legacy.ts` into a real DOM and click through a screen. All three of these
+were invisible to the 407 pure-function tests:
+
+1. **`v5Resolve` was declared outside the IIFE** (`legacy.ts:66`) but read
+   `POSTS` (line 239) and `MM` (line 2183), both declared inside it. Any call
+   threw `ReferenceError: POSTS is not defined`. Its only caller is
+   `renderYou()`'s saved-item lookup, and `ACT['mm-save']` calls `renderYou()` —
+   so **saving anything killed the You tab** while the button looked like it had
+   worked. Moved inside, after the last name it reads.
+2. **The "Saved culture" grid read resolved entries as ids.** `v5Resolve`
+   returns `{kind, id, post?|meme}`; the template did `artOf(POSTS[id])`, so a
+   saved corpus meme produced `artOf(undefined)` → `Cannot read properties of
+   undefined (reading 'kind')`. Same path, second crash, same fix round.
+3. **`burst()` called `d.animate()` with no guard**, unlike
+   `src/motion/micro.ts`'s `canWAAPI`. On an engine without WAAPI the like
+   handler threw *after* writing state, so the heart filled and the floating
+   emoji, the haptic and the profile sync never ran. It also leaked particle
+   nodes whenever `onfinish` did not fire. Guarded, and particles now drop on a
+   timer as well.
+
+`planDrop` itself was wrong on the first draft: it added the category-rotation
+jitter to the use metric and compared on that, which let the jitter overrule a
+full point of affinity. Affinity now ranks within a category and rotation picks
+the category order — two separate decisions.
+
+439 tests / 26 files green (was 407 / 25); tsc, eslint and the production build
+clean.

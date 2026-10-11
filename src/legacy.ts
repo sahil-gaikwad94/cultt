@@ -30,6 +30,12 @@ import { SEED_TRACKS } from './data/seed/tracks';
    longer decides what the numbers are. */
 import { getStore } from './store';
 import { v5config } from './store/config';
+/* The Culture Feed's typed core, extracted from this file. Every rule about
+   what the feed shows — the drop order, the gallery pages, the topic tabs, the
+   `<img>` attributes — lives in src/screens/feed.ts and is unit-tested there.
+   This seam keeps the gestures, the tint layer and the delegated data-act
+   listener, which are the parts genuinely tangled up in the rest of the app. */
+import * as FEED from './screens/feed';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -49,24 +55,6 @@ const V5_PEOPLE=v5config.v5.people;
 const V5_ARENA=v5config.v5.arena;
 const V5_PROFILE=v5config.v5.profile;
 const V5_INTRO=v5config.v5.intro;
-let v5VaultHandle=null;
-const openV5Vault=async()=>{
-  if(v5VaultHandle)return;
-  const {mountVault}=await import('./v5/vault');
-  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
-  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
-};
-/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
-const v5Resolve = key => {
-  const i = key.indexOf(':');
-  if (i < 0) return null;
-  const kind = key.slice(0, i), id = key.slice(i + 1);
-  if (POSTS[id]) return { kind, post: POSTS[id], id };
-  const m = MM.find(x => x.id === id);
-  if (m) return { kind, meme: m, id };
-  return null;
-};
-
 (()=>{
 'use strict';
 /* ================= helpers ================= */
@@ -336,7 +324,10 @@ const coverFrom=str=>poster({id:str,style:STY[hash(str)%5],pal:palFrom(str)},tru
 function memeArt(m){
   return `<div class="art"><div class="memeart" style="background:${m.bg};color:${m.fg}"><svg class="sticker" viewBox="0 0 100 100" aria-hidden="true"><polygon points="${BURST(hash(m.id))}" fill="${m.ac}"/></svg><p class="mtxt">${esc(m.text)}</p><span class="mtag">cultured meme</span></div></div>`;
 }
-const artOf=p=>p.kind==='music'?poster(TRACKS[p.ref]):memeArt(MEMES[p.ref]);
+/* `p.corpus` marks a post backed by the real image corpus rather than one of
+   the four hand-written text memes. Those four stay reachable for the detail
+   page's legacy copy, but the feed no longer leads with them. */
+const artOf=p=>p.kind==='music'?poster(TRACKS[p.ref]):(p.corpus?FEED.dropArtHTML(p.corpus):memeArt(MEMES[p.ref]));
 function grainInit(){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.4 0 0 0 -.25"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>';
   document.documentElement.style.setProperty('--grain','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")');
@@ -373,12 +364,30 @@ const personArt=p=>`<div class="art" style="background:radial-gradient(90% 70% a
 /* ================= ui primitives ================= */
 const haptic=p=>{if(S.set.haptics&&navigator.vibrate){try{navigator.vibrate(p)}catch(e){}}};
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2300)}
+/* WAAPI guard, matching the one `src/motion/micro.ts` already uses. Without it
+   a like on an engine with no Element.animate (old Android WebView, jsdom)
+   threw out of the data-act handler *after* the state had been written, so the
+   heart filled and the rest of the handler — the floating emoji, the haptic,
+   the profile sync — never ran. Decoration must never be able to break the
+   thing it decorates. */
+const canAnimate=el=>!!el&&typeof el.animate==='function';
 function burst(btn,color){
-  if(S.set.calm)return;const ri=$('.ri',btn)||btn;const x=ri.offsetLeft+ri.offsetWidth/2,y=ri.offsetTop+ri.offsetHeight/2;
+  if(S.set.calm||!canAnimate(btn))return;
+  const ri=$('.ri',btn)||btn;const x=ri.offsetLeft+ri.offsetWidth/2,y=ri.offsetTop+ri.offsetHeight/2;
   for(let i=0;i<9;i++){
-    const d=document.createElement('i');d.className='bp';d.style.cssText=`left:${x-3}px;top:${y-3}px;background:${color}`;btn.appendChild(d);
+    const d=document.createElement('i');d.className='bp';d.style.cssText=`left:${x-3}px;top:${y-3}px;background:${color}`;
     const a=i/9*6.283,dist=30+Math.random()*12;
-    d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>d.remove();
+    let anim=null;
+    try{
+      anim=d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'});
+    }catch(e){return}
+    if(!anim)return;
+    /* Appended only once the animation is real, and removed on a timer as well
+       as on finish: a particle whose onfinish never fires (tab backgrounded
+       mid-flight) used to stay in the DOM for the life of the page. */
+    btn.appendChild(d);
+    const drop=()=>d.remove();
+    anim.onfinish=drop;setTimeout(drop,900);
   }
 }
 /* Floating reaction: an emoji (or a few) lifts off the tap point, drifts and
@@ -470,8 +479,8 @@ function updateBadge(){
 }
 
 /* ================= home (drops) ================= */
-const refOf=p=>p.kind==='music'?TRACKS[p.ref]:MEMES[p.ref];
-const labelOf=p=>p.kind==='music'?TRACKS[p.ref].title:MEMES[p.ref].text.split('\n')[0];
+const refOf=p=>p.kind==='music'?TRACKS[p.ref]:(p.corpus?{text:p.corpus.title,tag:FEED.categoryLabel(p.corpus)}:MEMES[p.ref]);
+const labelOf=p=>p.kind==='music'?TRACKS[p.ref].title:(p.corpus?p.corpus.title:MEMES[p.ref].text.split('\n')[0]);
 const rs=id=>S.react[id]||(S.react[id]={l:0,h:0,s:0});
 const curDrop=()=>DROPS[S.dropIdx%DROPS.length];
 /* Seeded circle posts are demonstration content, not real people's posts. */
@@ -479,9 +488,33 @@ const CIRCLE_SOURCE=DEMO_DATA?CIRCLE:[];
 function circleList(){const n=CIRCLE_SOURCE.length;if(!n)return[];const k=S.shift%n;return CIRCLE_SOURCE.slice(k).concat(CIRCLE_SOURCE.slice(0,k))}
 function dateParts(off){const d=new Date();d.setDate(d.getDate()+off);return{d:String(d.getDate()).padStart(2,'0'),m:d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}}
 function bigDateHTML(off){const x=dateParts(off),s=x.d+' '+x.m;return `<div class="bigdate" aria-label="${x.d} ${x.m}">${[...s].map((c,i)=>c===' '?'<span class="sp2"></span>':`<span class="ch"><i style="--d:${i}">${c}</i></span>`).join('')}</div>`}
-/* With circles empty (production), the last two cards come from yesterday so
-   the drop is still a deck of four rather than a deck of two. */
-function deckItems(){if(DK.day===-1)return YEST;const extra=circleList().slice(0,2);return [curDrop().music,curDrop().meme].concat(extra.length?extra:YEST.slice(0,2))}
+/* The Daily Drop's memes come from the licensed corpus now, not from the four
+   hand-written text cards. `planDrop` is deterministic per local day and
+   rotates categories, so the deck is stable across re-renders and never four
+   dev-tears cards in a row. Music still comes from the seed tracks: 0 of the
+   208 manifest songs are resolved (no artwork, no preview), so drawing real
+   album art would mean inventing it. */
+function feedAffinity(){
+  const out={};
+  V5.getState().reactions.forEach(r=>{const m=FEED.memeById(r.itemId);if(m)out[m.axis]=(out[m.axis]||0)+1});
+  const tot=Object.values(out).reduce((a,b)=>a+b,0);
+  if(tot)Object.keys(out).forEach(k=>{out[k]/=tot});
+  return out;
+}
+/* Registered as POSTS so the existing deck, detail page, reaction bar and
+   `syncPost` all work unchanged — `corpus` is the only new field. */
+function corpusPost(m){return POSTS[m.id]||(POSTS[m.id]={id:m.id,kind:'meme',ref:m.id,corpus:m,likes:0,laughs:0})}
+let dropMemes=[];
+function planDropMemes(){dropMemes=FEED.planDrop({count:3,affinity:feedAffinity()});return dropMemes}
+const dropMemeIds=()=>new Set(dropMemes.map(m=>m.id));
+/* With circles empty (production), the deck is the drop song plus the corpus
+   memes plus one circle song, so it is still a deck rather than a pair. */
+function deckItems(){
+  if(DK.day===-1)return YEST;
+  const memes=planDropMemes().map(corpusPost);
+  const extra=circleList().filter(p=>p.kind==='music').slice(0,1);
+  return [curDrop().music].concat(memes,extra);
+}
 const FXFOR={like:'like',save:'save',share:'share',laugh:'react'};
 const rb=(act,cls,icon,n,on,label)=>`<button class="rb ${cls} ${on?'on':''}" data-act="${act}"${FXFOR[act]?` data-fx="${FXFOR[act]}"`:''} aria-label="${label}" aria-pressed="${!!on}"><span class="ri">${icon}</span>${n!==undefined?`<span class="n">${n}</span>`:''}</button>`;
 function reactions(p,col){
@@ -595,7 +628,7 @@ function homeBodyHTML(){
   if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
-    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
+    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?`<div id="mmhost">${mmHTML()}</div>`:'');
 }
 /* ---- Stories (brief §6.6): a rail on the feed that opens the v5 Stories
    overlay. The compose/view/12-hour-expiry component is reused as-is; the seam
@@ -1691,6 +1724,13 @@ function renderYou(){
   /* v5: both numbers come from the store, so a save made on a corpus meme in
      "Today's memes" lands here too. The old filter dropped everything that was
      not one of the 10 hard-coded POSTS ids — that was the "0" bug. */
+  /* Resolved entries, not ids: `v5Resolve` turns each `kind:id` key into
+     `{kind, id, post?}` for a drop/circle post or `{kind, id, meme}` for a
+     corpus meme. Saving a corpus meme yields the second shape, which has no
+     `post` — the "Saved culture" grid below registers it through `corpusPost`
+     so `artOf` and `openDetail` both resolve. Reading these as bare ids is
+     what used to throw `Cannot read properties of undefined (reading 'kind')`
+     out of `artOf` the first time anything was saved. */
   const saved=v5SavedKeys(V5.getState()).map(v5Resolve).filter(Boolean);
   const laughs=v5LaughsGiven(V5.getState());
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
@@ -1710,7 +1750,7 @@ function renderYou(){
     <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
-    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
+    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(it=>`<button class="gt" data-act="saved-open" data-id="${esc(it.id)}" aria-label="Open saved item"><div class="art-wrap">${artOf(it.post||corpusPost(it.meme))}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
     <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
@@ -2148,15 +2188,60 @@ const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵
    used to sit here are gone: cultured only shows real image and video memes,
    and only ones the content pipeline has actually built a manifest for. */
 const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,fb:m.fb||m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
-let mmTab='all';
+
+/* ---------------------------------------------------------------------------
+   These two used to sit ABOVE the IIFE, at module top level, where `POSTS`,
+   `MM` and `renderYou` are not in scope — all three are declared inside it.
+   Nothing caught it because the only caller is `renderYou()`'s saved-item
+   lookup, so the ReferenceError fired the first time a user saved something
+   and the You tab re-rendered: `ACT['mm-save']` calls `renderYou()`. The whole
+   profile screen died on a ReferenceError, and the like/save buttons that
+   triggered it looked like they had worked. They live here now, after the last
+   name they read.
+   ------------------------------------------------------------------------- */
+/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
+const v5Resolve = key => {
+  const i = key.indexOf(':');
+  if (i < 0) return null;
+  const kind = key.slice(0, i), id = key.slice(i + 1);
+  if (POSTS[id]) return { kind, post: POSTS[id], id };
+  const m = MM.find(x => x.id === id);
+  if (m) return { kind, meme: m, id };
+  return null;
+};
+
+let v5VaultHandle=null;
+const openV5Vault=async()=>{
+  if(v5VaultHandle)return;
+  const {mountVault}=await import('./v5/vault');
+  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
+  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
+};
+let mmTab='all',mmLimit=FEED.GALLERY_PAGE_SIZE;
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
-const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
 function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
 function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
-ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
+/* The gallery is planned by the typed module and re-rendered as a unit. The
+   tab bar is inside the section so a topic change cannot desync the indicator
+   from the cards, and empty topics are never offered as tabs at all. */
+const mmState=m=>({liked:!!mmS().l[m.id],saved:!!mmS().s[m.id]});
+const mmIcons=()=>({like:I.heart,save:I.bookmark,share:I.share});
+function mmHTML(){
+  const topics=FEED.nonEmptyTopics();
+  const label=t=>(FEED.FEED_TOPICS.find(x=>x.id===t)||{}).label||t;
+  return `<div class="mm-tabs">${ftabsHTML('mm',topics.map(t=>[t,label(t)]),mmTab)}</div>`
+    +FEED.gallerySectionHTML({topic:mmTab,limit:mmLimit,exclude:dropMemeIds(),state:mmState,icons:mmIcons()});
+}
+/* The gallery re-renders as one unit inside #mmhost, so the tab indicator, the
+   count and the cards can never disagree. */
+function rerenderGallery(){
+  const host=$('#mmhost');if(!host)return;
+  host.innerHTML=mmHTML();
+  layoutTabs($('#s-feed'));fitMeme($('#s-feed'));
+}
+FT.mm=v=>{mmTab=v;mmLimit=FEED.GALLERY_PAGE_SIZE;rerenderGallery();haptic(5)};
+ACT['mm-more']=b=>{mmLimit=+b.dataset.next;rerenderGallery();haptic(5)};
 const mmId=b=>b.closest('[data-m]').dataset.m;
 ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
