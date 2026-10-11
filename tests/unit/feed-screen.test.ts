@@ -717,4 +717,71 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
       expect(chips('pl-genre').find((c) => c.dataset.v === '')?.classList.contains('on')).toBe(false);
     });
   });
+
+  describe('the You screen', () => {
+    const tap = (el: Element | null | undefined) =>
+      (el as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const toYou = () => tap(document.querySelector('.nv[data-t="you"]'));
+    const you = () => document.querySelector('#s-you') as HTMLElement;
+
+    it('shows a completeness meter rather than a personality score', () => {
+      toYou();
+      const meter = you().querySelector<HTMLElement>('.pcmp');
+      expect(meter).toBeTruthy();
+      expect(meter?.textContent).toMatch(/\d+% complete/);
+      const bar = meter?.querySelector<HTMLElement>('.pcmp-bar');
+      const pct = Number(bar?.style.getPropertyValue('--p'));
+      expect(Number.isFinite(pct)).toBe(true);
+      expect(pct).toBeGreaterThanOrEqual(0);
+      expect(pct).toBeLessThanOrEqual(100);
+      expect(bar?.getAttribute('aria-label')).toMatch(/% complete/);
+    });
+
+    it('refuses a fourth humor signal and says so, instead of silently hiding it', () => {
+      toYou();
+      const chips = () => [...you().querySelectorAll<HTMLElement>('#hum .chip[data-h]')];
+      const off = () => chips().filter((c) => !c.classList.contains('on'));
+      const onCount = () => chips().filter((c) => c.classList.contains('on')).length;
+
+      expect(onCount()).toBe(3); // the seeded default is already at the cap
+      const before = onCount();
+      tap(off()[0]);
+
+      expect(onCount()).toBe(before);
+      expect(document.querySelector('#toast')?.textContent).toContain('limit');
+      expect(you().querySelector('#hum-count')?.textContent).toBe('3/3');
+    });
+
+    it('lets you choose your own prompt question', async () => {
+      toYou();
+      const bank = you().querySelector('.pq-pick');
+      expect(bank).toBeTruthy();
+      (bank as HTMLDetailsElement).open = true;
+
+      const before = you().querySelectorAll('.pq').length;
+      const option = bank?.querySelector<HTMLElement>('.pq-bank .chip');
+      const question = option?.textContent ?? '';
+      tap(option);
+      await settle('.pq-pick');
+
+      expect(you().querySelectorAll('.pq').length).toBe(Math.min(before + 1, 3));
+      expect(you().textContent).toContain(question);
+    });
+
+    it('removes a prompt', async () => {
+      toYou();
+      const before = you().querySelectorAll('.pq').length;
+      tap(you().querySelector('[data-act="prompt-rm"]'));
+      await settle('.pq-pick');
+      expect(you().querySelectorAll('.pq').length).toBe(before - 1);
+    });
+
+    it('offers a pronouns field that persists', () => {
+      toYou();
+      const field = you().querySelector<HTMLInputElement>('#pf-pron');
+      expect(field).toBeTruthy();
+      expect(field?.getAttribute('aria-label')).toBe('Your pronouns');
+      field?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
 });

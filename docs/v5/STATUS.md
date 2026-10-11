@@ -507,3 +507,40 @@ lazy chunks.
 One caveat worth stating plainly: a single full-suite run partway through
 reported 1 failure that did not reproduce in the five runs after it, and I
 could not capture which test it was. Everything since has been clean.
+
+## Profile customisation (ask #7)
+
+`v5.profile` is `false` by default, so the legacy You screen is the one people
+actually see — and it already did a lot: name, bio, tint, wall art, photo,
+humor signals, artists, photos, prompt answers. Two real gaps, both now closed.
+
+**The prompt questions were fixed.** You could edit the answer to "The song I'll
+defend forever" but never change the question. There is now a bank of 18, up to
+three on the profile, add and remove, with the bank behind a disclosure.
+
+**The humor cap was a silent lie.** `ACT.hum` pushed without a limit while
+`renderYou` rendered `pr.humor.slice(0, 3)` — so a fourth chip lit up, saved,
+and never appeared anywhere. `PF.toggleHumor` now refuses at three with a
+reason, the header shows `3/3`, and the seeded default already sits at the cap
+so the refusal path is exercised by a real tap in the test suite.
+
+Also added: a pronouns field, "Make first" on photos (which one leads was an
+accident of upload order), and a completeness meter.
+
+The meter measures **fields, not personality**, and the copy next to it says
+so — it is the only score in the app that is not about matching. Answers are
+weighted, not just presence: a three-character bio and an empty prompt answer
+both count as missing.
+
+All rules live in `src/screens/profile.ts`, pure, returning new state rather
+than mutating. 22 unit tests plus 5 DOM tests through the real You screen.
+
+One deliberate non-change: `src/screens/profile.ts` stays a **static** import
+(+1.9 kB gz on `legacy`). The You screen is a primary tab reached synchronously
+by `go('you')`; making it lazy would put a skeleton in front of a main
+destination to save 1.9 kB, which is the wrong trade.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **568 passed / 31 files** (was
+541 / 30) · build OK, `legacy` 202.00 kB / **69.46 kB gz**.

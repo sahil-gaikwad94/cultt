@@ -41,6 +41,7 @@ import * as FEED from './screens/feed';
    deliver — the rule at openShare() above, applied everywhere. */
 import * as SHARE from './lib/share';
 import {bookingLink as placeLink} from './lib/places/providers';
+import * as PF from './screens/profile';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -266,7 +267,7 @@ const DEF=()=>({
   onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,cal:0,city:'Lisbon',wait:false,
   react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
-    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings'},
+    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings',pronouns:''},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
   pulse:{duel:false,seen:0},duelLink:null
 });
@@ -1757,8 +1758,9 @@ function renderYou(){
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
     <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
       <div class="you-id stg"><div class="you-av">${pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:orb({name:pr.name,pal:P.slice(1)},64)}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
-        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
+        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><input class="ghost pron" id="pf-pron" value="${esc(pr.pronouns||'')}" maxlength="24" placeholder="Pronouns" aria-label="Your pronouns" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
         <div class="you-chips">${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
+    ${completenessHTML()}
     <div class="stats stg" style="--d:1"><div><b>${Object.keys(S.threads).length}</b><span>Resonances</span></div><div><b>${saved.length}</b><span>Saved</span></div><div><b>${laughs}</b><span>Laughs given</span></div></div>
     <div class="stage2">
     <div class="blk stg" style="--d:2"><h2>Look and feel<small>Changes your wash, not your worth</small></h2>
@@ -1767,11 +1769,11 @@ function renderYou(){
       <div class="row"><div class="tx"><b>On the wall</b><span>The art behind your name. Pick a mood.</span></div><span class="look-row">${[['rings','Rings'],['poster','Poster'],['quiet','Quiet']].map(o=>`<button class="look-o ${bgS===o[0]?'on':''}" data-act="prof-bg" data-fx="chip" data-k="${o[0]}" aria-pressed="${bgS===o[0]}">${o[1]}</button>`).join('')}</span></div>
     </div>
     <div class="blk stg" style="--d:2"><h2>Who sees your Fingerprint</h2><div style="margin-top:12px">${segHTML('vis',[['all','Everyone'],['matches','Matches'],['me','Only me']],pr.vis)}</div></div>
-    <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
+    <div class="blk stg" style="--d:3"><h2>Humor signals<small><span id="hum-count">${pr.humor.length}/${PF.MAX_HUMOR}</span> · only these show</small></h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
     <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(it=>`<button class="gt" data-act="saved-open" data-id="${esc(it.id)}" aria-label="Open saved item"><div class="art-wrap">${artOf(it.post||corpusPost(it.meme))}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
-    <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
+    <div class="blk"><h2>Prompts<small>${pr.prompts.length}/${PF.MAX_PROMPTS} · pick your own</small></h2>${pr.prompts.map((q,i)=>{const pr0=PF.normalizePrompt(q);return `<div class="pq" data-pid="${esc(pr0.id)}"><div class="pq-h"><span>${esc(pr0.question)}</span><button class="pq-x" data-act="prompt-rm" data-id="${esc(pr0.id)}" aria-label="Remove this prompt">${I.x}</button></div><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(pr0.question)}">${esc(pr0.answer)}</textarea></div>`}).join('')}${pr.prompts.length<PF.MAX_PROMPTS?`<details class="pq-pick"><summary>Add a prompt</summary><div class="chips pq-bank">${PF.availablePrompts(profileEditState()).map(x=>`<button class="chip" data-act="prompt-add" data-id="${esc(x.id)}">${esc(x.question)}</button>`).join('')}</div></details>`:''}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
   drawPhotos();shelfWire();
@@ -1780,11 +1782,12 @@ function renderYou(){
 function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',(youPal()||[])[1]||'#ff8a5b',{n:18,w:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
 function drawPhotos(){
   const g=$('#photos');if(!g)return;
-  g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}"><button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<9?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
+  g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}${i===0?' — shown first':''}">${i===0?'<span class="lead-tag">First</span>':`<button class="lead" data-act="lead-photo" data-i="${i}">Make first</button>`}<button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<PF.MAX_PHOTOS?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
 }
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='pf-name'){S.prof.name=t.value;save()}
+  else if(t.id==='pf-pron'){S.prof.pronouns=t.value;save()}
   else if(t.id==='pf-bio'){S.prof.bio=t.value;save()}
   else if(t.dataset&&t.dataset.pq!==undefined){S.prof.prompts[+t.dataset.pq].a=t.value;save()}
   else if(t.id==='radius'){S.set.radius=+t.value;t.style.setProperty('--p',((t.value-1)/99*100)+'%');$('#radv').textContent=t.value+' km';save();fpDirty=true;if($('#deck'))renderDeck()}
@@ -1833,9 +1836,52 @@ function readPfp(file){
   fr.onerror=()=>toast('That file could not be read');
   fr.readAsDataURL(file);
 }
+/* ---------------- profile customisation ---------------- */
+/* The pure rules live in src/screens/profile.ts; this is only the adapter from
+   the legacy `S.prof` shape and back. */
+function profileEditState(){
+  const pr=S.prof;
+  return {
+    pronouns:pr.pronouns||'',
+    humor:pr.humor||[],
+    prompts:(pr.prompts||[]).map(PF.normalizePrompt),
+    photos:pr.photos||[],
+    name:pr.name||'',
+    bio:pr.bio||'',
+    artists:pr.artists||[],
+    hasPhoto:!!pr.pfp
+  };
+}
+function completenessHTML(){
+  const c=PF.completeness(profileEditState());
+  const hint=c.score>=100?'Everything is filled in':c.missing.slice(0,2).join(' · ');
+  return `<div class="pcmp stg" style="--d:1"><div class="pcmp-bar" style="--p:${c.score}" data-n="${c.score}" role="img" aria-label="Profile ${c.score}% complete"></div><div class="pcmp-tx"><b>${c.score}% complete</b><span>${esc(hint)}</span></div></div>`;
+}
+ACT['prompt-add']=b=>{
+  const r=PF.addPrompt(profileEditState().prompts,b.dataset.id);
+  if(!r.ok){toast(r.reason);haptic(14);return}
+  S.prof.prompts=r.next.map(x=>({q:x.question,a:x.answer}));save();renderYou();toast('Prompt added');haptic(8);
+};
+ACT['prompt-rm']=b=>{
+  S.prof.prompts=PF.removePrompt(profileEditState().prompts,b.dataset.id).map(x=>({q:x.question,a:x.answer}));
+  save();renderYou();haptic(6);
+};
+ACT['lead-photo']=b=>{
+  const i=+b.dataset.i;if(!(i>0))return;
+  S.prof.photos=PF.makeLeadPhoto(S.prof.photos,i);save();drawPhotos();toast('That photo is first now');haptic([8,14,8]);
+};
 ACT.hum=b=>{
-  const h=b.dataset.h,i=S.prof.humor.indexOf(h);if(i>-1)S.prof.humor.splice(i,1);else S.prof.humor.push(h);
-  b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);save();updateFP();haptic(6);
+  const h=b.dataset.h;
+  /* The cap used to live in the view as `pr.humor.slice(0,3)`, so a fourth chip
+     lit up, saved, and then simply never appeared on the profile. Refusing with
+     a reason is the fix; the count in the header makes the limit visible. */
+  const r=PF.toggleHumor(S.prof.humor,h);
+  S.prof.humor=r.next;
+  if(!r.ok){toast(r.reason);haptic(14);b.classList.remove('pressing');return}
+  b.classList.toggle('on',!S.prof.humor.includes(h));
+  b.setAttribute('aria-pressed',String(S.prof.humor.includes(h)));
+  const c=$('#hum-count');if(c)c.textContent=`${S.prof.humor.length}/${PF.MAX_HUMOR}`;
+  save();updateFP();renderYou();haptic(6);
 };
 ACT['rm-art']=b=>{S.prof.artists=S.prof.artists.filter(a=>a!==b.dataset.a);save();updateFP();renderYou()};
 ACT['add-art']=()=>{
