@@ -520,7 +520,7 @@ Ranked by (impact ÷ effort), and all compatible with the no-fake-data rule:
 | # | Item | Effort | Depends on |
 |---|---|---|---|
 | 0 | ~~Meme images~~ | — | **done** |
-| 1 | Drop deck uses the real corpus; feed pagination + topic tabs on | S | — |
+| 1 | ~~Drop deck uses the real corpus; feed pagination + topic tabs on~~ | S | **done** — `src/screens/feed.ts`, plus three crashes fixed on the save path |
 | 2 | Save animation + like polish + combos | S | — |
 | 3 | Share sheet: story / match / Web-Share file / placard card | M | — |
 | 4 | Stories: `object-fit` fix, multi-slice, playback, drag stickers, blurhash | L | — |
@@ -531,7 +531,12 @@ Ranked by (impact ÷ effort), and all compatible with the no-fake-data rule:
 
 S = a session, M = a day or two, L = several days, XL = the rest of the quarter.
 
-1–3 are self-contained and land visible wins without a backend. 4 and 5 are
+**Done this session:** 0 and 1, plus the feed extraction from `legacy.ts`.
+Also fixed along the way: `v5Resolve` out of scope (saving anything killed the
+You tab), the Saved-culture grid reading resolved entries as ids, and
+`burst()`'s unguarded `Element.animate` on the like path.
+
+2–3 are self-contained and land visible wins without a backend. 4 and 5 are
 self-contained but large. 6 and 7 need a Supabase project and real API keys
 before they can be more than a seeded demo. 8 is the thing that makes all of it
 cheaper.
