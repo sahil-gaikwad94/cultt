@@ -563,10 +563,19 @@ and every browser that ever loaded it holds the old bytes for a year. That is
 not a slow cache, it is a cache that never expires, on exactly the assets most
 likely to be regenerated.
 
-The unescaped `.` in the pattern also matched `fooXwebp`. `/memes/*` now gets
-`max-age=86400, stale-while-revalidate=604800, must-revalidate` — still at most
-one request a day, and a rebuild actually lands. `immutable` stays only where a
-content hash backs it.
+`/memes/*` now gets `max-age=86400, stale-while-revalidate=604800,
+must-revalidate` — still at most one request a day, and a rebuild actually
+lands. `immutable` stays only where a content hash backs it.
+
+The first version of this fix also added a catch-all for media outside
+`/assets/` and `/memes/`, using a `(?!assets/|memes/)` negative lookahead to
+exclude the two handled prefixes. **Vercel rejected it** — the deploy check
+failed with `invalid-route-source-pattern`, because its route grammar is
+`path-to-regexp` and does not take a lookahead. That rule is gone: media
+anywhere else now falls through to Vercel's defaults, which is safe, since the
+defect being fixed was specifically `immutable` on un-hashed meme filenames.
+Every remaining pattern is written in the same style as the ones that shipped
+before, which is the only evidence available here that they parse.
 
 ### `fitMeme()` forced a layout per node per round
 

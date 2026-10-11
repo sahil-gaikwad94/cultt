@@ -30,20 +30,11 @@
       ]
     },
     {
-      "source": "/memes/(.*)\\.(webp|avif|png|jpe?g|mp4|webm)",
+      "source": "/memes/(.*).(webp|avif|png|jpg|jpeg|mp4|webm)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=86400, stale-while-revalidate=604800, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/(?!assets/|memes/)(.*)\\.(webp|avif|mp4|webm)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, must-revalidate"
         }
       ]
     }
