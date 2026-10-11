@@ -19,6 +19,15 @@
 
 import { DUR, EASE, shouldAnimate } from './reduce';
 import { synth } from './audio';
+/* Combos (brief §7). The escalation lives in the tracker and the particle
+   layer only — nothing here reads or writes the store, so a combo can never
+   mint or spend one of the day's laughs. */
+import {
+  burstCountFor,
+  comboLabel,
+  createComboTracker,
+  hapticFor,
+} from './combos.ts';
 /* Type-only: the ReactionTray + FX engine itself is pulled in lazily (below) so
    the tray and its particle canvas never sit on the first-paint path. */
 import type { createFxLayer } from '../v5/reactions.ts';
@@ -323,6 +332,78 @@ const fanFor = (btn: HTMLElement): void => {
   }
 };
 
+/* ------------------------------------------------------- like/save fx */
+
+const combos = createComboTracker();
+
+/** The "×2 / ×3 / ×5 UNWELL" label. Never shown for a single tap. */
+const comboChipAt = (host: HTMLElement, level: 1 | 2 | 3 | 5): void => {
+  const label = comboLabel(level);
+  if (!label || !shouldAnimate()) return;
+  host.querySelector('.fx-combo')?.remove();
+  const chip = document.createElement('span');
+  chip.className = 'fx-combo';
+  chip.setAttribute('aria-hidden', 'true');
+  chip.textContent = label;
+  host.appendChild(chip);
+  window.setTimeout(() => chip.remove(), 950);
+};
+
+/** The bookmark filling from the bottom, then settling to a faint wash. */
+const fillIcon = (btn: HTMLElement): void => {
+  if (!shouldAnimate()) return;
+  btn.querySelector('.fx-fill')?.remove();
+  const fill = document.createElement('i');
+  fill.className = 'fx-fill';
+  fill.setAttribute('aria-hidden', 'true');
+  btn.appendChild(fill);
+  // Two frames, so the initial scaleY(0) is committed before the class lands.
+  requestAnimationFrame(() => requestAnimationFrame(() => fill.classList.add('go')));
+  window.setTimeout(() => fill.remove(), 520);
+};
+
+/** A one-shot halo. Removed on a timer so a backgrounded tab cannot strand it. */
+const glow = (btn: HTMLElement): void => {
+  if (!shouldAnimate()) return;
+  btn.classList.remove('fx-glow');
+  void btn.offsetWidth;
+  btn.classList.add('fx-glow');
+  window.setTimeout(() => btn.classList.remove('fx-glow'), 560);
+};
+
+/**
+ * The big centred heart for a double-tap on the artwork — and the one place a
+ * combo actually belongs.
+ *
+ * The like *button* is a toggle: tapping a liked item un-likes it, and an
+ * un-like has to reset the streak, so a combo keyed to that control could only
+ * ever reach ×1. The double-tap is the gesture people actually spam, so the
+ * escalation lives here and is keyed to the card.
+ */
+export const bigHeartOn = (host: HTMLElement, svg: string): number => {
+  const id = host.dataset.m ?? host.dataset.id ?? null;
+  const level = id ? combos.record(`dbl:${id}`, Date.now()) : 1;
+
+  const prior = host.querySelector('.fx-bigheart, .bigheart');
+  if (prior) prior.remove();
+  const heart = document.createElement('div');
+  heart.className = 'fx-bigheart';
+  heart.setAttribute('aria-hidden', 'true');
+  // Each level is visibly bigger, so ×5 reads as a different event, not a
+  // slightly louder one.
+  const scale = 1 + (level - 1) * 0.16;
+  heart.style.setProperty('--bhs', String(scale));
+  heart.innerHTML = svg;
+  host.appendChild(heart);
+  window.setTimeout(() => heart.remove(), 1000);
+
+  if (level > 1) {
+    burst(host, undefined, burstCountFor(level));
+    comboChipAt(host, level);
+  }
+  return level;
+};
+
 /* ------------------------------------------------------- delegated fx */
 
 const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
@@ -330,10 +411,15 @@ const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
     const on = btn.getAttribute('aria-pressed') === 'true';
     const icon = btn.querySelector('.ri, svg, .mm-e') as HTMLElement | null;
     if (on) {
+      /* The heart no longer just pops — it lands. Squash-and-stretch on the
+         glyph, a shockwave ring out of the control and a halo that decays. No
+         combo here: this is a toggle, so see `bigHeartOn`. */
       heartPop(icon ?? btn);
-      burst(btn);
+      ringFrom(btn, 'var(--heart)');
+      glow(btn);
+      burst(btn, undefined, burstCountFor(1));
       blip('pop');
-      tick(10);
+      tick(hapticFor(1));
     } else {
       deflate(icon ?? btn);
       tick(6);
@@ -390,9 +476,15 @@ const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
   },
   pin: (btn) => {
     const on = btn.getAttribute('aria-pressed') === 'true';
+    const card = btn.closest('article, .gt, .mm-card, .dcard') as HTMLElement | null;
+    const visual = (card?.querySelector('.mm-visual, .art, .mm-mini') ?? btn) as HTMLElement | null;
     if (on) {
-      const card = btn.closest('article, .gt, .mm-card, .dcard') as HTMLElement | null;
-      const visual = (card?.querySelector('.mm-visual, .art, .mm-mini') ?? btn) as HTMLElement | null;
+      /* Saving reads as putting something away: the bookmark fills like
+         liquid, the card lifts and tucks back down as if slotted onto a
+         shelf, and a ghost of the artwork flies to the You tab and is
+         absorbed. The burst is gone on purpose — a like and a save should not
+         feel like the same gesture. */
+      fillIcon(btn);
       if (visual) {
         void animate(
           visual,
@@ -418,12 +510,31 @@ const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
       if (shelf) settle(shelf, 'fx-nudge', 700);
       const fp = document.querySelector('#fpb, .fp-bleed') as HTMLElement | null;
       if (fp) settle(fp, 'fx-pulse', 800);
-      burst(btn);
+      const tab = document.querySelector('.nv[data-t="you"]') as HTMLElement | null;
+      if (visual && tab && visual !== btn) {
+        flyTo(visual, tab, {
+          shrink: 0.08,
+          tilt: 14,
+          onLand: () => {
+            pop(tab, 1.14);
+            const badge = tab.querySelector('.badge') as HTMLElement | null;
+            if (badge) pop(badge, 1.3);
+          },
+        });
+      }
       blip('pop');
       tick([10, 24, 10]);
     } else {
-      const card = btn.closest('article, .gt, .mm-card, .dcard') as HTMLElement | null;
-      card?.querySelector('.pin-stk')?.remove();
+      if (card) card.querySelector('.pin-stk')?.remove();
+      // The fill drains back out rather than vanishing.
+      const fill = btn.querySelector<HTMLElement>('.fx-fill');
+      if (fill) {
+        void animate(fill, [{ transform: 'scaleY(1)', opacity: 0.12 }, { transform: 'scaleY(0)', opacity: 0 }], {
+          duration: DUR.base,
+          easing: EASE.ease,
+        });
+        window.setTimeout(() => fill.remove(), DUR.base + 40);
+      }
       deflate(btn);
     }
   },
@@ -662,6 +773,7 @@ export const microPublic = {
   deflate,
   drawCheck,
   ringFrom,
+  bigHeartOn,
   animate,
   shouldAnimate,
   setSound: (v: boolean): void => synth.setEnabled(v),

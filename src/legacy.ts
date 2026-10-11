@@ -36,6 +36,10 @@ import { v5config } from './store/config';
    This seam keeps the gestures, the tint layer and the delegated data-act
    listener, which are the parts genuinely tangled up in the rest of the app. */
 import * as FEED from './screens/feed';
+/* Sharing. Every tile in the sheet is produced by `planShare` from a
+   capability probe, so the sheet can never offer a target the device cannot
+   deliver — the rule at openShare() above, applied everywhere. */
+import * as SHARE from './lib/share';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -642,7 +646,11 @@ function storiesRailHTML(){
   const mine=live.filter(s=>s.ownerId==='me'),others=live.filter(s=>s.ownerId!=='me');
   return `<div class="srail">${addRing}${mine.map(ring).join('')}${others.map(ring).join('')}</div>`+(live.length?'':'<p class="srail-hint">Stories · gone in 12 hours</p>');
 }
-function renderStoriesRail(){const r=$('#stories-rail');if(r)r.innerHTML=storiesRailHTML()}
+/* There is more than one rail now (People, and the feed — see below), and they
+   must not drift. Keyed on an attribute rather than an id because both screens
+   are in the document at once, so `$('#stories-rail')` would only ever have
+   updated the first one it found. */
+function renderStoriesRail(){$$('[data-stories-rail]').forEach(r=>{r.innerHTML=storiesRailHTML()})}
 function openStories(){
   if(storiesHandle)return;
   const host=document.createElement('div');host.className='stories-host';host.id='stories-host';
@@ -671,6 +679,7 @@ function renderFeed(){
   if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
+    <div class="srail-wrap" data-stories-rail>${storiesRailHTML()}</div>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
       ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
@@ -1437,7 +1446,7 @@ function renderPeople(){
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
   $('#s-people').innerHTML=`<div class="tint"><i class="aur a1"></i><i class="aur a2"></i><i class="aur a3"></i></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
-    <div id="stories-rail">${storiesRailHTML()}</div>
+    <div id="stories-rail" data-stories-rail>${storiesRailHTML()}</div>
     ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
     ${!fresh.length&&!chats.length?`<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🫥</span><p class="hint">No conversations yet. A thread opens when you and someone both Resonate — cultured won’t write the first message for you.</p></div></div>`:''}
@@ -2243,28 +2252,115 @@ function rerenderGallery(){
 FT.mm=v=>{mmTab=v;mmLimit=FEED.GALLERY_PAGE_SIZE;rerenderGallery();haptic(5)};
 ACT['mm-more']=b=>{mmLimit=+b.dataset.next;rerenderGallery();haptic(5)};
 const mmId=b=>b.closest('[data-m]').dataset.m;
+/* `renderYou()` used to run on every like and every save, whether or not the
+   You tab was on screen — a full profile re-render, its fingerprint SVG and
+   all, from a tap on the feed. `go('you')` already calls it on arrival, so the
+   numbers are never stale; this just stops paying for them twice. */
+const renderYouIfShown=()=>{if(cur==='you')renderYou()};
 ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
   if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
-  if(on){burst(b,'#ff5d7a');floatFromEl(b,V5_LIKE,3);haptic(10)}
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYouIfShown();repoCall('recordReaction',id,'like');
+  /* The burst, the ring, the halo, the combo chip and the haptic all belong to
+     the `data-fx="like"` handler in src/motion/micro.ts, which reads the
+     settled aria-pressed. Duplicating them here fired two bursts and two
+     haptics per tap. The floating emoji stays: it is the seam's own layer. */
+  if(on)floatFromEl(b,V5_LIKE,3);
 };
 ACT['mm-save']=b=>{
   const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
   V5.setSaved('meme',id,on);
   if(on)V5.pin('meme',id);else V5.unpin('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'save');
-  toast(on?'Kept.':'Let go.');haptic(8);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYouIfShown();repoCall('recordReaction',id,'save');
+  toast(on?'Kept.':'Let go.');
 };
-ACT['mm-share']=b=>{
-  const id=mmId(b);
-  /* Thread keys outlive the people behind them: they are persisted, and with
-     the invented population gated off (D-27) `person()` legitimately returns
-     undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on
-     a list that used to be populated. The threads are left in place — this
-     filters a view, it does not delete anything. */
-  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
+/* Double-tap a gallery card: the big centred heart, plus the like if it was
+   not already liked. The drop deck already had this through `bindDrag`; the
+   gallery did not, so the same gesture did two different things depending on
+   where on the screen you were. */
+document.addEventListener('dblclick',e=>{
+  const card=e.target&&e.target.closest?e.target.closest('.mm-card'):null;
+  if(!card)return;
+  const id=card.dataset.m;if(!id)return;
+  const st=mmS();
+  if(!st.l[id]){
+    st.l[id]=1;V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});
+    const b=$('[data-act="mm-like"]',card);
+    if(b){b.classList.add('on');b.setAttribute('aria-pressed','true')}
+    save();renderYouIfShown();repoCall('recordReaction',id,'like');
+  }
+  /* bigHeartOn owns the combo: it returns the level it escalated to, keyed to
+     the card, so spamming the double-tap on one meme goes ×2 → ×3 → ×5 UNWELL.
+     Cosmetic only — the like above is written once, so a combo can never spend
+     a second laugh. */
+  const level=microPublic.bigHeartOn(card,I.heart)||1;
+  const r=card.getBoundingClientRect();
+  floatEmoji(r.left+r.width/2,r.top+r.height*0.44,V5_LIKE,Math.min(3+level,8));
+  haptic(level>=5?[12,30,12,30,18]:level>=3?[10,24,14]:[10,30,10]);
+});
+/* Thread keys outlive the people behind them: they are persisted, and with
+   the invented population gated off (D-27) `person()` legitimately returns
+   undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on a
+   list that used to be populated. The threads are left in place — this filters
+   a view, it does not delete anything. */
+const matchIds=()=>Object.keys(S.threads||{}).filter(pid=>person(pid));
+const shareItemFor=id=>{
+  const m=mmOf(id);if(!m)return null;
+  const slug=String(id).replace(/[^a-z0-9-]/gi,'').slice(0,40)||'meme';
+  return {
+    title:m.t,
+    text:`${m.t} — cultured`,
+    url:location.href,
+    image:{src:m.img,alt:m.alt||m.t,filename:`cultured-${slug}.webp`},
+    cardTitle:m.t,
+    cardCaption:'cultured — match on your humor, not your headshot'
+  };
+};
+function openMatchSheet(id){
+  const ids=matchIds();
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
+}
+ACT['mm-share']=b=>{
+  const id=mmId(b),item=shareItemFor(id);if(!item)return;
+  const caps=SHARE.detectCapabilities();
+  const opts=SHARE.planShare(item,caps,{hasMatches:matchIds().length>0});
+  openSheet(`<h3 class="sh-t">Share</h3>
+    <div class="shp"><div class="tile">${mmVisual(mmOf(id))}</div><div><b>${esc(item.title)}</b><span>A cultured meme</span></div></div>
+    <div class="share-list">${opts.map(o=>`<button class="sh-tile" data-act="mm-share-go" data-w="${o.id}" data-id="${esc(id)}"><b>${esc(o.label)}</b><span>${esc(o.hint)}</span></button>`).join('')}</div>
+    ${opts.length?'':'<p class="hint">'+esc(SHARE.EMPTY_SHARE_HINT)+'</p>'}`);
+};
+ACT['mm-share-go']=async b=>{
+  const w=b.dataset.w,id=b.dataset.id,item=shareItemFor(id);if(!item)return;
+  const caps=SHARE.detectCapabilities();
+  if(w==='match'){openMatchSheet(id);return}
+  if(w==='story'){
+    /* The in-app story is real: `putStory` is the same call the Stories screen
+       makes, and the feed rail re-renders off the store subscription. */
+    const now=Date.now(),ttl=((v5config.hours&&v5config.hours.storyTtl)||12)*36e5;
+    V5.putStory({id:'story-'+now.toString(36),ownerId:'me',createdAt:now,expiresAt:now+ttl,
+      layers:[{type:'meme',id}],audience:'everyone',hideFrom:[],replyRule:'react'});
+    closeSheet();renderStoriesRail();toast('Added to your story');haptic([10,30,10]);
+    track('meme_shared',{via:'story'});return;
+  }
+  let res=null;
+  if(w==='save'){res=await SHARE.saveImage(item.image);track('meme_shared',{via:'save'})}
+  else if(w==='copy'){res=await SHARE.copyLink(item);track('meme_shared',{via:'copy'})}
+  else if(w==='more'){res=await SHARE.shareOut(item,caps);track('meme_shared',{via:'os'})}
+  else if(w==='card'){
+    /* Lazy: the canvas drawing code is only reachable from this one tile, and
+       it has no business sitting in the first-paint chunk. */
+    const {renderShareCard}=await import('./lib/shareCard');
+    const blob=await renderShareCard({image:{src:item.image.src,alt:item.image.alt},title:item.cardTitle,caption:item.cardCaption,aspect:'9:16'});
+    /* No canvas (or a blocked image) means no card. Fall back to the raw image
+       rather than toasting a success that did not happen. */
+    res=blob
+      ? await SHARE.shareBlob(blob,item.image.filename.replace(/\.\w+$/,'-card.png'),item,caps)
+      : await SHARE.saveImage(item.image);
+    track('meme_shared',{via:blob?'card':'card-fallback'});
+  }
+  closeSheet();
+  if(res&&res.message)toast(res.message);
+  if(res&&res.ok)haptic(8);
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
   ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};

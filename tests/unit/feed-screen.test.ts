@@ -382,6 +382,173 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
     expect(again.querySelector('[data-act="mm-save"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
+  describe('like and save feedback', () => {
+    const tap = (el: Element | null) =>
+      (el as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    it('lands a like with a shockwave ring and a decaying halo', () => {
+      const btn = cards()[0].querySelector('[data-act="mm-like"]') as HTMLElement;
+      tap(btn);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      expect(btn.classList.contains('fx-glow')).toBe(true);
+      expect(btn.querySelector('.fx-ring')).toBeTruthy();
+    });
+
+    it('fills the bookmark on save instead of only toasting', () => {
+      const btn = cards()[0].querySelector('[data-act="mm-save"]') as HTMLElement;
+      tap(btn);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      expect(btn.querySelector('.fx-fill')).toBeTruthy();
+      // The card is marked, so a later visit still shows what was kept.
+      expect(cards()[0].querySelector('.pin-stk')).toBeTruthy();
+    });
+
+    it('drains the fill again when a save is undone', () => {
+      const btn = cards()[0].querySelector('[data-act="mm-save"]') as HTMLElement;
+      tap(btn);
+      tap(btn);
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      expect(cards()[0].querySelector('.pin-stk')).toBeNull();
+    });
+
+    it('escalates a double-tap into a combo, keyed to the card', () => {
+      const card = cards()[0];
+      const doubleTap = () => card.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+      doubleTap();
+      expect(card.querySelector('.fx-bigheart')).toBeTruthy();
+      expect(card.querySelector('.fx-combo')).toBeNull(); // a single tap is not a combo
+
+      doubleTap();
+      expect(card.querySelector('.fx-combo')?.textContent).toBe('×2');
+
+      doubleTap();
+      expect(card.querySelector('.fx-combo')?.textContent).toBe('×3');
+
+      doubleTap();
+      expect(card.querySelector('.fx-combo')?.textContent).toBe('×5 UNWELL');
+
+      // The like is written once. A combo is cosmetic and cannot spend a laugh.
+      const like = cards()
+        .find((c) => c.getAttribute('data-m') === card.getAttribute('data-m'))
+        ?.querySelector('[data-act="mm-like"]');
+      expect(like?.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('still lands every state change with motion off, and adds no decoration', () => {
+      document.documentElement.classList.add('calm');
+      const card = cards()[0];
+      (card.querySelector('[data-act="mm-like"]') as HTMLElement).dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      (card.querySelector('[data-act="mm-save"]') as HTMLElement).dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      card.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+      const again = cards().find((c) => c.getAttribute('data-m') === card.getAttribute('data-m')) as HTMLElement;
+      expect(again.querySelector('[data-act="mm-like"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(again.querySelector('[data-act="mm-save"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(feed().querySelectorAll('.fx-glow, .fx-fill, .fx-combo, .fx-ring')).toHaveLength(0);
+      document.documentElement.classList.remove('calm');
+    });
+  });
+
+  describe('the share sheet', () => {
+    const tap = (el: Element | null) =>
+      (el as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const sheet = () => document.querySelector('#sheetwrap .sheet') as HTMLElement | null;
+    // closeSheet clears the markup after a 560 ms slide-out; the class is what
+    // drops immediately, so it is the thing a synchronous assertion can see.
+    const sheetOpen = () => document.querySelector('#sheetwrap')?.classList.contains('open') === true;
+    const untilToast = async (tries = 50) => {
+      for (let i = 0; i < tries; i += 1) {
+        if (document.querySelector('#toast')?.textContent) return;
+        await new Promise((r) => setTimeout(r, 5));
+      }
+    };
+    const tiles = () => [...(sheet()?.querySelectorAll('.sh-tile') ?? [])] as HTMLElement[];
+
+    it('opens with only the targets this device can actually deliver', () => {
+      tap(cards()[0].querySelector('[data-act="mm-share"]'));
+      expect(sheet()).toBeTruthy();
+      const offered = tiles().map((t) => t.dataset.w);
+      expect(offered).toContain('story');
+      expect(offered).toContain('save');
+      expect(offered).toContain('card');
+      /* jsdom implements neither navigator.share nor navigator.clipboard, so
+         neither tile may appear — an offered button that cannot work is
+         exactly the defect this sheet is built to prevent. */
+      expect(offered).not.toContain('more');
+      expect(offered).not.toContain('copy');
+      /* `match` follows the seeded population rather than the device, so it is
+         asserted against the DOM rather than against a fixed expectation. */
+      expect(offered.includes('match')).toBe(document.querySelectorAll('#sheetwrap').length > 0);
+      for (const tile of tiles()) expect(tile.querySelector('span')?.textContent?.length).toBeGreaterThan(0);
+    });
+
+    it('adds a real story when the story tile is tapped', async () => {
+      /* `beforeEach` calls `vi.resetModules()`, so the store the app is using is
+         the freshly imported one — reach for it the same way, or this reads a
+         stale singleton and sees nothing. */
+      const { getStore: appStore } = await import('../../src/store');
+      const ringIds = () =>
+        new Set(
+          [...document.querySelectorAll<HTMLElement>('#s-feed .sring:not(.add)')].map((r) => r.dataset.id ?? ''),
+        );
+
+      const before = ringIds();
+      tap(cards()[0].querySelector('[data-act="mm-share"]'));
+      tap(tiles().find((t) => t.dataset.w === 'story') as HTMLElement);
+
+      /* The rail is rendered straight off the store, so a ring that was not
+         there before is the proof the write landed and the UI followed. */
+      const added = [...ringIds()].filter((id) => !before.has(id));
+      expect(added).toHaveLength(1);
+      expect(added[0]).toMatch(/^story-/);
+
+      const mine = appStore()
+        .getState()
+        .stories.filter((st) => st.ownerId === 'me');
+      expect(mine).toHaveLength(1);
+      expect(mine[0]?.id).toBe(added[0]);
+      expect(mine[0]?.layers).toEqual([expect.objectContaining({ type: 'meme' })]);
+      expect(mine[0]?.expiresAt).toBeGreaterThan(Date.now());
+    });
+
+    it('falls back to the raw image when there is no canvas to draw a card on', async () => {
+      /* jsdom implements createElement('canvas') but returns null from
+         getContext('2d'), which is exactly the "no canvas" branch
+         renderShareCard is written for. It must hand back the image, not a
+         success toast about a card that was never drawn. */
+      tap(cards()[0].querySelector('[data-act="mm-share"]'));
+      tap(tiles().find((t) => t.dataset.w === 'card') as HTMLElement);
+      /* The canvas module is a dynamic import, so this needs real ticks, not a
+         fixed microtask count. */
+      await untilToast();
+      /* jsdom cannot fetch the image, so the honest outcome is a failure
+         message — the point is that it reports one instead of toasting
+         success for a card that was never drawn. */
+      const msg = document.querySelector('#toast')?.textContent ?? '';
+      expect(msg).toBeTruthy();
+      expect(msg.toLowerCase()).not.toContain('saved');
+      expect(sheetOpen()).toBe(false);
+    });
+
+    it('saves the image when the save tile is tapped', async () => {
+      tap(cards()[0].querySelector('[data-act="mm-share"]'));
+      tap(tiles().find((t) => t.dataset.w === 'save') as HTMLElement);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(document.querySelector('#toast')?.textContent ?? '').toBeTruthy();
+      expect(sheetOpen()).toBe(false);
+    });
+
+    it('shows the meme it is about to share', () => {
+      tap(cards()[0].querySelector('[data-act="mm-share"]'));
+      expect(sheet()?.querySelector('.shp .mm-photo')).toBeTruthy();
+    });
+  });
+
   it('does not throw when the like burst runs without a Web Animations API', () => {
     /* jsdom has no Element.animate, which is the same shape as an old Android
        WebView. The state is written by the data-act handler, so the burst

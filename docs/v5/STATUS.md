@@ -343,3 +343,76 @@ the category order — two separate decisions.
 
 439 tests / 26 files green (was 407 / 25); tsc, eslint and the production build
 clean.
+
+## Like and save feedback, and a share sheet that only offers what works
+
+Two asks landed together because they touch the same node: the meme action row.
+
+### Like and save (ask #9)
+
+`fxHandlers.like` now runs heartPop, a `ringFrom` ring in `--heart`, a `glow`
+halo, a particle burst and a haptic — but **no combo**. Like is a toggle:
+tapping a liked meme un-likes it, and an un-like has to reset the streak, so a
+combo hung off that button could never get past ×1. The escalation moved to the
+gesture people actually spam, the **double-tap on the card**, via
+`bigHeartOn(host, svg)`, which owns the streak, keys it by meme id, returns the
+level, and drives the scale through `--bhs`.
+
+`src/motion/combos.ts` is the model and imports nothing at all — no DOM, no
+store, no clock. A test scans its comment-stripped source for `document.`,
+`window.` and `Date.now` so that stays true. Window 1400 ms, levels 1/2/3/5,
+labels `×2` / `×3` / `×5 UNWELL`, bursts 4/6/8/10 (under the `burst` ceiling of
+10), and `pruneWindow` rejects future timestamps so a rolled-back clock cannot
+bank hits. It never touches `laughSpend`.
+
+The meme **save** button is `data-fx="pin"`, not `save` — the `save` handler only
+serves the drop card. Pin fills the bookmark glyph (`fillIcon`), tucks the card,
+drops a 📌 sticker and flies it to the You tab. Un-saving drains the fill back.
+
+`ACT['mm-like']` and `ACT['mm-save']` were firing their own `burst`/`haptic`
+*and* letting the delegated `data-fx` handler fire — two bursts, two haptics per
+tap. The duplicates are gone. `renderYouIfShown()` replaced a full profile
+re-render on every like or save.
+
+### Share (ask #3)
+
+There is no web API for posting to an Instagram or Snapchat Story, and
+`src/legacy.ts` already records that lying buttons were removed once before. So
+`src/lib/share.ts` probes the device (`canShare({files})`, `ClipboardItem`,
+download) and `planShare` returns only the targets that can actually deliver:
+
+| Target | Shown when |
+|---|---|
+| Your story | always — it is the in-app store write, it always works |
+| Send to a match | the user has a match |
+| Share card / Save image | there is an image and a download path |
+| Copy link | there is a clipboard |
+| More… | `navigator.share` exists; the hint only promises the image when `canShare({files})` agrees |
+
+`src/lib/shareCard.ts` draws the branded card on a canvas and **returns `null`
+when there is no canvas**, and the caller falls back to saving the raw image
+rather than toasting a success that did not happen. It is a dynamic import:
+1.44 kB gz that only loads from that one tile, so it stays out of first paint.
+
+### Two bugs found while wiring it
+
+- **The stories rail was only on the People tab.** Sharing to "Your story" from
+  the feed wrote to the store and then told you to go look somewhere the feed
+  never pointed at. The feed now has a rail, and `renderStoriesRail()` keys on
+  `[data-stories-rail]` instead of `$('#stories-rail')`, which would only ever
+  have found the first of the two.
+- **`wrapLines` truncated more than it had to.** It broke out of the loop as
+  soon as the last line started, so the words that still fitted on that line
+  were dropped and an ellipsis was added for text that was never too long.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **484 passed / 28 files** (was
+458 / 27) · build OK, `legacy` 192.37 kB / **65.79 kB gz** with `shareCard`
+split out at 2.99 kB / 1.44 kB gz.
+
+One test-environment trap worth recording: `feed-screen.test.ts` calls
+`vi.resetModules()` in `beforeEach`, so the app gets a **fresh store singleton**
+and a statically imported `getStore()` reads a different, empty one. Import it
+inside the test after the app boots, or every store assertion silently sees
+nothing.
