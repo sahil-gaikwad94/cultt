@@ -86,11 +86,40 @@ const freshTrace = () => ({ trace: { reads: 0, reflows: 0 } as Trace, flags: { w
 
 const loadFitMeme = async () => {
   const mod = (await import('../../src/legacy')) as unknown as {
-    seamInternals: { fitMeme?: (host: HTMLElement) => void };
+    seamInternals: { fitMeme?: (host: HTMLElement) => void; splashInit?: () => void };
   };
   expect(mod.seamInternals.fitMeme, 'the seam did not register fitMeme').toBeTruthy();
   return mod.seamInternals.fitMeme as (host: HTMLElement) => void;
 };
+
+/**
+ * The splash timer used to dereference `#splash` 2.3 s after `init()` with no
+ * guard. That is what turned CI red: the timer outlived the test file's jsdom,
+ * `$('#splash')` came back null, and Vitest reported an unhandled error against
+ * whichever test happened to be running. It was blamed on the wrong test and
+ * looked like a flake, because it is one — the splash is simply already gone by
+ * the time the callback runs, which is the normal case in the app too.
+ */
+describe('pending splash timer', () => {
+  it('does not throw when the splash is already gone', async () => {
+    vi.useFakeTimers();
+    try {
+      const mod = (await import('../../src/legacy')) as unknown as {
+        seamInternals: { splashInit?: () => void };
+      };
+      const splashInit = mod.seamInternals.splashInit;
+      expect(splashInit, 'the seam did not register splashInit').toBeTruthy();
+      (splashInit as () => void)();
+
+      // The app removes #splash on this timer; so does the test shell, between
+      // cases. Either way the callback must survive its own target vanishing.
+      document.querySelector('#splash')?.remove();
+      expect(() => vi.advanceTimersByTime(4000)).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe('fitMeme', () => {
   it('does nothing on an empty host and does not throw', async () => {

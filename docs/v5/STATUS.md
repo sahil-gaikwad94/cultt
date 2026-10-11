@@ -621,3 +621,45 @@ Not verified: the caching headers. Vercel is not reachable from this sandbox,
 so `vercel.json` was validated as JSON and reasoned about, not deployed. And no
 browser is available here, so the layout counts are measured against a
 hand-defined geometry rather than a real rendering engine.
+
+## The "unreproducible" failure was the splash timer
+
+An earlier entry in this file records a single full-suite run that reported one
+failure I could not reproduce, and says everything after it was clean. CI found
+it anyway:
+
+```
+TypeError: Cannot read properties of null (reading 'classList')
+ ❯ Timeout._onTimeout src/legacy.ts:2690
+This error originated in "tests/unit/feed-screen.test.ts" ...
+The latest test that might've caused it is "lets you choose your own prompt
+question".
+```
+
+`splashInit` did this:
+
+```js
+setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
+```
+
+The splash is gone by the time that fires — the callback itself removes it, and
+the cold open can take over first. It was an unguarded deref, so a timer that
+outlived the test file's jsdom threw an unhandled error, which Vitest reports
+against whatever test happened to be running. That is why it looked like a
+flake and pointed at an innocent test. Guarded now, with a test that removes
+`#splash` and advances the clock.
+
+The same pattern was one line away in the pull-to-refresh handler:
+`$('#feedBody').classList.add('fresh')` 950 ms later, and `renderFeed()` returns
+early when the v5 home owns the feed, so `#feedBody` is not there to decorate.
+Also guarded.
+
+Audited every other `setTimeout` in the seam: the rest capture their element at
+call time and only call `remove()` / `classList` on it, which is safe on a
+detached node. `ACT['act-dismiss']` was already guarded.
+
+Two share-sheet assertions were also reading state mid-flight. The handler
+closes the sheet and then toasts, but with several copies of the handler
+attached they are not observable in a guaranteed order, so both are now polled
+to their settled state. `tests/unit/fit-meme.test.ts` covers the splash guard;
+it fails with the exact CI error when the guard is removed.

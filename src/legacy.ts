@@ -757,7 +757,7 @@ function fitMeme(host){
     over.forEach(p=>{const next=(size.get(p)||20)-2;size.set(p,next);p.style.fontSize=next+'px'});
   }
 }
-seamInternals.fitMeme=fitMeme;
+seamInternals.fitMeme=fitMeme;seamInternals.splashInit=splashInit;
 function deckFly(dir){
   if(DK.busy)return;DK.busy=true;stopPlay();haptic(8);
   const id=DK.order[0],card=$(`#hdeck .dcard[data-id="${id}"]`);
@@ -810,7 +810,10 @@ function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);
   const p=$('#ptr');if(p){p.style.opacity=1;p.classList.add('spin')}
   const hb=$('#hbody');if(hb)hb.innerHTML=skel(3);
-  setTimeout(()=>{S.dropIdx++;S.shift+=2;save();DK.day=0;renderFeed();refreshing=false;$('#feedBody').classList.add('fresh');toast('A fresh drop just landed')},950);
+  /* Same class of bug: `renderFeed()` returns early when the v5 home owns the
+     feed, so `#feedBody` is not there to decorate. The refresh still has to
+     happen; only the flourish is conditional. */
+  setTimeout(()=>{S.dropIdx++;S.shift+=2;save();DK.day=0;renderFeed();refreshing=false;const fb=$('#feedBody');if(fb)fb.classList.add('fresh');toast('A fresh drop just landed')},950);
 }
 function initPTR(){
   const sc=$('#s-feed');let sy=0,pull=0,on=false;
@@ -2687,7 +2690,11 @@ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.tar
 function splashInit(){
   $('#spfp').innerHTML=fpSVG(fpParams(7),'#EFE9DA','#ff8a5b',{n:16,w:1.3});
   $('#spw').innerHTML=[...'cultured'].map((c,i)=>`<span><i style="--d:${i}">${c}</i></span>`).join('');
-  setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
+  /* Guarded: this fires 2.3 s later and the splash is gone by then in every
+     case where it should be — the timeout below removes it, and the cold open
+     can take over first. It was an unguarded deref, which is what made the CI
+     run red: a timer outlived the test file's jsdom and threw. */
+  setTimeout(()=>{const s=$('#splash');if(!s)return;s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
 }
 /* A prototype that contains invented people has to say so on screen, not in a
    README. The banner is the difference between a demo and a deception. */

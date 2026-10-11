@@ -477,12 +477,13 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
     // closeSheet clears the markup after a 560 ms slide-out; the class is what
     // drops immediately, so it is the thing a synchronous assertion can see.
     const sheetOpen = () => document.querySelector('#sheetwrap')?.classList.contains('open') === true;
-    const untilToast = async (tries = 50) => {
+    const until = async (predicate: () => boolean, tries = 80) => {
       for (let i = 0; i < tries; i += 1) {
-        if (document.querySelector('#toast')?.textContent) return;
+        if (predicate()) return;
         await new Promise((r) => setTimeout(r, 5));
       }
     };
+    const untilToast = () => until(() => Boolean(document.querySelector('#toast')?.textContent));
     const tiles = () => [...(sheet()?.querySelectorAll('.sh-tile') ?? [])] as HTMLElement[];
 
     it('opens with only the targets this device can actually deliver', () => {
@@ -548,13 +549,24 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
       const msg = document.querySelector('#toast')?.textContent ?? '';
       expect(msg).toBeTruthy();
       expect(msg.toLowerCase()).not.toContain('saved');
+      /* Polled, not read straight after the toast. `beforeEach` re-imports the
+         seam, so several instances of the handler are attached to the document
+         at once and each awaits its own copy of the canvas chunk; the sheet is
+         closed by whichever lands last. Reading the class in the gap between
+         two of them made this order-dependent. */
+      await until(() => !sheetOpen());
       expect(sheetOpen()).toBe(false);
     });
 
     it('saves the image when the save tile is tapped', async () => {
       tap(cards()[0].querySelector('[data-act="mm-share"]'));
       tap(tiles().find((t) => t.dataset.w === 'save') as HTMLElement);
-      await new Promise((r) => setTimeout(r, 10));
+      /* Both waits, in this order. The handler closes the sheet and then
+         toasts, but several copies of the handler are attached at once (see
+         the note above), so neither is guaranteed to have happened by the time
+         the other is observable. */
+      await untilToast();
+      await until(() => !sheetOpen());
       expect(document.querySelector('#toast')?.textContent ?? '').toBeTruthy();
       expect(sheetOpen()).toBe(false);
     });
