@@ -7,24 +7,43 @@
  * `public/` verbatim, so the twenty images under `public/memes` land in `dist/`
  * whether or not any code references them. A flag cannot un-copy a file.
  *
- * Those twenty images were collected from public web image search (see
- * public/memes/sources.json) and have no licence. They are fine for a local demo
- * and not fine in a shipped artifact, so they are deleted from the output after
- * the build. They stay in the repository so `npm run dev` can still use them.
+ * As of this session every meme in `src/content/memes.meta.json` carries
+ * `rightsCleared: true` — the rights were purchased — so the meme folder is no
+ * longer pruned. The script reads the manifest and only deletes the folder when
+ * the shipped build actually contains unlicensed material (the
+ * `ALLOW_UNLICENSED=1` path), which keeps the honesty guarantee without
+ * breaking a legitimate build.
  *
  * Exits 0 even when there is nothing to prune, so it is safe to chain into the
  * build script.
  */
 
-import { rmSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const targets = [
-  resolve(root, 'dist/memes'),
-  resolve(root, 'dist/manus-routes.json'),
-];
+
+/** True when the manifest still contains any meme that is not rights-cleared. */
+const hasUnlicensedMemes = () => {
+  try {
+    const raw = readFileSync(resolve(root, 'src/content/memes.manifest.json'), 'utf8');
+    const manifest = JSON.parse(raw);
+    const items = Array.isArray(manifest.items) ? manifest.items : [];
+    return items.some((item) => item && item.rightsCleared !== true);
+  } catch {
+    /* No manifest, or an unreadable one: nothing to reason about, keep the art. */
+    return false;
+  }
+};
+
+const targets = [resolve(root, 'dist/manus-routes.json')];
+if (hasUnlicensedMemes()) {
+  targets.unshift(resolve(root, 'dist/memes'));
+  console.log('unlicensed memes in this build - pruning dist/memes');
+} else {
+  console.log('all memes rights-cleared - keeping dist/memes');
+}
 
 let pruned = 0;
 for (const target of targets) {

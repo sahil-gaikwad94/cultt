@@ -13,6 +13,7 @@
 
 import { copy, impactLine } from '../copy/index.ts';
 import { memeCategoryName } from '../copy/taxonomy.ts';
+import { memeSrc, memeSrcSet } from '../content/media.ts';
 import type { MemeEntry, SongEntry } from '../content/types.ts';
 import { REACTION_AXES } from './reactions.ts';
 import { getStore } from '../store/index.ts';
@@ -208,17 +209,17 @@ export interface CardArt {
   height: number;
 }
 
-/** `<img>` attributes for a meme, with the AVIF/WebP variants when present. */
+/**
+ * `<img>` attributes for a meme.
+ *
+ * `src` is always a file that exists (`memeSrc` falls back to the committed
+ * original); `srcset` is only emitted when the responsive pipeline actually ran
+ * for this deploy, because a srcset entry pointing at a missing file takes the
+ * image down with it. */
 export const memeArt = (meme: MemeEntry): CardArt => {
-  const variants = meme.variants ?? [];
-  const srcset = variants.length
-    ? variants
-        .map((v) => `${v.avif} ${v.width}w`)
-        .concat(variants.map((v) => `${v.webp} ${v.width}w`))
-        .join(', ')
-    : null;
+  const srcset = memeSrcSet(meme);
   return {
-    src: variants.length ? variants[variants.length - 1].webp : meme.src,
+    src: memeSrc(meme),
     srcset,
     sizes: '(max-width: 480px) 100vw, 480px',
     blurhashCss: null,

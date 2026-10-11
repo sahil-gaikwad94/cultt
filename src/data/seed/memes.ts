@@ -17,6 +17,7 @@
    module sits on the first-paint path through the legacy shell. Keeping the
    import narrow leaves those two JSON files in the lazy v5 chunk. */
 import memeManifest from '../../content/memes.manifest.json';
+import { memeSrc } from '../../content/media.ts';
 import type { MemeEntry, MemeManifest } from '../../content/types.ts';
 
 /** Shapes for the meme corpus. Mirrors public/memes/sources.json. */
@@ -70,7 +71,7 @@ const adapt = (meme: MemeEntry): SeedMeme => ({
   ac: meme.dominant ?? INK,
   likes: 0,
   laughs: 0,
-  img: meme.variants.at(-1)?.webp ?? meme.src,
+  img: memeSrc(meme),
 });
 
 export const SEED_MEMES: readonly SeedMeme[] = (memeManifest as unknown as MemeManifest).items.map(adapt);

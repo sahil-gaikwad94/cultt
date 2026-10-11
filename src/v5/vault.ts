@@ -11,6 +11,7 @@ import { memeCategoryName } from '../copy/taxonomy.ts';
 import { getStore } from '../store/index.ts';
 import { isSaved, laughedItemKeys, pinsByKind, savedItemKeys } from '../store/selectors.ts';
 import { memeById, songById } from '../content/index.ts';
+import { memeSrc } from '../content/media.ts';
 import type { ItemKind, StoreState } from '../store/index.ts';
 import { haptics } from '../lib/haptics.ts';
 import { animate } from '../lib/waapi.ts';
@@ -55,7 +56,7 @@ const resolveRow = (key: string, emoji: string | null): VaultRow | null => {
       id,
       title: meme.title,
       subtitle: memeCategoryName(meme.category),
-      thumb: meme.variants[0]?.webp ?? meme.src,
+      thumb: memeSrc(meme),
       alt: meme.alt,
       category: meme.category,
       emoji,

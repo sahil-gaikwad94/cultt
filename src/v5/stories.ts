@@ -17,6 +17,7 @@ import { getStore } from '../store/index.ts';
 import { liveStories } from '../store/selectors.ts';
 import { v5config } from '../store/config.ts';
 import { memeById, servableMemes, songById, songs } from '../content/index.ts';
+import { memeSrc } from '../content/media.ts';
 import type { StoreState } from '../store/index.ts';
 import type { Story } from '../store/types.ts';
 import { haptics } from '../lib/haptics.ts';
@@ -85,7 +86,7 @@ export const describeLayers = (
     if (layer?.type === 'meme') {
       const meme = memeById(layer.id);
       if (!meme) continue;
-      src = meme.variants.at(-1)?.webp ?? meme.src;
+      src = memeSrc(meme);
       alt = meme.alt;
       caption = memeCategoryName(meme.category);
     } else if (layer?.type === 'song') {
@@ -194,7 +195,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
           <div class="v5-compose-row">
             ${pool
               .map(
-                (meme) => `<button type="button" class="v5-pick ${draft.backdrop?.id === meme.id ? 'is-on' : ''}" data-meme="${esc(meme.id)}" aria-label="${esc(meme.alt)}"><img src="${esc(meme.variants.at(-1)?.webp ?? meme.src)}" alt=""></button>`,
+                (meme) => `<button type="button" class="v5-pick ${draft.backdrop?.id === meme.id ? 'is-on' : ''}" data-meme="${esc(meme.id)}" aria-label="${esc(meme.alt)}"><img src="${esc(memeSrc(meme))}" alt="" loading="lazy" decoding="async"></button>`,
               )
               .join('')}
             ${tracks

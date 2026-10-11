@@ -155,12 +155,31 @@ describe('the committed manifests', () => {
   });
 
   it('always produce renderable art, with or without renditions', () => {
+    // Default: the committed original only. A srcset entry pointing at a
+    // rendition the build never wrote (public/memes/gen is gitignored) is what
+    // broke every meme image — the SPA host answers 200 text/html for it and the
+    // decoder gets HTML.
     for (const meme of memes.items) {
       const art = memeArt(meme);
       expect(art.src).toMatch(/\.(avif|webp)$/);
+      expect(art.src).not.toContain('/gen/');
       expect(art.alt).toBe(meme.alt);
-      if (meme.variants.length === 0) expect(art.srcset).toBe(null);
-      else expect(art.srcset).toContain(`${meme.variants[0]!.avif} ${meme.variants[0]!.width}w`);
+      expect(art.srcset).toBe(null);
+    }
+
+    // Opted in (a deploy that ran `npm run content:memes`), the renditions are
+    // advertised — webp only, so the width descriptors stay truthful.
+    (window as unknown as { CULTURED_CONFIG?: unknown }).CULTURED_CONFIG = {
+      assets: { variants: true },
+    };
+    try {
+      for (const meme of memes.items) {
+        const art = memeArt(meme);
+        if (meme.variants.length === 0) expect(art.srcset).toBe(null);
+        else expect(art.srcset).toContain(`${meme.variants[0]!.webp} ${meme.variants[0]!.width}w`);
+      }
+    } finally {
+      delete (window as unknown as { CULTURED_CONFIG?: unknown }).CULTURED_CONFIG;
     }
   });
 

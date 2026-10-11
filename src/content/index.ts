@@ -13,6 +13,10 @@ import type { MemeEntry, MemeManifest, NhieManifest, SongEntry, SongManifest } f
 
 export type { MemeEntry, MemeManifest, NhieManifest, SongEntry, SongManifest };
 export type { HumorAxisId, MemeVariant } from './types.ts';
+/* The URL resolver lives in its own module so the first-paint path can import
+   it without dragging the song and question manifests along. Re-exported here
+   for callers that already use the content barrel. */
+export { memeSrc, memeSrcSet, memeRatio } from './media.ts';
 
 export const memes = memeManifest as unknown as MemeManifest;
 export const songs = songManifest as unknown as SongManifest;

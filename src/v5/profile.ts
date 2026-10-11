@@ -15,6 +15,7 @@ import { archetypeFor, axisLabel, memeCategoryName } from '../copy/taxonomy.ts';
 import { getStore } from '../store/index.ts';
 import { PINK_CAPS, pinsByKind } from '../store/selectors.ts';
 import { memeById, songById } from '../content/index.ts';
+import { memeSrc } from '../content/media.ts';
 import type { ItemKind, StoreState } from '../store/index.ts';
 import type { PinSlotKind } from '../store/types.ts';
 import { axisAffinity } from './deck.ts';
@@ -75,7 +76,7 @@ const slotFrom = (kind: PinSlotKind, itemId: string, slot: number): WallSlot | n
       id: itemId,
       title: meme.title,
       subtitle: memeCategoryName(meme.category),
-      thumb: meme.variants.at(-1)?.webp ?? meme.src,
+      thumb: memeSrc(meme),
       alt: meme.alt,
       slot,
     };
