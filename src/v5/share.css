@@ -1,0 +1,47 @@
+/* Share sheet (src/v5/share.ts).
+   Scoped to .sh-root; z-index comes from the overlay manager, never from here. */
+
+.sh-root{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.sh-scrim{position:absolute;inset:0;background:rgba(6,6,5,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.sh-sheet{position:relative;width:min(100%,480px);max-height:88vh;overflow-y:auto;overscroll-behavior:contain;background:linear-gradient(180deg,#171715 0%,var(--coal,#121211) 22%,var(--coal,#121211) 100%);border:1px solid var(--line,rgba(255,255,255,.11));border-bottom:0;border-radius:28px 28px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));color:var(--bone,#EFE9DA);box-shadow:0 -24px 60px rgba(0,0,0,.6)}
+.sh-grab{display:block;width:44px;height:4px;border-radius:999px;background:rgba(239,233,218,.24);margin:2px auto 12px}
+.sh-head{display:grid;grid-template-columns:56px 1fr 40px;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--line,rgba(255,255,255,.11))}
+.sh-thumb{width:56px;height:56px;border-radius:16px;overflow:hidden;background:var(--ash,#1b1b19);display:grid;place-items:center}
+.sh-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.sh-thumb-empty{font-size:24px;color:var(--stone,#8e8b83)}
+.sh-meta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sh-meta b{font-size:15.5px;font-weight:700;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-meta small{font-size:12.5px;color:var(--mist,#b9b5aa)}
+.sh-facts{font-size:11.5px;color:var(--stone,#8e8b83);letter-spacing:.02em}
+.sh-x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line,rgba(255,255,255,.11));background:rgba(239,233,218,.05);color:var(--bone,#EFE9DA);display:grid;place-items:center;cursor:pointer}
+.sh-x svg{width:17px;height:17px}
+.sh-x:active{transform:scale(.92)}
+
+.sh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 0 6px}
+.sh-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px 12px;border-radius:20px;border:1px solid var(--line,rgba(255,255,255,.11));background:rgba(239,233,218,.04);color:var(--bone,#EFE9DA);cursor:pointer;min-height:96px;text-align:center;transition:transform .18s var(--ease-spring,cubic-bezier(.34,1.3,.5,1)),background .2s,border-color .2s;animation:shTile .34s var(--ease-out,cubic-bezier(.22,.61,.36,1)) both;animation-delay:calc(var(--i,0) * 28ms)}
+.sh-tile:hover{background:rgba(239,233,218,.08);border-color:rgba(239,233,218,.2)}
+.sh-tile:active{transform:scale(.94)}
+.sh-tile b{font-size:12.5px;font-weight:700;line-height:1.15}
+.sh-tile small{font-size:10.5px;color:var(--stone,#8e8b83)}
+.sh-ic{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,93,122,.26),rgba(255,209,102,.18));color:var(--bone,#EFE9DA)}
+.sh-ic svg{width:19px;height:19px}
+@keyframes shTile{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+
+.sh-matches{padding:14px 0 4px;display:flex;flex-direction:column;gap:8px}
+.sh-matches-head{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.sh-matches-head b{font-size:14.5px}
+.sh-back{width:36px;height:36px;border-radius:50%;border:1px solid var(--line,rgba(255,255,255,.11));background:transparent;color:var(--bone,#EFE9DA);display:grid;place-items:center;cursor:pointer}
+.sh-back svg{width:16px;height:16px}
+.sh-thread{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:18px;border:1px solid var(--line,rgba(255,255,255,.11));background:rgba(239,233,218,.03);color:var(--bone,#EFE9DA);cursor:pointer;animation:shTile .3s var(--ease-out,cubic-bezier(.22,.61,.36,1)) both;animation-delay:calc(var(--i,0) * 24ms)}
+.sh-thread:active{transform:scale(.98)}
+.sh-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:linear-gradient(150deg,#ff5d7a,#ffd166);color:#1a0d10}
+.sh-thread-meta{display:flex;flex-direction:column;align-items:flex-start}
+.sh-thread-meta b{font-size:14px}
+.sh-thread-meta small{font-size:11.5px;color:var(--mist,#b9b5aa)}
+
+.sh-note{margin:12px 2px 0;font-size:11px;color:var(--stone,#8e8b83);text-align:center}
+
+@media (prefers-reduced-motion:reduce){
+  .sh-tile,.sh-thread{animation:none}
+  .sh-x:active,.sh-tile:active,.sh-thread:active{transform:none}
+}

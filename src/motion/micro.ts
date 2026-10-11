@@ -18,6 +18,9 @@
  */
 
 import { DUR, EASE, shouldAnimate } from './reduce';
+/* The like/save choreography v2. Dispatched from here so every existing
+   `data-fx` surface upgrades at once; see src/v5/feel.ts for the rules. */
+import { likeFx, saveFx, sparkRing } from '../v5/feel.ts';
 import { synth } from './audio';
 /* Type-only: the ReactionTray + FX engine itself is pulled in lazily (below) so
    the tray and its particle canvas never sit on the first-paint path. */
@@ -328,44 +331,23 @@ const fanFor = (btn: HTMLElement): void => {
 const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
   like: (btn) => {
     const on = btn.getAttribute('aria-pressed') === 'true';
-    const icon = btn.querySelector('.ri, svg, .mm-e') as HTMLElement | null;
-    if (on) {
-      heartPop(icon ?? btn);
-      burst(btn);
-      blip('pop');
-      tick(10);
-    } else {
-      deflate(icon ?? btn);
-      tick(6);
-    }
+    /* feel.ts owns the choreography (squash, spark ring, drawn heart, count
+       pop). micro.ts only decides that a like happened, and keeps the sound
+       blip so the audio layer stays in one place. */
+    likeFx(btn, on);
+    if (on) blip('pop');
   },
   save: (btn) => {
     const on = btn.getAttribute('aria-pressed') === 'true';
-    const icon = btn.querySelector('.ri, svg') as HTMLElement | null;
-    if (on && icon) {
-      void animate(
-        icon,
-        [
-          { transform: 'translateY(-12px) scale(.7)', opacity: 0 },
-          { transform: 'translateY(2px) scale(1.06)', offset: 0.7 },
-          { transform: 'translateY(0) scale(1)' },
-        ],
-        { duration: DUR.slow, easing: EASE.spring },
-      );
+    /* The Vault target is resolved here: only the shell knows which tab it is. */
+    const shelf = document.querySelector('.nv[data-t="you"], .nv[data-t="vault"]') as HTMLElement | null;
+    saveFx(btn, on, shelf);
+    if (on) {
       blip('tick');
-      tick(8);
-      const shelf = document.querySelector('.nv[data-t="you"]') as HTMLElement | null;
       if (shelf) {
-        flyTo(icon, shelf, {
-          onLand: () => {
-            pop(shelf, 1.14);
-            const badge = shelf.querySelector('.badge') as HTMLElement | null;
-            if (badge) pop(badge, 1.3);
-          },
-        });
+        const badge = shelf.querySelector('.badge') as HTMLElement | null;
+        if (badge) window.setTimeout(() => pop(badge, 1.3), 420);
       }
-    } else {
-      deflate(icon ?? btn);
     }
   },
   share: (btn) => {
@@ -418,9 +400,9 @@ const fxHandlers: Record<string, (btn: HTMLElement) => void> = {
       if (shelf) settle(shelf, 'fx-nudge', 700);
       const fp = document.querySelector('#fpb, .fp-bleed') as HTMLElement | null;
       if (fp) settle(fp, 'fx-pulse', 800);
-      burst(btn);
+      /* Same choreography as a save, so a pin and a save feel like one idea. */
+      sparkRing(btn, 8);
       blip('pop');
-      tick([10, 24, 10]);
     } else {
       const card = btn.closest('article, .gt, .mm-card, .dcard') as HTMLElement | null;
       card?.querySelector('.pin-stk')?.remove();

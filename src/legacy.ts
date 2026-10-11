@@ -449,6 +449,12 @@ ACT.ftab=b=>{const el=b.closest('.ftabs');$$('.ft',el).forEach(x=>x.classList.to
 const NAVI=[['feed','Home',I.home],['arena','Arena',I.star],['match','Matrix',I.pair],['people','People',I.chat],['you','You',I.you]];
 const TABS=NAVI.map(n=>n[0]);
 function buildNav(){$('#nav').innerHTML=NAVI.map(n=>`<button class="nv ${n[0]===cur?'on':''}" data-act="tab" data-fx="tab" data-t="${n[0]}" aria-label="${n[1]}">${n[2]}<span class="l">${n[1]}</span></button>`).join('')}
+/* The You tab is a full re-render of a long section. It used to run on every
+   like and save from four different handlers, even while the user was looking at
+   the feed. Now the write marks the tab dirty and the render happens when the tab
+   is actually opened — same numbers, none of the work (PERF_AUDIT.md #5). */
+let youDirty=true;
+function markYouDirty(){youDirty=true}
 function go(t){
   if(t!==cur)stopPlay();
   if(t!=='arena')stopPulseFX();
@@ -457,7 +463,7 @@ function go(t){
   $$('.nv').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')});
   if(t==='arena')renderArena();
   if(t==='people')renderPeople();
-  if(t==='you')renderYou();
+  if(t==='you'&&youDirty)renderYou();
   if(t==='match'&&fpDirty){renderDeck();fpDirty=false}
   const el=$('#s-'+t);el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');setTimeout(()=>el.classList.remove('enter'),1800);
   layoutTabs(el);mediaKick();
@@ -777,19 +783,19 @@ const kindOf=id=>(POSTS[id]&&POSTS[id].kind==='music')?'song':'meme';
 ACT.like=b=>{
   const id=idOf(b),st=rs(id),on=!st.l;st.l=on?1:0;
   if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction(kindOf(id),id);
-  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(on);
+  save();syncPost(id);markYouDirty();repoCall('recordReaction',id,'like');bumpCal(on);
   if(on)floatFromEl(b,V5_LIKE,3);
 };
 ACT.laugh=b=>{
   const id=idOf(b),st=rs(id),on=!st.h;st.h=on?1:0;
   if(on)V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});else V5.removeReaction(kindOf(id),id);
-  save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(on);
+  save();syncPost(id);markYouDirty();repoCall('recordReaction',id,'laugh');bumpCal(on);
   if(on)floatFromEl(b,V5_LAUGH,4);
 };
 ACT.save=b=>{
   const id=idOf(b),st=rs(id),on=!st.s;st.s=on?1:0;
   V5.setSaved(kindOf(id),id,on);
-  save();syncPost(id);renderYou();repoCall('recordReaction',id,'save');bumpCal(on);
+  save();syncPost(id);markYouDirty();repoCall('recordReaction',id,'save');bumpCal(on);
   toast(on?'Kept.':'Let go.');
 };
 /* The long-press fan emits `micro:laugh` on the heart; the seam decides what
@@ -798,7 +804,7 @@ document.addEventListener('micro:laugh',e=>{
   const btn=e.target;if(!btn||!btn.closest)return;
   const host=btn.closest('[data-id]');if(!host)return;
   const id=host.dataset.id,st=rs(id);
-  if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);renderYou();repoCall('recordReaction',id,'laugh');bumpCal(true)}
+  if(!st.h){st.h=1;V5.react({kind:kindOf(id),itemId:id,emoji:V5_LAUGH,surface:'deck'});save();syncPost(id);markYouDirty();repoCall('recordReaction',id,'laugh');bumpCal(true)}
   burst(btn,'#ffd166');floatFromEl(btn,V5_LAUGH,4);haptic([8,30,8]);
 });
 /* The ReactionTray (long-press) reports its pick here. The seam owns state: it
@@ -812,7 +818,7 @@ document.addEventListener('micro:react',e=>{
   if(memeCard){
     const id=memeCard.dataset.m,st=mmS();st.l[id]=1;
     V5.react({kind:'meme',itemId:id,emoji,surface:'deck'});
-    save();renderYou();repoCall('recordReaction',id,'like');
+    save();markYouDirty();repoCall('recordReaction',id,'like');
     const lb=memeCard.querySelector('[data-act="mm-like"]');
     if(lb){lb.classList.add('on');lb.setAttribute('aria-pressed','true')}
     floatFromEl(btn,emoji,3);haptic(10);
@@ -822,7 +828,7 @@ document.addEventListener('micro:react',e=>{
   const id=host.dataset.id,st=rs(id),k=(d.kind==='song'||kindOf(id)==='song')?'song':'meme';
   st.l=1;
   V5.react({kind:k,itemId:id,emoji,surface:'deck'});
-  save();syncPost(id);renderYou();repoCall('recordReaction',id,'like');bumpCal(true);
+  save();syncPost(id);markYouDirty();repoCall('recordReaction',id,'like');bumpCal(true);
   floatFromEl(btn,emoji,3);haptic(10);
  }catch(_){/* a reaction is decoration; it must never blank the screen */}
 });
@@ -916,17 +922,73 @@ ACT['to-room']=b=>{
    real target, so it is the only alternative to copying the link, and it is
    only offered where it exists. */
 const canNativeShare=()=>typeof navigator!=='undefined'&&typeof navigator.share==='function';
+/* ---- the v5 share sheet (src/v5/share.ts) -------------------------------
+   One component for memes, songs, a profile and a listing. Lazy-imported, so
+   it never lands on the first paint. Every row it renders performs its action:
+   "Your story" writes a real story, "Send to a match" writes a real message,
+   Instagram/Snapchat copy the link and open the app and *say so* when the
+   platform cannot take the file. See the module header for the contract. */
+const v5Threads=()=>Object.keys(S.threads||{}).filter(pid=>person(pid)).map(pid=>{const p=person(pid);return{id:pid,name:p.name,score:p.score}});
+function storyTtlMs(){return ((v5config.hours&&v5config.hours.storyTtl)||12)*36e5}
+function openV5Share(subject,extra){
+  void import('./v5/share.ts').then(({openShareSheet})=>{
+    openShareSheet(subject,{
+      threads:v5Threads(),
+      onToast:toast,
+      extra,
+      onSendToMatch:(sub,threadId)=>{
+        const who=person(threadId);
+        if(!who){toast('That match is no longer here');return}
+        ensureThread(threadId);
+        /* The bubble is only pushed when the chat can resolve the reference.
+           A text card that has no manifest id goes as its caption instead of
+           rendering as an empty frame. */
+        const asTrack=sub.kind==='song'&&TRACKS[sub.id];
+        const asMeme=sub.kind==='meme'&&mmOf(sub.id);
+        S.threads[threadId].msgs.push(asTrack?{f:'me',kind:'track',ref:sub.id,ts:Date.now()}:asMeme?{f:'me',kind:'meme',ref:sub.id,ts:Date.now()}:{f:'me',t:sub.title,ts:Date.now()});
+        save();toast('Sent to '+who.name);haptic(8);reply(threadId);track('meme_sent',{to:'match',kind:sub.kind});
+      },
+      /* Only offered when the subject really can be a story backdrop: a story
+         layer stores a content-manifest id, and a legacy text card has none. */
+      onAddToStory:(subject.storyLayers&&subject.storyLayers.length)?(sub)=>{
+        const now=Date.now();
+        V5.putStory({id:'story-'+now.toString(36),ownerId:'me',createdAt:now,expiresAt:now+storyTtlMs(),layers:sub.storyLayers||[{type:sub.kind==='song'?'song':'meme',id:sub.id}],audience:'everyone',hideFrom:[],replyRule:'react'});
+        renderStoriesRail();toast('Added to your story');haptic([10,30,10]);track('story_posted',{from:sub.kind});
+      }:undefined,
+    });
+  }).catch(()=>toast('Sharing is not available right now'));
+}
+/* A POST is either a song or a meme; both share through the same sheet. */
 function openShare(id){
-  const p=POSTS[id],r=refOf(p);
-  const actions=[['copy','Copy link',I.link]];
-  if(canNativeShare())actions.push(['more','Share',I.dots]);
-  openSheet(`<h3 class="sh-t">Share</h3>
-    <div class="shp"><div class="tile">${artOf(p)}</div><div><b>${esc(labelOf(p))}</b><span>${p.kind==='music'?esc(r.artist):'A cultured meme'}</span></div></div>
-    <div class="share-row">${actions.map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(labelOf(p))}"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>
-    ${canNativeShare()?'':'<p class="hint">This browser has no share sheet, so the link is the only way out. Copy it and send it wherever you like.</p>'}`);
+  const p=POSTS[id];
+  if(!p){toast('That one is gone');return}
+  const isM=p.kind==='music',r=refOf(p);
+  openV5Share({
+    kind:isM?'song':'meme',
+    id:r.id,
+    title:isM?r.title:labelOf(p),
+    subtitle:isM?r.artist:'Meme',
+    image:isM?null:(r.img||null),
+    url:location.href,
+    facts:[isM?r.genre:'from the feed'],
+  });
 }
 ACT.sharego=async b=>{
   const w=b.dataset.w;
+  if(w==='v5'){
+    /* The profile has no raster art, so the sheet offers the link targets —
+       story, matches, Instagram, Snapchat, WhatsApp, X — and nothing else. */
+    closeSheet();
+    openV5Share({
+      kind:'profile',
+      id:'me',
+      title:S.prof.name+'’s Fingerprint',
+      subtitle:S.prof.humor.slice(0,2).join(' · ')||'cultural fingerprint',
+      url:location.href,
+      facts:S.prof.artists.slice(0,2),
+    });
+    return;
+  }
   if(w==='more'){
     /* A dismissed sheet is not a failure — say nothing rather than a toast
        claiming something happened. */
@@ -1686,6 +1748,7 @@ function renderYou(){
   /* The v5 profile owns #s-you when its flag is on (it is, by default). main.ts
      mounts it into the host, same seam as Matrix/People/Arena. */
   if(V5_PROFILE)return;
+  youDirty=false;
   const pr=S.prof,mine=fpParams(mineSeed());
   const P=youPal(),bgS=pr.bg||'rings';
   /* v5: both numbers come from the store, so a save made on a corpus meme in
@@ -1818,7 +1881,7 @@ ACT['share-fp']=()=>{
   openSheet(`<h3 class="sh-t">Share your Fingerprint</h3>
     <div class="taste-card"><div class="tc-top"><span>my cultural fingerprint</span><b>${esc(S.prof.name)}</b></div><div class="tc-fp">${fpSVG(fpParams(mineSeed()),'#EFE9DA','#ff8a5b',{n:14,w:1.4})}</div><div class="tc-score"><b>${Math.round((S.prof.humor.reduce((a,h)=>a+(HUMOR.indexOf(h)>-1?.18:.12),0)+76))}%</b><span>Fingerprint clarity</span></div><div class="tc-grid"><div><small>leans</small><strong>${esc(S.prof.humor.slice(0,2).join(' · '))}</strong></div><div><small>on repeat</small><strong>${artists.map(esc).join(' · ')}</strong></div></div>${saved.length?`<div class="tc-memes">${saved.map(m=>`<span style="--bg:${m.bg};--fg:${m.fg}">${m.e}</span>`).join('')}</div>`:''}<footer>cultured · find who else relates</footer></div>
     <p class="hint" style="margin:12px 0 16px">A live preview built from your current signals. Photos and location stay private.</p>
-    <div class="share-row">${[['copy','Copy link',I.link],['msg','Messages',I.chat],['story','Your story',I.you],['more','More',I.dots]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
+    <div class="share-row">${[['v5','Share…',I.share],['copy','Copy link',I.link]].map(o=>`<button data-act="sharego" data-fx="sharego" data-w="${o[0]}" data-t="${esc(S.prof.name)}’s Fingerprint"><i>${o[2]}</i>${o[1]}</button>`).join('')}</div>`);
 };
 
 /* ================= settings + activity ================= */
@@ -2161,25 +2224,32 @@ const mmId=b=>b.closest('[data-m]').dataset.m;
 ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
   if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();markYouDirty();repoCall('recordReaction',id,'like');
   if(on){burst(b,'#ff5d7a');floatFromEl(b,V5_LIKE,3);haptic(10)}
 };
 ACT['mm-save']=b=>{
   const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
   V5.setSaved('meme',id,on);
   if(on)V5.pin('meme',id);else V5.unpin('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'save');
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();markYouDirty();repoCall('recordReaction',id,'save');
   toast(on?'Kept.':'Let go.');haptic(8);
 };
 ACT['mm-share']=b=>{
-  const id=mmId(b);
-  /* Thread keys outlive the people behind them: they are persisted, and with
-     the invented population gated off (D-27) `person()` legitimately returns
-     undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on
-     a list that used to be populated. The threads are left in place — this
-     filters a view, it does not delete anything. */
-  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
-  openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
+  const id=mmId(b),m=mmOf(id);
+  if(!m){toast('That one is gone');return}
+  /* The real share sheet: story, match, Instagram, Snapchat, WhatsApp, X, copy,
+     save image. "Your story" writes an actual story because this meme has a
+     content-manifest id, so the layer resolves in the viewer. */
+  openV5Share({
+    kind:'meme',
+    id,
+    title:m.t,
+    subtitle:'Meme',
+    image:m.img,
+    url:location.href,
+    facts:[m.k?'#'+m.k:'today’s memes'],
+    storyLayers:[{type:'meme',id}],
+  });
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
   ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};

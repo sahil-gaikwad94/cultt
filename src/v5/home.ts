@@ -105,8 +105,8 @@ const renderMemeCard = (item: DeckItem, index: number): HTMLElement => {
       <span class="v5-placard-impact">${esc(impactFor(item))}</span>
     </div>
     <div class="v5-card-rail">
-      <button type="button" class="v5-rail-btn" data-act="laugh" aria-label="${esc(reactionName('meme', '😭'))}">😭</button>
-      <button type="button" class="v5-rail-btn" data-act="save" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.8 6.5 20.5z"/></svg></button>
+      <button type="button" class="v5-rail-btn" data-act="laugh" data-fx="like" aria-pressed="false" aria-label="${esc(reactionName('meme', '😭'))}">😭</button>
+      <button type="button" class="v5-rail-btn" data-act="save" data-fx="save" aria-pressed="false" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.8 6.5 20.5z"/></svg></button>
       <button type="button" class="v5-rail-btn" data-act="share" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 15.5V4M8 7.8 12 4l4 3.8M5 12v7.5h14V12"/></svg></button>
     </div>
     <div class="v5-stamp v5-stamp-right" aria-hidden="true">HAHA</div>
@@ -239,6 +239,10 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     renderChip(card, kind, emoji);
     refreshBudget();
     void context.fx.play(emoji, at);
+    /* The rail button keeps its pressed state, so the shared like effect (and
+       the next tap) reads the truth rather than the last class it saw. */
+    const laughButton = card.querySelector<HTMLElement>('[data-act="laugh"]');
+    laughButton?.setAttribute('aria-pressed', 'true');
     haptics.play('light');
   };
 
@@ -358,8 +362,11 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     });
     card.querySelector('[data-act="save"]')?.addEventListener('click', () => {
       const result = store.toggleSave(kind, item.id);
-      (card.querySelector('[data-act="save"]') as HTMLElement | null)?.classList.toggle('is-on', result.saved);
-      haptics.play('light');
+      const saveButton = card.querySelector<HTMLElement>('[data-act="save"]');
+      saveButton?.classList.toggle('is-on', result.saved);
+      /* The delegated `data-fx="save"` handler reads aria-pressed, and the
+         effect plays after this listener so it sees the settled state. */
+      saveButton?.setAttribute('aria-pressed', String(result.saved));
       toast(result.saved ? copy.vault.savedToast : copy.vault.unsavedToast);
     });
     card.querySelector('[data-act="share"]')?.addEventListener('click', () => {
@@ -443,23 +450,44 @@ export const mountDeck = (host: HTMLElement, context: CardContext): DeckHost => 
     animation.finished.then(finish, finish);
   };
 
+  /**
+   * The deck's share now opens the shared sheet (src/v5/share.ts) instead of
+   * jumping straight to `navigator.share`: story, matches, Instagram, Snapchat,
+   * WhatsApp, X, copy link, save image — each one only when it can work.
+   */
   const share = async (item: DeckItem): Promise<void> => {
-    const title = item.kind === 'meme' ? item.meme!.title : `${item.song!.title} — ${item.song!.artist}`;
-    const text = `${title}. ${copy.sharing.memeFooter}`;
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'cultured', text, url: location.href });
-        return;
-      } catch {
-        /* the user dismissed it; fall through to the toast */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text} ${location.href}`);
-      toast('Copied');
-    } catch {
-      toast(copy.status.error);
-    }
+    const { openShareSheet } = await import('./share.ts');
+    const meme = item.meme;
+    const song = item.song;
+    const title = meme ? meme.title : `${song?.title ?? ''} — ${song?.artist ?? ''}`;
+    openShareSheet(
+      {
+        kind: meme ? 'meme' : 'song',
+        id: item.id,
+        title,
+        subtitle: meme ? memeCategoryName(meme.category) : song?.artist,
+        image: meme ? memeArt(meme).src : (song?.artworkUrl ?? null),
+        url: typeof location === 'undefined' ? undefined : location.href,
+        facts: meme ? [meme.mood] : [song?.genreName ?? ''],
+        storyLayers: [meme ? { type: 'meme', id: item.id } : { type: 'song', id: item.id }],
+      },
+      {
+        onToast: toast,
+        onAddToStory: (subject) => {
+          const now = Date.now();
+          store.putStory({
+            id: `story-${now.toString(36)}`,
+            ownerId: 'me',
+            createdAt: now,
+            expiresAt: now + v5config.hours.storyTtl * 3600000,
+            layers: subject.storyLayers ?? [],
+            audience: 'everyone',
+            hideFrom: [],
+            replyRule: 'react',
+          });
+        },
+      },
+    );
   };
 
   const toast = (message: string): void => {

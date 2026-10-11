@@ -1,0 +1,45 @@
+/* Feel — like/save choreography (src/v5/feel.ts).
+   Every layer here is appended *inside* the control that was tapped, so the
+   effect is positioned by the button and can never leak across the screen. */
+
+.fx2-ring{position:absolute;inset:0;pointer-events:none;display:block;overflow:visible}
+.fx2-ring i{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border-radius:50%;background:var(--c,var(--heart));opacity:0;animation:fx2Dot 560ms cubic-bezier(.2,.7,.3,1) forwards;animation-delay:var(--dl,0ms)}
+@keyframes fx2Dot{
+  0%{opacity:0;transform:translate(0,0) scale(.3)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(var(--tx,0),var(--ty,0)) scale(.35)}
+}
+
+.fx2-heart{position:absolute;inset:-6px;pointer-events:none;color:var(--heart);animation:fx2Heart 560ms cubic-bezier(.2,.8,.3,1) forwards}
+.fx2-heart svg{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 10px rgba(255,93,122,.45))}
+.fx2-heart path{stroke-dasharray:1;stroke-dashoffset:1}
+@keyframes fx2Heart{
+  0%{opacity:0;transform:scale(.4)}
+  22%{opacity:1;transform:scale(1.05)}
+  45%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.7)}
+}
+
+.fx2-shine{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;background:linear-gradient(105deg,transparent 30%,rgba(239,233,218,.5) 48%,transparent 66%);transform:translateX(-120%);animation:fx2Shine 520ms cubic-bezier(.3,.7,.3,1) forwards}
+@keyframes fx2Shine{
+  to{transform:translateX(120%)}
+}
+
+.fx2-ghost{position:fixed;z-index:var(--z-toast,120);width:22px;height:22px;pointer-events:none;color:var(--bone);transform:translate(-50%,-50%);filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.fx2-ghost svg{width:100%;height:100%;display:block}
+
+.fx2-emoji{position:absolute;left:50%;top:50%;font-size:34px;line-height:1;pointer-events:none;transform:translate(-50%,-50%);animation:fx2Emoji 720ms cubic-bezier(.2,.8,.3,1) forwards;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))}
+@keyframes fx2Emoji{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+  22%{opacity:1;transform:translate(-50%,calc(-50% - 10px)) scale(1.16)}
+  60%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,calc(-50% - 46px)) scale(.86)}
+}
+
+/* A control that hosts an effect must be a positioning context. */
+.rb,.mm-b,.v5-rail-btn,.ibtn,.dbtn{position:relative}
+
+@media (prefers-reduced-motion:reduce){
+  .fx2-ring,.fx2-heart,.fx2-shine,.fx2-emoji{display:none}
+  .fx2-ghost{display:none}
+}
