@@ -96,7 +96,7 @@ const renderMemeCard = (item: DeckItem, index: number): HTMLElement => {
 
   card.innerHTML = `
     <div class="v5-card-media" style="aspect-ratio:${meme.width || 4}/${meme.height || 3}">
-      <img src="${esc(art.src)}"${art.srcset ? ` srcset="${esc(art.srcset)}" sizes="${esc(art.sizes)}"` : ''}
+      <img src="${esc(art.src)}" data-fbk="${esc(art.fb)}"${art.srcset ? ` srcset="${esc(art.srcset)}" sizes="${esc(art.sizes)}"` : ''}
            alt="${esc(art.alt)}" decoding="async" loading="${index < 2 ? 'eager' : 'lazy'}" draggable="false">
     </div>
     <span class="v5-card-chip">${esc(memeCategoryName(meme.category))}</span>
@@ -552,7 +552,7 @@ const renderDraft = (): HTMLElement => {
       ${candidates
         .map(
           (meme) => `<button type="button" class="v5-draft-card" data-id="${esc(meme.id)}">
-            <img src="${esc(memeArt(meme).src)}" alt="" aria-hidden="true">
+            <img src="${esc(memeArt(meme).src)}" data-fbk="${esc(memeArt(meme).fb)}" alt="" aria-hidden="true">
             <span class="v5-draft-hint">${esc(memeCategoryName(meme.category))}</span>
           </button>`,
         )
@@ -703,7 +703,7 @@ const renderForecast = (): HTMLElement => {
     ${
       teaser
         ? `<figure class="v5-f-teaser">
-            <div class="v5-frame"><img src="${esc(memeArt(teaser).src)}" alt=""></div>
+            <div class="v5-frame"><img src="${esc(memeArt(teaser).src)}" data-fbk="${esc(memeArt(teaser).fb)}" alt=""></div>
             <figcaption>A hint. That's all you get.</figcaption>
           </figure>`
         : ''
@@ -732,7 +732,7 @@ const renderToday = (context: CardContext): HTMLElement => {
       ${
         dropMeme
           ? `<figure class="v5-exhibit v5-exhibit-meme">
-              <div class="v5-frame"><img src="${esc(memeArt(dropMeme).src)}" alt="${esc(dropMeme.alt)}"></div>
+              <div class="v5-frame"><img src="${esc(memeArt(dropMeme).src)}" data-fbk="${esc(memeArt(dropMeme).fb)}" alt="${esc(dropMeme.alt)}"></div>
               <figcaption><b>${esc(dropMeme.title)}</b><span>${esc(memeCategoryName(dropMeme.category))}</span></figcaption>
             </figure>`
           : ''

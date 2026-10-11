@@ -14,7 +14,7 @@ import { copy } from '../copy/index.ts';
 import { archetypeFor, axisLabel, memeCategoryName } from '../copy/taxonomy.ts';
 import { getStore } from '../store/index.ts';
 import { PINK_CAPS, pinsByKind } from '../store/selectors.ts';
-import { memeById, songById } from '../content/index.ts';
+import { memeById, memeThumb, songById } from '../content/index.ts';
 import type { ItemKind, StoreState } from '../store/index.ts';
 import type { PinSlotKind } from '../store/types.ts';
 import { axisAffinity } from './deck.ts';
@@ -43,6 +43,8 @@ export interface WallSlot {
   title: string;
   subtitle: string;
   thumb: string | null;
+  /** The committed original, used as the `onerror` fallback for `thumb`. */
+  thumbFb: string | null;
   alt: string;
   slot: number;
 }
@@ -75,7 +77,8 @@ const slotFrom = (kind: PinSlotKind, itemId: string, slot: number): WallSlot | n
       id: itemId,
       title: meme.title,
       subtitle: memeCategoryName(meme.category),
-      thumb: meme.variants.at(-1)?.webp ?? meme.src,
+      thumb: memeThumb(meme).src,
+      thumbFb: memeThumb(meme).fb,
       alt: meme.alt,
       slot,
     };
@@ -89,6 +92,7 @@ const slotFrom = (kind: PinSlotKind, itemId: string, slot: number): WallSlot | n
     title: song.title,
     subtitle: song.artist,
     thumb: song.artworkUrl,
+    thumbFb: song.artworkUrl,
     alt: `${song.title} by ${song.artist}`,
     slot,
   };
@@ -147,7 +151,7 @@ export interface ProfileOptions {
 }
 
 const tile = (slot: WallSlot, editing: boolean) => `<button type="button" class="v5-wall-tile ${editing ? 'is-editing' : ''}" data-key="${esc(slot.key)}" data-kind="${slot.kind}" data-id="${esc(slot.id)}" aria-label="${esc(slot.alt)}">
-  ${slot.thumb ? `<img src="${esc(slot.thumb)}" alt="${esc(slot.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+  ${slot.thumb ? `<img src="${esc(slot.thumb)}" data-fbk="${esc(slot.thumbFb ?? slot.thumb)}" alt="${esc(slot.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
   <span class="v5-tile-title">${esc(slot.title)}</span>
 </button>`;
 
@@ -198,7 +202,7 @@ export const mountProfile = (host: HTMLElement, options: ProfileOptions = {}): P
         ${
           wall.anthem
             ? `<div class="v5-anthem">
-                ${wall.anthem.thumb ? `<img src="${esc(wall.anthem.thumb)}" alt="">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+                ${wall.anthem.thumb ? `<img src="${esc(wall.anthem.thumb)}" data-fbk="${esc(wall.anthem.thumbFb ?? wall.anthem.thumb)}" alt="">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
                 <div><b>${esc(wall.anthem.title)}</b><span>${esc(wall.anthem.subtitle)}</span></div>
               </div>`
             : `<p class="v5-wall-empty">Pin a song as your anthem. One only — that is the point.</p>`
@@ -221,7 +225,7 @@ export const mountProfile = (host: HTMLElement, options: ProfileOptions = {}): P
             ? `<div class="v5-wall-list">${wall.songs
                 .map(
                   (slot) => `<button type="button" class="v5-wall-track ${editing ? 'is-editing' : ''}" data-key="${esc(slot.key)}" data-kind="song" data-id="${esc(slot.id)}">
-                    ${slot.thumb ? `<img src="${esc(slot.thumb)}" alt="">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+                    ${slot.thumb ? `<img src="${esc(slot.thumb)}" data-fbk="${esc(slot.thumbFb ?? slot.thumb)}" alt="">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
                     <span><b>${esc(slot.title)}</b><small>${esc(slot.subtitle)}</small></span>
                   </button>`,
                 )

@@ -237,3 +237,429 @@ tells us nothing about how they score. Font weight is likewise unverified:
 `fonts.gstatic.com` is outside the network allowlist here.
 
 `PERF_REPORT.md` states all of this rather than quoting numbers nobody took.
+
+## Meme images were invisible in every build — both causes fixed
+
+The rights are cleared (`rightsCleared: true` on all 20 entries in
+`src/content/memes.meta.json`) and the gate passes, but no meme image rendered.
+Two independent causes, either of which was sufficient on its own:
+
+1. **Dev.** `src/data/seed/memes.ts` resolved `img` to
+   `variants.at(-1).webp`, i.e. `/memes/gen/meme-01-480.webp`. That directory is
+   gitignored and only `npm run content:memes` creates it — and nothing ran it.
+   On a fresh checkout 19 of 20 meme URLs 404'd (the 20th, `meme-13.webp`, is
+   236×224 — narrower than the smallest variant width, so it has no variants and
+   fell back to its original by accident).
+2. **Production.** `scripts/prune-demo-assets.mjs` deleted `dist/memes`
+   wholesale. It was written when all 20 memes were unlicensed web-search
+   material and predated the rights purchase. Verified against a real build:
+   `pruned dist/memes` → `ls: cannot access 'dist/memes'`.
+
+Fixes:
+
+- The prune is now **per-file and manifest-driven**: rights-cleared media ships,
+  media the manifest does not vouch for is deleted, and provenance files
+  (`sources.json`, `README.md`) are dropped without being mislabelled as
+  unlicensed memes.
+- `predev` runs `build-memes.ts --if-stale`; `build` runs the full
+  `content:memes` (which includes the gate) rather than the gate alone.
+- `--if-stale` is manifest-driven, not filename-guessed — the pipeline skips any
+  source narrower than the smallest variant width, so only the manifest knows
+  which entries have no variants. 0.13 s when current, full re-encode when a
+  source is touched.
+- Every meme `<img>` carries `data-fbk` with the committed original, and one
+  capture-phase `error` listener in `main.ts` swaps to it — dropping
+  `srcset`/`sizes` first, because while `srcset` is present the browser resolves
+  the request from it and ignores `src`, so the swap would be invisible and the
+  error would fire again. `memeThumb()` in `src/content/index.ts` is the one
+  place the pair is resolved.
+
+`tests/unit/meme-assets.test.ts` (12 tests) pins all of it, including running the
+real prune script against a temp `dist/`.
+
+Also noted: `vercel.json` serves `max-age=31536000, immutable` for `*.webp|avif`,
+but `public/memes/gen/*` filenames are not content-hashed. Re-generating a meme
+in place would leave returning users on stale bytes for a year.
+
+407 tests / 25 files green (was 391 + 4 skipped / 24); tsc, eslint and the
+production build all clean. `dist/memes` goes from 0 to 64 media files.
+
+Full read of the codebase and the plan for the next round:
+`docs/v6/SESSION_BRIEF.md`.
+
+## The Culture Feed: typed core extracted, real art, working tabs and pager
+
+`src/screens/feed.ts` now owns every rule about what the feed shows; the seam
+keeps the gestures, the tint layer and the delegated `data-act` listener. It
+imports the meme manifest directly and never the `src/content` barrel, the v5
+screens or the store, so nothing new lands on the first-paint path —
+`index-*.js` moved 79.62 → 79.71 kB and 82.67 → 82.93 kB.
+
+What changed for the user:
+
+- **The Daily Drop leads with licensed art.** It drew its memes from four
+  hand-written text cards (`MEMES`, `legacy.ts:204`) rendered as procedural
+  typography, while the real corpus sat in a strip below. `planDrop` now picks
+  from the corpus, deterministic per local day, rotating categories and
+  weighted by the axes the user actually reacts to. Music still comes from the
+  seed tracks: **0 of the 208 manifest songs are resolved** (no artwork, no
+  preview), so real album art would have to be invented.
+- **The gallery is no longer capped at six of twenty.** `planGallery` pages it,
+  and "Show more" accumulates — the header count and the card count are the same
+  number by construction.
+- **The topic tabs work.** They were `toast('Topic tabs are off in this phase')`.
+  `nonEmptyTopics()` means a topic with nothing behind it is never offered.
+- Drop memes are excluded from the gallery, so nothing repeats on one screen.
+
+`legacy.ts` lost `mmCard` and `mmList`; both were dead once the planner arrived.
+
+### Three bugs found by driving the feed in jsdom
+
+`tests/unit/feed-screen.test.ts` is the first test in this repo to import
+`src/legacy.ts` into a real DOM and click through a screen. All three of these
+were invisible to the 407 pure-function tests:
+
+1. **`v5Resolve` was declared outside the IIFE** (`legacy.ts:66`) but read
+   `POSTS` (line 239) and `MM` (line 2183), both declared inside it. Any call
+   threw `ReferenceError: POSTS is not defined`. Its only caller is
+   `renderYou()`'s saved-item lookup, and `ACT['mm-save']` calls `renderYou()` —
+   so **saving anything killed the You tab** while the button looked like it had
+   worked. Moved inside, after the last name it reads.
+2. **The "Saved culture" grid read resolved entries as ids.** `v5Resolve`
+   returns `{kind, id, post?|meme}`; the template did `artOf(POSTS[id])`, so a
+   saved corpus meme produced `artOf(undefined)` → `Cannot read properties of
+   undefined (reading 'kind')`. Same path, second crash, same fix round.
+3. **`burst()` called `d.animate()` with no guard**, unlike
+   `src/motion/micro.ts`'s `canWAAPI`. On an engine without WAAPI the like
+   handler threw *after* writing state, so the heart filled and the floating
+   emoji, the haptic and the profile sync never ran. It also leaked particle
+   nodes whenever `onfinish` did not fire. Guarded, and particles now drop on a
+   timer as well.
+
+`planDrop` itself was wrong on the first draft: it added the category-rotation
+jitter to the use metric and compared on that, which let the jitter overrule a
+full point of affinity. Affinity now ranks within a category and rotation picks
+the category order — two separate decisions.
+
+439 tests / 26 files green (was 407 / 25); tsc, eslint and the production build
+clean.
+
+## Like and save feedback, and a share sheet that only offers what works
+
+Two asks landed together because they touch the same node: the meme action row.
+
+### Like and save (ask #9)
+
+`fxHandlers.like` now runs heartPop, a `ringFrom` ring in `--heart`, a `glow`
+halo, a particle burst and a haptic — but **no combo**. Like is a toggle:
+tapping a liked meme un-likes it, and an un-like has to reset the streak, so a
+combo hung off that button could never get past ×1. The escalation moved to the
+gesture people actually spam, the **double-tap on the card**, via
+`bigHeartOn(host, svg)`, which owns the streak, keys it by meme id, returns the
+level, and drives the scale through `--bhs`.
+
+`src/motion/combos.ts` is the model and imports nothing at all — no DOM, no
+store, no clock. A test scans its comment-stripped source for `document.`,
+`window.` and `Date.now` so that stays true. Window 1400 ms, levels 1/2/3/5,
+labels `×2` / `×3` / `×5 UNWELL`, bursts 4/6/8/10 (under the `burst` ceiling of
+10), and `pruneWindow` rejects future timestamps so a rolled-back clock cannot
+bank hits. It never touches `laughSpend`.
+
+The meme **save** button is `data-fx="pin"`, not `save` — the `save` handler only
+serves the drop card. Pin fills the bookmark glyph (`fillIcon`), tucks the card,
+drops a 📌 sticker and flies it to the You tab. Un-saving drains the fill back.
+
+`ACT['mm-like']` and `ACT['mm-save']` were firing their own `burst`/`haptic`
+*and* letting the delegated `data-fx` handler fire — two bursts, two haptics per
+tap. The duplicates are gone. `renderYouIfShown()` replaced a full profile
+re-render on every like or save.
+
+### Share (ask #3)
+
+There is no web API for posting to an Instagram or Snapchat Story, and
+`src/legacy.ts` already records that lying buttons were removed once before. So
+`src/lib/share.ts` probes the device (`canShare({files})`, `ClipboardItem`,
+download) and `planShare` returns only the targets that can actually deliver:
+
+| Target | Shown when |
+|---|---|
+| Your story | always — it is the in-app store write, it always works |
+| Send to a match | the user has a match |
+| Share card / Save image | there is an image and a download path |
+| Copy link | there is a clipboard |
+| More… | `navigator.share` exists; the hint only promises the image when `canShare({files})` agrees |
+
+`src/lib/shareCard.ts` draws the branded card on a canvas and **returns `null`
+when there is no canvas**, and the caller falls back to saving the raw image
+rather than toasting a success that did not happen. It is a dynamic import:
+1.44 kB gz that only loads from that one tile, so it stays out of first paint.
+
+### Two bugs found while wiring it
+
+- **The stories rail was only on the People tab.** Sharing to "Your story" from
+  the feed wrote to the store and then told you to go look somewhere the feed
+  never pointed at. The feed now has a rail, and `renderStoriesRail()` keys on
+  `[data-stories-rail]` instead of `$('#stories-rail')`, which would only ever
+  have found the first of the two.
+- **`wrapLines` truncated more than it had to.** It broke out of the loop as
+  soon as the last line started, so the words that still fitted on that line
+  were dropped and an ellipsis was added for text that was never too long.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **484 passed / 28 files** (was
+458 / 27) · build OK, `legacy` 192.37 kB / **65.79 kB gz** with `shareCard`
+split out at 2.99 kB / 1.44 kB gz.
+
+One test-environment trap worth recording: `feed-screen.test.ts` calls
+`vi.resetModules()` in `beforeEach`, so the app gets a **fresh store singleton**
+and a statically imported `getStore()` reads a different, empty one. Import it
+inside the test after the app boots, or every store assertion silently sees
+nothing.
+
+## Stories layout, and two new screens: Live and Dine-in
+
+### Stories (ask #6) — the recorded diagnosis was wrong
+
+`docs/v6/SESSION_BRIEF.md` said `.v5-story-stage img` had *no* `object-fit` at
+all. It has had `object-fit: cover` since the base commit `970f5b9`
+(`git log -S` confirms). The actual defect was different and worse:
+
+- The stage was `flex: 1`, so its box was whatever vertical space the header
+  and footer left — never 9:16.
+- `cover` on top of that cropped the artwork. The first meme in the corpus is
+  700×368, so a tall box throws away most of its width — i.e. the punchline.
+- The composer previewed at **9/14**, a third shape again, so what you composed
+  was not what you saw.
+
+Both now share one rule: `aspect-ratio: 9/16`, `max-height: 58vh`, artwork
+fitted with `contain`, letterbox filled by a blurred copy of itself (the
+Instagram treatment). `tests/unit/stories-layout.test.ts` pins the geometry by
+reading the stylesheet, because a jsdom mount cannot tell you what
+`object-fit` resolved to.
+
+### Live and Dine-in (asks #4 and #5)
+
+The Rewind and Tomorrow slots now lead with going somewhere together. Neither
+previous feature was deleted: `rewindHTML()` and `draftHTML()` still render,
+inside a `<details>` at the bottom of the new screen, so the countdown and the
+vote keep working.
+
+- `src/screens/live.ts`, `src/screens/dining.ts` — pure planning + markup, same
+  contract as `src/screens/feed.ts`. No DOM, no store, no provider calls.
+- `src/data/seed/{concerts,dining}.ts` — seeded packs. Dates are **day offsets**
+  resolved against a clock, not frozen timestamps, so nothing renders as "last
+  March" a year from now.
+- `src/lib/places/providers.ts` — the provider seam. Every listing carries a
+  `source` the UI renders as a `Sample listing` badge.
+- Both screens are **dynamic imports** (3.87 + 3.29 kB gz). They were static
+  first and cost the critical path 7.8 kB gz; `legacy` went back from 73.57 to
+  **67.57 kB gz**.
+
+**Booking is a deep link, not an API call.** BookMyShow and SortMyScene have no
+public developer API; Zomato's `developers.zomato.com` user-key API was
+discontinued; Swiggy is partner-only. Ticketmaster Discovery is the one real
+self-serve option and is the adapter a production build would switch on. The
+button opens the provider and copies the search term, so a stale search path
+degrades to "right site, right words in hand" rather than a dead end.
+
+**The URLs in `providers.ts` are unverified.** This sandbox can only reach
+github.com, npm and PyPI, so no search path there has been fetched. They are
+single constants for that reason.
+
+**No video ships.** All 20 corpus memes are `.webp` stills and no ffmpeg is
+available here to synthesise a clip. The `<video>` element, `poster` and
+`preload` plumbing is real and wired to a `clip` field on the event type; the
+demo pack has no clips, so the card renders a CSS motion poster labelled as
+one. Nothing pretends to be footage.
+
+### Four bugs found while wiring it
+
+- **`LIVE` already existed in the seam** (`src/legacy.ts:251`, the
+  "who's listening" array). The transformer silently renamed the import to
+  `LIVE2`, and `@ts-nocheck` hid it, so `LIVE.planLive` was `undefined` at
+  runtime. Renamed to `LIVE_SCREEN` / `DINING_SCREEN`.
+- **`icons:LIVE_ICONS` passed the function, not its result.** Same blind spot.
+- **`planLive`'s empty copy lied.** A pack whose gigs have all played reported
+  "No listings in this pack yet." There are now three distinct reasons —
+  `none` / `past` / `filter` — because telling someone to change a filter that
+  cannot help is worse than saying nothing.
+- **`src/v5/stories.ts` reads `Date.now()`** at lines 145, 282 and 366 while the
+  store carries an injectable clock. A story written with a T0-relative expiry
+  reads as long expired and the rail renders its empty state. Not fixed — it
+  needs `StoriesOptions` to carry a clock — but recorded, because it makes the
+  Stories surface untestable against a fixed clock.
+
+Two harness notes, both artifacts of the test shell rather than the product:
+`beforeEach` calls `vi.resetModules()`, so every import re-runs `init()` and
+stacks another document-level click listener on the persistent jsdom document —
+one tap reaches every instance still attached, so tests assert on *what* was
+opened, not how many copies opened it. And the store hydrates in a microtask,
+so a synchronous `putStory` before `await store.ready` is silently overwritten.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **541 passed / 31 files** (was
+484 / 28), run green five times consecutively · build OK, `legacy` 197.24 kB /
+**67.57 kB gz**, `live` 8.89 / 3.87 kB gz and `dining` 7.49 / 3.29 kB gz as
+lazy chunks.
+
+One caveat worth stating plainly: a single full-suite run partway through
+reported 1 failure that did not reproduce in the five runs after it, and I
+could not capture which test it was. Everything since has been clean.
+
+## Profile customisation (ask #7)
+
+`v5.profile` is `false` by default, so the legacy You screen is the one people
+actually see — and it already did a lot: name, bio, tint, wall art, photo,
+humor signals, artists, photos, prompt answers. Two real gaps, both now closed.
+
+**The prompt questions were fixed.** You could edit the answer to "The song I'll
+defend forever" but never change the question. There is now a bank of 18, up to
+three on the profile, add and remove, with the bank behind a disclosure.
+
+**The humor cap was a silent lie.** `ACT.hum` pushed without a limit while
+`renderYou` rendered `pr.humor.slice(0, 3)` — so a fourth chip lit up, saved,
+and never appeared anywhere. `PF.toggleHumor` now refuses at three with a
+reason, the header shows `3/3`, and the seeded default already sits at the cap
+so the refusal path is exercised by a real tap in the test suite.
+
+Also added: a pronouns field, "Make first" on photos (which one leads was an
+accident of upload order), and a completeness meter.
+
+The meter measures **fields, not personality**, and the copy next to it says
+so — it is the only score in the app that is not about matching. Answers are
+weighted, not just presence: a three-character bio and an empty prompt answer
+both count as missing.
+
+All rules live in `src/screens/profile.ts`, pure, returning new state rather
+than mutating. 22 unit tests plus 5 DOM tests through the real You screen.
+
+One deliberate non-change: `src/screens/profile.ts` stays a **static** import
+(+1.9 kB gz on `legacy`). The You screen is a primary tab reached synchronously
+by `go('you')`; making it lazy would put a skeleton in front of a main
+destination to save 1.9 kB, which is the wrong trade.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **568 passed / 31 files** (was
+541 / 30) · build OK, `legacy` 202.00 kB / **69.46 kB gz**.
+
+## Optimization pass (ask #8)
+
+Three findings from the brief, all three real, all three fixed.
+
+### `vercel.json` was caching un-hashed files as immutable
+
+```
+{ "source": "/(.*).(webp|avif|mp4|webm)",
+  "headers": [{ "value": "public, max-age=31536000, immutable" }] }
+```
+
+`immutable` is a promise that a URL's bytes will never change. `/assets/*` can
+make it — Vite content-hashes those filenames. `/memes/gen/*` cannot: the
+pipeline writes `meme-01-480.webp`, so regenerating a meme keeps the same URL
+and every browser that ever loaded it holds the old bytes for a year. That is
+not a slow cache, it is a cache that never expires, on exactly the assets most
+likely to be regenerated.
+
+`/memes/*` now gets `max-age=86400, stale-while-revalidate=604800,
+must-revalidate` — still at most one request a day, and a rebuild actually
+lands. `immutable` stays only where a content hash backs it.
+
+The first version of this fix also added a catch-all for media outside
+`/assets/` and `/memes/`, using a `(?!assets/|memes/)` negative lookahead to
+exclude the two handled prefixes. **Vercel rejected it** — the deploy check
+failed with `invalid-route-source-pattern`, because its route grammar is
+`path-to-regexp` and does not take a lookahead. That rule is gone: media
+anywhere else now falls through to Vercel's defaults, which is safe, since the
+defect being fixed was specifically `immutable` on un-hashed meme filenames.
+Every remaining pattern is written in the same style as the ones that shipped
+before, which is the only evidence available here that they parse.
+
+### `fitMeme()` forced a layout per node per round
+
+The old loop reset `fontSize` and read `scrollHeight` inside a `while` per
+element, up to six times. Every read after a write is a forced synchronous
+layout, and this runs on every feed render, every deck swap and every gallery
+page. On a six-card feed that was up to a dozen forced layouts per render.
+
+Now: reset all, read every base size once, then at most one layout per round
+for the whole batch. Same result, and the round cap and the 10px floor are
+unchanged — `> 10`, not `>= 14`, because the old `if (fs < 12) break` still let
+one more step through from 12 to 10.
+
+`tests/unit/fit-meme.test.ts` verifies it. jsdom does no layout at all, so
+`scrollHeight` and `clientHeight` are both 0 there and every pre-existing test
+that rendered the feed exercised only the early return — which is how this
+could have been rewritten wrongly and stayed green. The test defines the
+geometry by hand and counts read-after-write transitions as the proxy for a
+forced layout, with the flag shared across nodes because a layout is a property
+of the pass, not of the element. The load-bearing assertion is that 12 captions
+cost exactly as many layouts as 4.
+
+`fitMeme` is exposed through `seamInternals` for this, following the
+`microPublic` precedent. It is declared inside the seam's IIFE and an `export`
+cannot reach into it, so the holder lives at module top and the function
+assigns itself in.
+
+### `TOPIC_FOR_CATEGORY` is duplicated — left alone, now guarded
+
+It exists in `src/data/seed/memes.ts` (mock repo, seed SQL) and in
+`src/screens/feed.ts` (topic tabs). They cannot import each other: the feed
+module has a documented rule against pulling the data barrel onto first paint,
+and the seed module is not on that path. So the duplication stays and a test
+compares the derived `topic` on every seeded meme against `FEED.topicOf()`,
+with a count guard so the loop cannot pass by matching nothing.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **576 passed / 32 files** ·
+build OK, `legacy` 202.19 kB / **69.53 kB gz**.
+
+Not verified: the caching headers. Vercel is not reachable from this sandbox,
+so `vercel.json` was validated as JSON and reasoned about, not deployed. And no
+browser is available here, so the layout counts are measured against a
+hand-defined geometry rather than a real rendering engine.
+
+## The "unreproducible" failure was the splash timer
+
+An earlier entry in this file records a single full-suite run that reported one
+failure I could not reproduce, and says everything after it was clean. CI found
+it anyway:
+
+```
+TypeError: Cannot read properties of null (reading 'classList')
+ ❯ Timeout._onTimeout src/legacy.ts:2690
+This error originated in "tests/unit/feed-screen.test.ts" ...
+The latest test that might've caused it is "lets you choose your own prompt
+question".
+```
+
+`splashInit` did this:
+
+```js
+setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
+```
+
+The splash is gone by the time that fires — the callback itself removes it, and
+the cold open can take over first. It was an unguarded deref, so a timer that
+outlived the test file's jsdom threw an unhandled error, which Vitest reports
+against whatever test happened to be running. That is why it looked like a
+flake and pointed at an innocent test. Guarded now, with a test that removes
+`#splash` and advances the clock.
+
+The same pattern was one line away in the pull-to-refresh handler:
+`$('#feedBody').classList.add('fresh')` 950 ms later, and `renderFeed()` returns
+early when the v5 home owns the feed, so `#feedBody` is not there to decorate.
+Also guarded.
+
+Audited every other `setTimeout` in the seam: the rest capture their element at
+call time and only call `remove()` / `classList` on it, which is safe on a
+detached node. `ACT['act-dismiss']` was already guarded.
+
+Two share-sheet assertions were also reading state mid-flight. The handler
+closes the sheet and then toasts, but with several copies of the handler
+attached they are not observable in a guaranteed order, so both are now polled
+to their settled state. `tests/unit/fit-meme.test.ts` covers the splash guard;
+it fails with the exact CI error when the guard is removed.

@@ -30,6 +30,18 @@ import { SEED_TRACKS } from './data/seed/tracks';
    longer decides what the numbers are. */
 import { getStore } from './store';
 import { v5config } from './store/config';
+/* The Culture Feed's typed core, extracted from this file. Every rule about
+   what the feed shows — the drop order, the gallery pages, the topic tabs, the
+   `<img>` attributes — lives in src/screens/feed.ts and is unit-tested there.
+   This seam keeps the gestures, the tint layer and the delegated data-act
+   listener, which are the parts genuinely tangled up in the rest of the app. */
+import * as FEED from './screens/feed';
+/* Sharing. Every tile in the sheet is produced by `planShare` from a
+   capability probe, so the sheet can never offer a target the device cannot
+   deliver — the rule at openShare() above, applied everywhere. */
+import * as SHARE from './lib/share';
+import {bookingLink as placeLink} from './lib/places/providers';
+import * as PF from './screens/profile';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -39,6 +51,12 @@ import {
   LEGACY_LIKE as V5_LIKE,
 } from './store/selectors';
 
+/* Test seam. `fitMeme` measures real layout, which jsdom does not do at all —
+   scrollHeight and clientHeight are both 0 there, so every test that renders
+   the feed exercises only its early return. The holder lives out here because
+   `fitMeme` is declared inside the IIFE below and an `export` cannot reach into
+   it; the function assigns itself in on the way past. */
+export const seamInternals={};
 const V5 = getStore();
 /* v5 rollout flags. Off by default, so a build without `?v5=1` (or an explicit
    `window.CULTURED_CONFIG.v5`) renders exactly the pre-v5 app. */
@@ -49,24 +67,6 @@ const V5_PEOPLE=v5config.v5.people;
 const V5_ARENA=v5config.v5.arena;
 const V5_PROFILE=v5config.v5.profile;
 const V5_INTRO=v5config.v5.intro;
-let v5VaultHandle=null;
-const openV5Vault=async()=>{
-  if(v5VaultHandle)return;
-  const {mountVault}=await import('./v5/vault');
-  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
-  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
-};
-/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
-const v5Resolve = key => {
-  const i = key.indexOf(':');
-  if (i < 0) return null;
-  const kind = key.slice(0, i), id = key.slice(i + 1);
-  if (POSTS[id]) return { kind, post: POSTS[id], id };
-  const m = MM.find(x => x.id === id);
-  if (m) return { kind, meme: m, id };
-  return null;
-};
-
 (()=>{
 'use strict';
 /* ================= helpers ================= */
@@ -177,7 +177,10 @@ const I={
   chevd:ic('<path d="M6 9l6 6 6-6"/>',2),
   chevr:ic('<path d="M9 6l6 6-6 6"/>',2),
   pin:ic('<path d="M12 21s6-5.6 6-11a6 6 0 0 0-12 0c0 5.4 6 11 6 11z"/><circle cx="12" cy="10" r="2.2"/>'),
-  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.7 6.2.7-4.6 4.2 1.3 6.1L12 16.6 6.5 19.7l1.3-6.1L3.2 9.4l6.2-.7z"/></svg>'
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.7 6.2.7-4.6 4.2 1.3 6.1L12 16.6 6.5 19.7l1.3-6.1L3.2 9.4l6.2-.7z"/></svg>',
+  clock:ic('<circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.3 2"/>'),
+  ticket:ic('<path d="M4 9.4V6.8h16v2.6a2.6 2.6 0 0 0 0 5.2v2.6H4v-2.6a2.6 2.6 0 0 0 0-5.2z"/><path d="M12 8.2v7.6" stroke-dasharray="2 2.4"/>'),
+  table:ic('<path d="M4 10.5h16M6.8 10.5V19M17.2 10.5V19M4.6 10.5 6.2 5.5h11.6l1.6 5"/>')
 };
 const SEAT='<svg viewBox="0 0 24 24"><path d="M7 11V8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V11"/><rect x="4.5" y="11" width="15" height="7" rx="2.5"/><path d="M7 18v1.5M17 18v1.5"/></svg>';
 const RING_GLYPH=`<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="2.6"/><circle cx="14" cy="14" r="7.6" stroke-dasharray="36 12"/><circle cx="14" cy="14" r="12.2" stroke-dasharray="54 23" transform="rotate(40 14 14)"/></svg>`;
@@ -270,7 +273,7 @@ const DEF=()=>({
   onboarded:false,intent:'both',lens:'dating',tastes:[],dropIdx:0,shift:0,cal:0,city:'Lisbon',wait:false,
   react:{},decided:{},history:[],matchedIds:[],threads:null,dismissed:[],
   prof:{name:'Alex',bio:'Collects songs that sound like 4pm in October.',humor:['Deadpan','Niche refs','Dry wit'],humorOpts:HUMOR.concat(['Cringe lover','Pun enjoyer']),artists:['Odessa Vale','Halcyon Mile','Imre Tanaka','Nuvia','The Lowtides'],
-    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings'},
+    prompts:[{q:'The song I’ll defend forever',a:'Cherry Static. The bridge is a whole personality.'},{q:'My most niche reference',a:'A 2011 forum thread about a song that never got released.'}],vis:'matches',photos:[],pfp:'',tint:'moons',bg:'rings',pronouns:''},
   set:{radius:25,anti:['Smooth jazz','EDM'],invites:true,quiet:true,qFrom:'23:00',qTo:'07:00',locVis:'area',calm:false,haptics:true,sound:true,activity:'all',remind:false},
   pulse:{duel:false,seen:0},duelLink:null
 });
@@ -336,7 +339,10 @@ const coverFrom=str=>poster({id:str,style:STY[hash(str)%5],pal:palFrom(str)},tru
 function memeArt(m){
   return `<div class="art"><div class="memeart" style="background:${m.bg};color:${m.fg}"><svg class="sticker" viewBox="0 0 100 100" aria-hidden="true"><polygon points="${BURST(hash(m.id))}" fill="${m.ac}"/></svg><p class="mtxt">${esc(m.text)}</p><span class="mtag">cultured meme</span></div></div>`;
 }
-const artOf=p=>p.kind==='music'?poster(TRACKS[p.ref]):memeArt(MEMES[p.ref]);
+/* `p.corpus` marks a post backed by the real image corpus rather than one of
+   the four hand-written text memes. Those four stay reachable for the detail
+   page's legacy copy, but the feed no longer leads with them. */
+const artOf=p=>p.kind==='music'?poster(TRACKS[p.ref]):(p.corpus?FEED.dropArtHTML(p.corpus):memeArt(MEMES[p.ref]));
 function grainInit(){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.4 0 0 0 -.25"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>';
   document.documentElement.style.setProperty('--grain','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")');
@@ -373,12 +379,30 @@ const personArt=p=>`<div class="art" style="background:radial-gradient(90% 70% a
 /* ================= ui primitives ================= */
 const haptic=p=>{if(S.set.haptics&&navigator.vibrate){try{navigator.vibrate(p)}catch(e){}}};
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2300)}
+/* WAAPI guard, matching the one `src/motion/micro.ts` already uses. Without it
+   a like on an engine with no Element.animate (old Android WebView, jsdom)
+   threw out of the data-act handler *after* the state had been written, so the
+   heart filled and the rest of the handler — the floating emoji, the haptic,
+   the profile sync — never ran. Decoration must never be able to break the
+   thing it decorates. */
+const canAnimate=el=>!!el&&typeof el.animate==='function';
 function burst(btn,color){
-  if(S.set.calm)return;const ri=$('.ri',btn)||btn;const x=ri.offsetLeft+ri.offsetWidth/2,y=ri.offsetTop+ri.offsetHeight/2;
+  if(S.set.calm||!canAnimate(btn))return;
+  const ri=$('.ri',btn)||btn;const x=ri.offsetLeft+ri.offsetWidth/2,y=ri.offsetTop+ri.offsetHeight/2;
   for(let i=0;i<9;i++){
-    const d=document.createElement('i');d.className='bp';d.style.cssText=`left:${x-3}px;top:${y-3}px;background:${color}`;btn.appendChild(d);
+    const d=document.createElement('i');d.className='bp';d.style.cssText=`left:${x-3}px;top:${y-3}px;background:${color}`;
     const a=i/9*6.283,dist=30+Math.random()*12;
-    d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>d.remove();
+    let anim=null;
+    try{
+      anim=d.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(0)`,opacity:0}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'});
+    }catch(e){return}
+    if(!anim)return;
+    /* Appended only once the animation is real, and removed on a timer as well
+       as on finish: a particle whose onfinish never fires (tab backgrounded
+       mid-flight) used to stay in the DOM for the life of the page. */
+    btn.appendChild(d);
+    const drop=()=>d.remove();
+    anim.onfinish=drop;setTimeout(drop,900);
   }
 }
 /* Floating reaction: an emoji (or a few) lifts off the tap point, drifts and
@@ -470,8 +494,8 @@ function updateBadge(){
 }
 
 /* ================= home (drops) ================= */
-const refOf=p=>p.kind==='music'?TRACKS[p.ref]:MEMES[p.ref];
-const labelOf=p=>p.kind==='music'?TRACKS[p.ref].title:MEMES[p.ref].text.split('\n')[0];
+const refOf=p=>p.kind==='music'?TRACKS[p.ref]:(p.corpus?{text:p.corpus.title,tag:FEED.categoryLabel(p.corpus)}:MEMES[p.ref]);
+const labelOf=p=>p.kind==='music'?TRACKS[p.ref].title:(p.corpus?p.corpus.title:MEMES[p.ref].text.split('\n')[0]);
 const rs=id=>S.react[id]||(S.react[id]={l:0,h:0,s:0});
 const curDrop=()=>DROPS[S.dropIdx%DROPS.length];
 /* Seeded circle posts are demonstration content, not real people's posts. */
@@ -479,9 +503,33 @@ const CIRCLE_SOURCE=DEMO_DATA?CIRCLE:[];
 function circleList(){const n=CIRCLE_SOURCE.length;if(!n)return[];const k=S.shift%n;return CIRCLE_SOURCE.slice(k).concat(CIRCLE_SOURCE.slice(0,k))}
 function dateParts(off){const d=new Date();d.setDate(d.getDate()+off);return{d:String(d.getDate()).padStart(2,'0'),m:d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}}
 function bigDateHTML(off){const x=dateParts(off),s=x.d+' '+x.m;return `<div class="bigdate" aria-label="${x.d} ${x.m}">${[...s].map((c,i)=>c===' '?'<span class="sp2"></span>':`<span class="ch"><i style="--d:${i}">${c}</i></span>`).join('')}</div>`}
-/* With circles empty (production), the last two cards come from yesterday so
-   the drop is still a deck of four rather than a deck of two. */
-function deckItems(){if(DK.day===-1)return YEST;const extra=circleList().slice(0,2);return [curDrop().music,curDrop().meme].concat(extra.length?extra:YEST.slice(0,2))}
+/* The Daily Drop's memes come from the licensed corpus now, not from the four
+   hand-written text cards. `planDrop` is deterministic per local day and
+   rotates categories, so the deck is stable across re-renders and never four
+   dev-tears cards in a row. Music still comes from the seed tracks: 0 of the
+   208 manifest songs are resolved (no artwork, no preview), so drawing real
+   album art would mean inventing it. */
+function feedAffinity(){
+  const out={};
+  V5.getState().reactions.forEach(r=>{const m=FEED.memeById(r.itemId);if(m)out[m.axis]=(out[m.axis]||0)+1});
+  const tot=Object.values(out).reduce((a,b)=>a+b,0);
+  if(tot)Object.keys(out).forEach(k=>{out[k]/=tot});
+  return out;
+}
+/* Registered as POSTS so the existing deck, detail page, reaction bar and
+   `syncPost` all work unchanged — `corpus` is the only new field. */
+function corpusPost(m){return POSTS[m.id]||(POSTS[m.id]={id:m.id,kind:'meme',ref:m.id,corpus:m,likes:0,laughs:0})}
+let dropMemes=[];
+function planDropMemes(){dropMemes=FEED.planDrop({count:3,affinity:feedAffinity()});return dropMemes}
+const dropMemeIds=()=>new Set(dropMemes.map(m=>m.id));
+/* With circles empty (production), the deck is the drop song plus the corpus
+   memes plus one circle song, so it is still a deck rather than a pair. */
+function deckItems(){
+  if(DK.day===-1)return YEST;
+  const memes=planDropMemes().map(corpusPost);
+  const extra=circleList().filter(p=>p.kind==='music').slice(0,1);
+  return [curDrop().music].concat(memes,extra);
+}
 const FXFOR={like:'like',save:'save',share:'share',laugh:'react'};
 const rb=(act,cls,icon,n,on,label)=>`<button class="rb ${cls} ${on?'on':''}" data-act="${act}"${FXFOR[act]?` data-fx="${FXFOR[act]}"`:''} aria-label="${label}" aria-pressed="${!!on}"><span class="ri">${icon}</span>${n!==undefined?`<span class="n">${n}</span>`:''}</button>`;
 function reactions(p,col){
@@ -590,12 +638,19 @@ function draftHTML(){
     ${vote!==null?(vote===winner?'<div class="called">🎯 Called it — +1 to your profile</div>':'<div class="called-no">Not this time. Tomorrow is a new draft.</div>'):''}
   </div>`;
 }
+/* The Rewind and Tomorrow slots now lead with going somewhere together. Neither
+   feature was deleted: `rewindHTML()` and `draftHTML()` still render, inside a
+   <details> at the bottom of their new screen, so the countdown and the vote
+   keep working and nothing that shipped goes missing. */
 function homeBodyHTML(){
-  if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
-  if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
+  /* Both screens are lazy. They are two tabs most sessions never open, and
+     together they are ~7.8 kB gz of packs and planning code that has no
+     business sitting in the first-paint chunk. The shell paints immediately so
+     the tab change never looks like a hang. */
+  if(DK.day===1||DK.day===-1){DK.items=[];DK.order=[];void paintPlaces();return PLACE_SHELL}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
-    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?mmHTML():'');
+    <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?`<div id="mmhost">${mmHTML()}</div>`:'');
 }
 /* ---- Stories (brief §6.6): a rail on the feed that opens the v5 Stories
    overlay. The compose/view/12-hour-expiry component is reused as-is; the seam
@@ -609,7 +664,11 @@ function storiesRailHTML(){
   const mine=live.filter(s=>s.ownerId==='me'),others=live.filter(s=>s.ownerId!=='me');
   return `<div class="srail">${addRing}${mine.map(ring).join('')}${others.map(ring).join('')}</div>`+(live.length?'':'<p class="srail-hint">Stories · gone in 12 hours</p>');
 }
-function renderStoriesRail(){const r=$('#stories-rail');if(r)r.innerHTML=storiesRailHTML()}
+/* There is more than one rail now (People, and the feed — see below), and they
+   must not drift. Keyed on an attribute rather than an id because both screens
+   are in the document at once, so `$('#stories-rail')` would only ever have
+   updated the first one it found. */
+function renderStoriesRail(){$$('[data-stories-rail]').forEach(r=>{r.innerHTML=storiesRailHTML()})}
 function openStories(){
   if(storiesHandle)return;
   const host=document.createElement('div');host.className='stories-host';host.id='stories-host';
@@ -638,9 +697,10 @@ function renderFeed(){
   if(V5_HOME)return;
   $('#s-feed').innerHTML=`<div class="tint feed-tint">${mediaLayer('feedAmbience','feed-media')}${mediaLayer('feedVideo','feed-video')}</div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}cultured</div><div class="hr"><button class="ibtn" data-act="refresh" data-fx="spin" aria-label="Refresh today’s drop">${I.refresh}</button></div></header>
+    <div class="srail-wrap" data-stories-rail>${storiesRailHTML()}</div>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
+      ${ftabsHTML('day',[['-1','Live'],['0','Today'],['1','Dine-in']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
@@ -669,19 +729,35 @@ function layoutDeck(){
 }
 /* auto-fit kinetic typography: shrink-to-measure, capped iterations, never
    below the readable floor — text memes stop overflowing without a scroll. */
+/* Shrinks overflowing meme captions until they fit.
+ *
+ * Same result as before, batched. The old version reset the font size and then
+ * read `scrollHeight` inside one loop per node, up to six times — and every
+ * read after a write forces a synchronous layout. This runs on every feed
+ * render, every deck swap and every gallery page, so the cost was the
+ * interleaving, not the measuring: with a dozen cards on screen that was up to
+ * 72 forced layouts where 6 will do.
+ *
+ * Now: reset everything, read every base size in one pass, then take at most
+ * one layout per round for the whole batch. Most renders exit after the first
+ * round, because almost nothing overflows. */
 function fitMeme(host){
   if(!host)return;
-  $$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host).forEach(pEl=>{
-    pEl.style.fontSize='';
-    let k=0;
-    while(pEl.scrollHeight>pEl.clientHeight+2&&k<6){
-      const fs=parseFloat(getComputedStyle(pEl).fontSize)||20;
-      if(fs<12)break;
-      pEl.style.fontSize=(fs-2)+'px';
-      k++;
-    }
-  });
+  const nodes=$$('.mm-card p, .memeart .mtxt, .dcard .mtxt',host);
+  if(!nodes.length)return;
+  nodes.forEach(p=>{p.style.fontSize=''});
+  /* Read the batch once. This is the single unavoidable layout of the reset. */
+  const size=new Map(nodes.map(p=>[p,parseFloat(getComputedStyle(p).fontSize)||20]));
+  for(let round=0;round<6;round++){
+    /* `> 10`, not `>= 14`: the old loop broke on `fs < 12`, which still let it
+       write one more step from 12 to 10. Keeping that exact floor so this is a
+       batching change and nothing else. */
+    const over=nodes.filter(p=>p.scrollHeight>p.clientHeight+2&&(size.get(p)||20)>10);
+    if(!over.length)break;
+    over.forEach(p=>{const next=(size.get(p)||20)-2;size.set(p,next);p.style.fontSize=next+'px'});
+  }
 }
+seamInternals.fitMeme=fitMeme;seamInternals.splashInit=splashInit;
 function deckFly(dir){
   if(DK.busy)return;DK.busy=true;stopPlay();haptic(8);
   const id=DK.order[0],card=$(`#hdeck .dcard[data-id="${id}"]`);
@@ -734,7 +810,10 @@ function refresh(){
   if(refreshing)return;refreshing=true;stopPlay();haptic(8);
   const p=$('#ptr');if(p){p.style.opacity=1;p.classList.add('spin')}
   const hb=$('#hbody');if(hb)hb.innerHTML=skel(3);
-  setTimeout(()=>{S.dropIdx++;S.shift+=2;save();DK.day=0;renderFeed();refreshing=false;$('#feedBody').classList.add('fresh');toast('A fresh drop just landed')},950);
+  /* Same class of bug: `renderFeed()` returns early when the v5 home owns the
+     feed, so `#feedBody` is not there to decorate. The refresh still has to
+     happen; only the flourish is conditional. */
+  setTimeout(()=>{S.dropIdx++;S.shift+=2;save();DK.day=0;renderFeed();refreshing=false;const fb=$('#feedBody');if(fb)fb.classList.add('fresh');toast('A fresh drop just landed')},950);
 }
 function initPTR(){
   const sc=$('#s-feed');let sy=0,pull=0,on=false;
@@ -1404,7 +1483,7 @@ function renderPeople(){
   const msgPreview=m=>m.kind==='track'?'Sent a song: '+TRACKS[m.ref].title:m.t;
   $('#s-people').innerHTML=`<div class="tint"><i class="aur a1"></i><i class="aur a2"></i><i class="aur a3"></i></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}People</div><span></span></header>
-    <div id="stories-rail">${storiesRailHTML()}</div>
+    <div id="stories-rail" data-stories-rail>${storiesRailHTML()}</div>
     ${ftabsHTML('pv',[['chats','Chats']],PV)}
     <div class="sbody" id="pbody" style="padding-bottom:20px">
     ${!fresh.length&&!chats.length?`<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🫥</span><p class="hint">No conversations yet. A thread opens when you and someone both Resonate — cultured won’t write the first message for you.</p></div></div>`:''}
@@ -1488,7 +1567,7 @@ ACT['bub-react']=b=>{
   if(!m.rx[e])delete m.rx[e];
   save();haptic(6);renderMsgs(id);
 };
-function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
+function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" data-fbk="${x.fb||x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
 function reply(id){
   TYPING[id]=true;renderMsgs(id);const t=S.threads[id];
   setTimeout(()=>{
@@ -1691,14 +1770,22 @@ function renderYou(){
   /* v5: both numbers come from the store, so a save made on a corpus meme in
      "Today's memes" lands here too. The old filter dropped everything that was
      not one of the 10 hard-coded POSTS ids — that was the "0" bug. */
+  /* Resolved entries, not ids: `v5Resolve` turns each `kind:id` key into
+     `{kind, id, post?}` for a drop/circle post or `{kind, id, meme}` for a
+     corpus meme. Saving a corpus meme yields the second shape, which has no
+     `post` — the "Saved culture" grid below registers it through `corpusPost`
+     so `artOf` and `openDetail` both resolve. Reading these as bare ids is
+     what used to throw `Cannot read properties of undefined (reading 'kind')`
+     out of `artOf` the first time anything was saved. */
   const saved=v5SavedKeys(V5.getState()).map(v5Resolve).filter(Boolean);
   const laughs=v5LaughsGiven(V5.getState());
   $('#s-you').innerHTML=`<div class="tint you-tint">${mediaLayer('profileHeader','profile-media')}<div class="tl on" style="background:radial-gradient(70% 60% at 80% 0,${rgba('#EFE9DA',.24)},transparent 70%),radial-gradient(60% 50% at 0 0,${rgba(P[1],.22)},transparent 70%)"></div></div>
     <header class="topbar"><div class="wordmark">${RING_GLYPH}You</div><div class="hr"><button class="ibtn" data-act="share-fp" aria-label="Share your Fingerprint">${I.share}</button><button class="ibtn" data-act="open-settings" aria-label="Settings and activity">${I.gear}</button></div></header>
     <section class="you-hero${bgS==='quiet'?' no-bleed':''}${bgS==='poster'?' has-art':''}">${bgS==='poster'?`<div class="you-artbg" aria-hidden="true">${posterSVG('bloom',P,1307)}</div>`:''}<button class="fp-bleed" id="fpb" data-act="fp-story" aria-label="Open your Fingerprint story" title="Open the story">${fpSVG(mine,'#EFE9DA',P[1],{n:18,w:1.4})}<span class="fp-story-hint">the story ${I.chevr}</span></button>
       <div class="you-id stg"><div class="you-av">${pr.pfp?`<img src="${pr.pfp}" alt="Your profile photo">`:orb({name:pr.name,pal:P.slice(1)},64)}<button class="av-cam" data-act="pfp-pick" data-fx="chip" aria-label="${pr.pfp?'Change your profile photo':'Add a profile photo'}">${I.plus}</button></div>
-        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
+        <div class="you-meta"><input class="ghost nm" id="pf-name" value="${esc(pr.name)}" maxlength="24" aria-label="Your name" autocomplete="off"><input class="ghost pron" id="pf-pron" value="${esc(pr.pronouns||'')}" maxlength="24" placeholder="Pronouns" aria-label="Your pronouns" autocomplete="off"><textarea class="ghost bio" id="pf-bio" rows="2" maxlength="90" aria-label="Your bio">${esc(pr.bio)}</textarea>
         <div class="you-chips">${pr.humor.slice(0,3).map(h=>`<span class="chipg">${esc(h)}</span>`).join('')}</div></div></div></section>
+    ${completenessHTML()}
     <div class="stats stg" style="--d:1"><div><b>${Object.keys(S.threads).length}</b><span>Resonances</span></div><div><b>${saved.length}</b><span>Saved</span></div><div><b>${laughs}</b><span>Laughs given</span></div></div>
     <div class="stage2">
     <div class="blk stg" style="--d:2"><h2>Look and feel<small>Changes your wash, not your worth</small></h2>
@@ -1707,11 +1794,11 @@ function renderYou(){
       <div class="row"><div class="tx"><b>On the wall</b><span>The art behind your name. Pick a mood.</span></div><span class="look-row">${[['rings','Rings'],['poster','Poster'],['quiet','Quiet']].map(o=>`<button class="look-o ${bgS===o[0]?'on':''}" data-act="prof-bg" data-fx="chip" data-k="${o[0]}" aria-pressed="${bgS===o[0]}">${o[1]}</button>`).join('')}</span></div>
     </div>
     <div class="blk stg" style="--d:2"><h2>Who sees your Fingerprint</h2><div style="margin-top:12px">${segHTML('vis',[['all','Everyone'],['matches','Matches'],['me','Only me']],pr.vis)}</div></div>
-    <div class="blk stg" style="--d:3"><h2>Humor signals</h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
+    <div class="blk stg" style="--d:3"><h2>Humor signals<small><span id="hum-count">${pr.humor.length}/${PF.MAX_HUMOR}</span> · only these show</small></h2><div class="chips" style="margin-top:12px" id="hum">${pr.humorOpts.map(h=>`<button class="chip ${pr.humor.indexOf(h)>-1?'on':''}" data-act="hum" data-fx="chip" data-h="${esc(h)}" aria-pressed="${pr.humor.indexOf(h)>-1}">${esc(h)}</button>`).join('')}<input class="chipin" id="hum-add" placeholder="Add your own" maxlength="16" aria-label="Add a humor signal"></div></div>
     <div class="blk stg" style="--d:4"><h2>Artists</h2><div class="hs" id="arts" style="margin-top:14px">${pr.artists.map(a=>`<div class="art-i"><div class="c">${coverFrom(a)}</div><button class="rm" data-act="rm-art" data-a="${esc(a)}" aria-label="Remove ${esc(a)}">${I.x}</button><p>${esc(a)}</p></div>`).join('')}<button class="art-i art-add" data-act="add-art" aria-label="Add an artist"><div class="c">${I.plus}</div><p>Add</p></button></div></div>
     ${mmShelf()}<div class="blk stg" style="--d:6"><h2>Playlists</h2><div style="margin-top:8px">${[['Weather for tomorrow',24],['Bus window, 5:40pm',31],['Songs I defend at parties',17]].map(x=>`<div class="pl"><div class="mos">${[0,1,2,3].map(k=>`<div>${coverFrom(x[0]+k)}</div>`).join('')}</div><div><b>${x[0]}</b><span>${x[1]} songs</span></div></div>`).join('')}</div></div>
-    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(id=>`<button class="gt" data-act="saved-open" data-id="${id}" aria-label="Open saved item"><div class="art-wrap">${artOf(POSTS[id])}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
-    <div class="blk"><h2>Prompts</h2>${pr.prompts.map((q,i)=>`<div class="pq"><span>${esc(q.q)}</span><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(q.q)}">${esc(q.a)}</textarea></div>`).join('')}</div>
+    <div class="blk"><h2>Saved culture<small>${saved.length?saved.length+' saved':''}</small></h2>${V5_VAULT?`<button class="cta ghostb" data-act="open-vault" style="margin-bottom:10px">Open the Vault</button>`:''}${saved.length?`<div class="grid3">${saved.map(it=>`<button class="gt" data-act="saved-open" data-id="${esc(it.id)}" aria-label="Open saved item"><div class="art-wrap">${artOf(it.post||corpusPost(it.meme))}</div></button>`).join('')}</div>`:'<p class="empty">Nothing saved yet. Tap the bookmark on any drop and it lands here.</p>'}</div>
+    <div class="blk"><h2>Prompts<small>${pr.prompts.length}/${PF.MAX_PROMPTS} · pick your own</small></h2>${pr.prompts.map((q,i)=>{const pr0=PF.normalizePrompt(q);return `<div class="pq" data-pid="${esc(pr0.id)}"><div class="pq-h"><span>${esc(pr0.question)}</span><button class="pq-x" data-act="prompt-rm" data-id="${esc(pr0.id)}" aria-label="Remove this prompt">${I.x}</button></div><textarea class="ghost" data-pq="${i}" rows="3" maxlength="120" aria-label="${esc(pr0.question)}">${esc(pr0.answer)}</textarea></div>`}).join('')}${pr.prompts.length<PF.MAX_PROMPTS?`<details class="pq-pick"><summary>Add a prompt</summary><div class="chips pq-bank">${PF.availablePrompts(profileEditState()).map(x=>`<button class="chip" data-act="prompt-add" data-id="${esc(x.id)}">${esc(x.question)}</button>`).join('')}</div></details>`:''}</div>
     <div class="blk"><h2>Photos<small>Stay on this device</small></h2><div class="grid3" id="photos"></div></div>
     </div>`;
   drawPhotos();shelfWire();
@@ -1720,11 +1807,12 @@ function renderYou(){
 function updateFP(){const b=$('#fpb');if(b){b.innerHTML=fpSVG(fpParams(mineSeed()),'#EFE9DA',(youPal()||[])[1]||'#ff8a5b',{n:18,w:1.4});b.classList.remove('fx-pulse');void b.offsetWidth;b.classList.add('fx-pulse');setTimeout(()=>b.classList.remove('fx-pulse'),900)}fpDirty=true}
 function drawPhotos(){
   const g=$('#photos');if(!g)return;
-  g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}"><button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<9?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
+  g.innerHTML=S.prof.photos.map((src,i)=>`<div class="gt"><img src="${src}" alt="Your photo ${i+1}${i===0?' — shown first':''}">${i===0?'<span class="lead-tag">First</span>':`<button class="lead" data-act="lead-photo" data-i="${i}">Make first</button>`}<button class="rm" data-act="rm-photo" data-i="${i}" aria-label="Remove photo">${I.x}</button></div>`).join('')+(S.prof.photos.length<PF.MAX_PHOTOS?`<button class="gt add" data-act="add-photo" aria-label="Choose photos from your library">${I.plus}</button>`:'');
 }
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='pf-name'){S.prof.name=t.value;save()}
+  else if(t.id==='pf-pron'){S.prof.pronouns=t.value;save()}
   else if(t.id==='pf-bio'){S.prof.bio=t.value;save()}
   else if(t.dataset&&t.dataset.pq!==undefined){S.prof.prompts[+t.dataset.pq].a=t.value;save()}
   else if(t.id==='radius'){S.set.radius=+t.value;t.style.setProperty('--p',((t.value-1)/99*100)+'%');$('#radv').textContent=t.value+' km';save();fpDirty=true;if($('#deck'))renderDeck()}
@@ -1773,9 +1861,52 @@ function readPfp(file){
   fr.onerror=()=>toast('That file could not be read');
   fr.readAsDataURL(file);
 }
+/* ---------------- profile customisation ---------------- */
+/* The pure rules live in src/screens/profile.ts; this is only the adapter from
+   the legacy `S.prof` shape and back. */
+function profileEditState(){
+  const pr=S.prof;
+  return {
+    pronouns:pr.pronouns||'',
+    humor:pr.humor||[],
+    prompts:(pr.prompts||[]).map(PF.normalizePrompt),
+    photos:pr.photos||[],
+    name:pr.name||'',
+    bio:pr.bio||'',
+    artists:pr.artists||[],
+    hasPhoto:!!pr.pfp
+  };
+}
+function completenessHTML(){
+  const c=PF.completeness(profileEditState());
+  const hint=c.score>=100?'Everything is filled in':c.missing.slice(0,2).join(' · ');
+  return `<div class="pcmp stg" style="--d:1"><div class="pcmp-bar" style="--p:${c.score}" data-n="${c.score}" role="img" aria-label="Profile ${c.score}% complete"></div><div class="pcmp-tx"><b>${c.score}% complete</b><span>${esc(hint)}</span></div></div>`;
+}
+ACT['prompt-add']=b=>{
+  const r=PF.addPrompt(profileEditState().prompts,b.dataset.id);
+  if(!r.ok){toast(r.reason);haptic(14);return}
+  S.prof.prompts=r.next.map(x=>({q:x.question,a:x.answer}));save();renderYou();toast('Prompt added');haptic(8);
+};
+ACT['prompt-rm']=b=>{
+  S.prof.prompts=PF.removePrompt(profileEditState().prompts,b.dataset.id).map(x=>({q:x.question,a:x.answer}));
+  save();renderYou();haptic(6);
+};
+ACT['lead-photo']=b=>{
+  const i=+b.dataset.i;if(!(i>0))return;
+  S.prof.photos=PF.makeLeadPhoto(S.prof.photos,i);save();drawPhotos();toast('That photo is first now');haptic([8,14,8]);
+};
 ACT.hum=b=>{
-  const h=b.dataset.h,i=S.prof.humor.indexOf(h);if(i>-1)S.prof.humor.splice(i,1);else S.prof.humor.push(h);
-  b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);save();updateFP();haptic(6);
+  const h=b.dataset.h;
+  /* The cap used to live in the view as `pr.humor.slice(0,3)`, so a fourth chip
+     lit up, saved, and then simply never appeared on the profile. Refusing with
+     a reason is the fix; the count in the header makes the limit visible. */
+  const r=PF.toggleHumor(S.prof.humor,h);
+  S.prof.humor=r.next;
+  if(!r.ok){toast(r.reason);haptic(14);b.classList.remove('pressing');return}
+  b.classList.toggle('on',!S.prof.humor.includes(h));
+  b.setAttribute('aria-pressed',String(S.prof.humor.includes(h)));
+  const c=$('#hum-count');if(c)c.textContent=`${S.prof.humor.length}/${PF.MAX_HUMOR}`;
+  save();updateFP();renderYou();haptic(6);
 };
 ACT['rm-art']=b=>{S.prof.artists=S.prof.artists.filter(a=>a!==b.dataset.a);save();updateFP();renderYou()};
 ACT['add-art']=()=>{
@@ -2147,43 +2278,255 @@ const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵
    The 122 generated typographic text cards and the 13 hand-written ones that
    used to sit here are gone: cultured only shows real image and video memes,
    and only ones the content pipeline has actually built a manifest for. */
-const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
-let mmTab='all';
+const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,fb:m.fb||m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
+
+/* ---------------------------------------------------------------------------
+   These two used to sit ABOVE the IIFE, at module top level, where `POSTS`,
+   `MM` and `renderYou` are not in scope — all three are declared inside it.
+   Nothing caught it because the only caller is `renderYou()`'s saved-item
+   lookup, so the ReferenceError fired the first time a user saved something
+   and the You tab re-rendered: `ACT['mm-save']` calls `renderYou()`. The whole
+   profile screen died on a ReferenceError, and the like/save buttons that
+   triggered it looked like they had worked. They live here now, after the last
+   name they read.
+   ------------------------------------------------------------------------- */
+/** `kind:id` → a renderable item in this seam: a POST, or a corpus meme. */
+const v5Resolve = key => {
+  const i = key.indexOf(':');
+  if (i < 0) return null;
+  const kind = key.slice(0, i), id = key.slice(i + 1);
+  if (POSTS[id]) return { kind, post: POSTS[id], id };
+  const m = MM.find(x => x.id === id);
+  if (m) return { kind, meme: m, id };
+  return null;
+};
+
+let v5VaultHandle=null;
+const openV5Vault=async()=>{
+  if(v5VaultHandle)return;
+  const {mountVault}=await import('./v5/vault');
+  const layer=document.createElement('div');layer.id='v5-vault-layer';document.body.appendChild(layer);
+  v5VaultHandle=mountVault(layer,{onClose:()=>{v5VaultHandle=null;layer.remove();renderYou()}});
+};
+let mmTab='all',mmLimit=FEED.GALLERY_PAGE_SIZE;
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
-const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
-function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
-function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
-function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
-function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
-ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
+function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
+function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
+/* The gallery is planned by the typed module and re-rendered as a unit. The
+   tab bar is inside the section so a topic change cannot desync the indicator
+   from the cards, and empty topics are never offered as tabs at all. */
+const mmState=m=>({liked:!!mmS().l[m.id],saved:!!mmS().s[m.id]});
+const mmIcons=()=>({like:I.heart,save:I.bookmark,share:I.share});
+function mmHTML(){
+  const topics=FEED.nonEmptyTopics();
+  const label=t=>(FEED.FEED_TOPICS.find(x=>x.id===t)||{}).label||t;
+  return `<div class="mm-tabs">${ftabsHTML('mm',topics.map(t=>[t,label(t)]),mmTab)}</div>`
+    +FEED.gallerySectionHTML({topic:mmTab,limit:mmLimit,exclude:dropMemeIds(),state:mmState,icons:mmIcons()});
+}
+/* The gallery re-renders as one unit inside #mmhost, so the tab indicator, the
+   count and the cards can never disagree. */
+function rerenderGallery(){
+  const host=$('#mmhost');if(!host)return;
+  host.innerHTML=mmHTML();
+  layoutTabs($('#s-feed'));fitMeme($('#s-feed'));
+}
+FT.mm=v=>{mmTab=v;mmLimit=FEED.GALLERY_PAGE_SIZE;rerenderGallery();haptic(5)};
+ACT['mm-more']=b=>{mmLimit=+b.dataset.next;rerenderGallery();haptic(5)};
 const mmId=b=>b.closest('[data-m]').dataset.m;
+/* `renderYou()` used to run on every like and every save, whether or not the
+   You tab was on screen — a full profile re-render, its fingerprint SVG and
+   all, from a tap on the feed. `go('you')` already calls it on arrival, so the
+   numbers are never stale; this just stops paying for them twice. */
+const renderYouIfShown=()=>{if(cur==='you')renderYou()};
 ACT['mm-like']=b=>{
   const id=mmId(b),st=mmS(),on=!st.l[id];st.l[id]=on?1:0;
   if(on)V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});else V5.removeReaction('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'like');
-  if(on){burst(b,'#ff5d7a');floatFromEl(b,V5_LIKE,3);haptic(10)}
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYouIfShown();repoCall('recordReaction',id,'like');
+  /* The burst, the ring, the halo, the combo chip and the haptic all belong to
+     the `data-fx="like"` handler in src/motion/micro.ts, which reads the
+     settled aria-pressed. Duplicating them here fired two bursts and two
+     haptics per tap. The floating emoji stays: it is the seam's own layer. */
+  if(on)floatFromEl(b,V5_LIKE,3);
 };
 ACT['mm-save']=b=>{
   const id=mmId(b),st=mmS(),on=!st.s[id];st.s[id]=on?1:0;
   V5.setSaved('meme',id,on);
   if(on)V5.pin('meme',id);else V5.unpin('meme',id);
-  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYou();repoCall('recordReaction',id,'save');
-  toast(on?'Kept.':'Let go.');haptic(8);
+  b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);save();renderYouIfShown();repoCall('recordReaction',id,'save');
+  toast(on?'Kept.':'Let go.');
 };
-ACT['mm-share']=b=>{
-  const id=mmId(b);
-  /* Thread keys outlive the people behind them: they are persisted, and with
-     the invented population gated off (D-27) `person()` legitimately returns
-     undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on
-     a list that used to be populated. The threads are left in place — this
-     filters a view, it does not delete anything. */
-  const ids=Object.keys(S.threads||{}).filter(pid=>person(pid));
+/* Double-tap a gallery card: the big centred heart, plus the like if it was
+   not already liked. The drop deck already had this through `bindDrag`; the
+   gallery did not, so the same gesture did two different things depending on
+   where on the screen you were. */
+document.addEventListener('dblclick',e=>{
+  const card=e.target&&e.target.closest?e.target.closest('.mm-card'):null;
+  if(!card)return;
+  const id=card.dataset.m;if(!id)return;
+  const st=mmS();
+  if(!st.l[id]){
+    st.l[id]=1;V5.react({kind:'meme',itemId:id,emoji:V5_LIKE,surface:'deck'});
+    const b=$('[data-act="mm-like"]',card);
+    if(b){b.classList.add('on');b.setAttribute('aria-pressed','true')}
+    save();renderYouIfShown();repoCall('recordReaction',id,'like');
+  }
+  /* bigHeartOn owns the combo: it returns the level it escalated to, keyed to
+     the card, so spamming the double-tap on one meme goes ×2 → ×3 → ×5 UNWELL.
+     Cosmetic only — the like above is written once, so a combo can never spend
+     a second laugh. */
+  const level=microPublic.bigHeartOn(card,I.heart)||1;
+  const r=card.getBoundingClientRect();
+  floatEmoji(r.left+r.width/2,r.top+r.height*0.44,V5_LIKE,Math.min(3+level,8));
+  haptic(level>=5?[12,30,12,30,18]:level>=3?[10,24,14]:[10,30,10]);
+});
+/* Thread keys outlive the people behind them: they are persisted, and with
+   the invented population gated off (D-27) `person()` legitimately returns
+   undefined. Filtering here is what stops `orb(p)` and `p.name` throwing on a
+   list that used to be populated. The threads are left in place — this filters
+   a view, it does not delete anything. */
+const matchIds=()=>Object.keys(S.threads||{}).filter(pid=>person(pid));
+const shareItemFor=id=>{
+  const m=mmOf(id);if(!m)return null;
+  const slug=String(id).replace(/[^a-z0-9-]/gi,'').slice(0,40)||'meme';
+  return {
+    title:m.t,
+    text:`${m.t} — cultured`,
+    url:location.href,
+    image:{src:m.img,alt:m.alt||m.t,filename:`cultured-${slug}.webp`},
+    cardTitle:m.t,
+    cardCaption:'cultured — match on your humor, not your headshot'
+  };
+};
+function openMatchSheet(id){
+  const ids=matchIds();
   openSheet(`<h3 class="sh-t">Send to a match</h3>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="mm-send" data-id="${id}" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then send them a meme.</p>'}`);
+}
+ACT['mm-share']=b=>{
+  const id=mmId(b),item=shareItemFor(id);if(!item)return;
+  const caps=SHARE.detectCapabilities();
+  const opts=SHARE.planShare(item,caps,{hasMatches:matchIds().length>0});
+  openSheet(`<h3 class="sh-t">Share</h3>
+    <div class="shp"><div class="tile">${mmVisual(mmOf(id))}</div><div><b>${esc(item.title)}</b><span>A cultured meme</span></div></div>
+    <div class="share-list">${opts.map(o=>`<button class="sh-tile" data-act="mm-share-go" data-w="${o.id}" data-id="${esc(id)}"><b>${esc(o.label)}</b><span>${esc(o.hint)}</span></button>`).join('')}</div>
+    ${opts.length?'':'<p class="hint">'+esc(SHARE.EMPTY_SHARE_HINT)+'</p>'}`);
+};
+/* ================= Live and Dine-in ================= */
+/* Filter state lives here rather than in the screens, which stay pure. It is
+   deliberately not persisted: these are session-scoped views of a pack. */
+let PLF={genre:null,sort:'soon'};
+let DNF={cuisine:null,vibe:null,sort:'rating'};
+const PLACE_SHELL='<div class="pl-load" aria-busy="true"><i></i><i></i><i></i><span class="hint">Loading…</span></div>';
+let PLACES_MOD=null;
+const placesMod=()=>PLACES_MOD||(PLACES_MOD=Promise.all([import('./screens/live'),import('./screens/dining')]).then(m=>({LIVE:m[0],DINING:m[1]})));
+
+async function paintPlaces(){
+  const day=DK.day;
+  const {LIVE,DINING}=await placesMod();
+  /* The chunk resolves on a later tick, and the user can leave in the meantime.
+     Painting the Live screen into the Today tab would be a visible lie. */
+  if(DK.day!==day)return;
+  const host=$('#hbody');if(!host)return;
+  const sc=$('#s-feed'),y=sc?sc.scrollTop:0;
+  const now=Date.now();
+  host.innerHTML=day===-1
+    ? LIVE.liveScreenWithPlanHTML(LIVE.planLive(LIVE.livePack(now),PLF,now),{now,icons:{ticket:I.ticket,place:I.pin,clock:I.clock,send:I.send},keptHTML:rewindHTML(),keptLabel:'Yesterday’s rewind'})
+    : DINING.diningScreenWithPlanHTML(DINING.planDining(DINING.diningPack(),DNF,now),{now,icons:{place:I.pin,clock:I.clock,star:I.star,send:I.send,table:I.table},keptHTML:draftHTML(),keptLabel:'Tomorrow’s draft'});
+  /* Only restore the scroll if the shell had been scrolled; a fresh tab change
+     should land at the top. */
+  if(sc&&y)sc.scrollTop=y;
+  fitMeme(host);
+}
+/* A chip tap repaints the body, not the whole screen, so the scroll position
+   and the tab bar survive it. */
+function rerenderPlaces(){void paintPlaces()}
+ACT['pl-genre']=b=>{PLF={genre:b.dataset.v||null,sort:PLF.sort};rerenderPlaces()};
+ACT['pl-sort']=b=>{PLF={genre:PLF.genre,sort:b.dataset.v||'soon'};rerenderPlaces()};
+ACT['dn-cuisine']=b=>{DNF={cuisine:b.dataset.v||null,vibe:DNF.vibe,sort:DNF.sort};rerenderPlaces()};
+ACT['dn-vibe']=b=>{DNF={cuisine:DNF.cuisine,vibe:b.dataset.v||null,sort:DNF.sort};rerenderPlaces()};
+ACT['dn-sort']=b=>{DNF={cuisine:DNF.cuisine,vibe:DNF.vibe,sort:b.dataset.v||'rating'};rerenderPlaces()};
+
+async function placeItem(kind,id){
+  const {LIVE,DINING}=await placesMod();
+  return kind==='live'
+    ? LIVE.livePack(Date.now()).find(e=>e.id===id)
+    : DINING.diningPack().find(x=>x.id===id);
+}
+
+/* Booking is a deep link. There is no public API to book through — see
+   src/lib/places/providers.ts — and a button that implied otherwise is the
+   exact thing this codebase removed once before. The search term goes to the
+   clipboard as well, so a stale search path still leaves you one paste away. */
+ACT['pl-book']=async b=>placeBook('live',b.dataset.id);
+ACT['dn-book']=async b=>placeBook('dine',b.dataset.id);
+async function placeBook(kind,id){
+  const item=await placeItem(kind,id);if(!item)return;
+  const link=placeLink(item);
+  window.open(link.url,'_blank','noopener,noreferrer');
+  let copied=false;
+  if(navigator.clipboard){try{await navigator.clipboard.writeText(link.term);copied=true}catch(e){}}
+  toast(copied?`Opened ${link.label} · “${link.term}” copied`:`Opened ${link.label}`);
+  haptic([10,20,10]);
+  track(kind==='live'?'live_book_click':'dine_book_click',{via:link.label,item:id,copied});
+}
+
+/* "Who's going" reuses the match sheet, but as its own action so the payload is
+   a plain invitation rather than a meme reference the thread cannot render. */
+let PLACE_INVITE=null;
+async function placeInvite(kind,id){
+  const item=await placeItem(kind,id);if(!item)return;
+  const label='title' in item?`${item.title} · ${item.venue}`:`${item.name} · ${item.area}`;
+  PLACE_INVITE={kind,id,label};
+  const ids=matchIds();
+  openSheet(`<h3 class="sh-t">Who’s going?</h3><p class="hint" style="margin-top:-4px">${esc(label)}</p>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="place-invite-go" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then invite them along.</p>'}`);
+}
+ACT['pl-invite']=b=>{void placeInvite('live',b.dataset.id)};
+ACT['dn-invite']=b=>{void placeInvite('dine',b.dataset.id)};
+ACT['place-invite-go']=b=>{
+  const pid=b.dataset.to,who=person(pid);
+  if(!who||!PLACE_INVITE){toast('That match is no longer here');closeSheet();return}
+  ensureThread(pid);
+  S.threads[pid].msgs.push({f:'me',t:`Want to go? ${PLACE_INVITE.label}`,ts:Date.now()});
+  save();closeSheet();toast(`Invite sent to ${who.name}`);haptic(8);reply(pid);
+  track('place_invite_sent',{kind:PLACE_INVITE.kind,item:PLACE_INVITE.id});
+  PLACE_INVITE=null;
+};
+ACT['mm-share-go']=async b=>{
+  const w=b.dataset.w,id=b.dataset.id,item=shareItemFor(id);if(!item)return;
+  const caps=SHARE.detectCapabilities();
+  if(w==='match'){openMatchSheet(id);return}
+  if(w==='story'){
+    /* The in-app story is real: `putStory` is the same call the Stories screen
+       makes, and the feed rail re-renders off the store subscription. */
+    const now=Date.now(),ttl=((v5config.hours&&v5config.hours.storyTtl)||12)*36e5;
+    V5.putStory({id:'story-'+now.toString(36),ownerId:'me',createdAt:now,expiresAt:now+ttl,
+      layers:[{type:'meme',id}],audience:'everyone',hideFrom:[],replyRule:'react'});
+    closeSheet();renderStoriesRail();toast('Added to your story');haptic([10,30,10]);
+    track('meme_shared',{via:'story'});return;
+  }
+  let res=null;
+  if(w==='save'){res=await SHARE.saveImage(item.image);track('meme_shared',{via:'save'})}
+  else if(w==='copy'){res=await SHARE.copyLink(item);track('meme_shared',{via:'copy'})}
+  else if(w==='more'){res=await SHARE.shareOut(item,caps);track('meme_shared',{via:'os'})}
+  else if(w==='card'){
+    /* Lazy: the canvas drawing code is only reachable from this one tile, and
+       it has no business sitting in the first-paint chunk. */
+    const {renderShareCard}=await import('./lib/shareCard');
+    const blob=await renderShareCard({image:{src:item.image.src,alt:item.image.alt},title:item.cardTitle,caption:item.cardCaption,aspect:'9:16'});
+    /* No canvas (or a blocked image) means no card. Fall back to the raw image
+       rather than toasting a success that did not happen. */
+    res=blob
+      ? await SHARE.shareBlob(blob,item.image.filename.replace(/\.\w+$/,'-card.png'),item,caps)
+      : await SHARE.saveImage(item.image);
+    track('meme_shared',{via:blob?'card':'card-fallback'});
+  }
+  closeSheet();
+  if(res&&res.message)toast(res.message);
+  if(res&&res.ok)haptic(8);
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
   ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
-function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
+function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" data-fbk="${x.fb||x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
   const state=V5.getState();
@@ -2347,7 +2690,11 @@ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.tar
 function splashInit(){
   $('#spfp').innerHTML=fpSVG(fpParams(7),'#EFE9DA','#ff8a5b',{n:16,w:1.3});
   $('#spw').innerHTML=[...'cultured'].map((c,i)=>`<span><i style="--d:${i}">${c}</i></span>`).join('');
-  setTimeout(()=>{const s=$('#splash');s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
+  /* Guarded: this fires 2.3 s later and the splash is gone by then in every
+     case where it should be — the timeout below removes it, and the cold open
+     can take over first. It was an unguarded deref, which is what made the CI
+     run red: a timer outlived the test file's jsdom and threw. */
+  setTimeout(()=>{const s=$('#splash');if(!s)return;s.classList.add('out');setTimeout(()=>s.remove(),1000)},2300);
 }
 /* A prototype that contains invented people has to say so on screen, not in a
    README. The banner is the difference between a demo and a deception. */

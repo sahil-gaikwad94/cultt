@@ -1857,21 +1857,56 @@
   background: var(--gallery-surface, #121211);
   text-transform: capitalize;
 }
-.v5-story-stage {
+/* The stage — one definition, shared by the viewer and the composer, so what
+   you compose is what you get.
+
+   It used to be `flex: 1`, which makes the box whatever vertical space is left
+   after the header and footer. That is never 9:16, and `object-fit: cover` on
+   top of it cropped the punchline off every meme: a 236×224 square shoved into
+   a tall box loses three quarters of itself. The composer was even worse,
+   previewing at 9/14 while the viewer showed a different crop again.
+
+   Both are now a fixed 9:16 box, the artwork is fitted with `contain`, and the
+   letterbox is filled with a blurred copy of itself — the Instagram treatment. */
+.v5-story-stage,
+.v5-compose-preview {
   position: relative;
-  flex: 1;
   display: grid;
   place-items: center;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 58vh;
   overflow: hidden;
-  margin: 0 16px;
   border-radius: var(--r-card, 28px);
+  background: var(--gallery-raised, #1b1b19);
+  box-shadow: var(--elev-2);
 }
-.v5-story-stage img {
+.v5-story-stage {
+  flex: none;
+  align-self: center;
+  margin: 8px 12px;
+}
+/* The blurred underlay. Same URL as the fitted image, so the browser fetches
+   it once; `scale` stops the blur sampling transparent pixels at the edges. */
+.v5-story-under {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: blur(28px) saturate(1.15) brightness(0.8);
+  transform: scale(1.15);
+  opacity: 0.62;
+  pointer-events: none;
+}
+/* The artwork itself. The element box is the stage and `contain` fits the
+   content inside it, so nothing is stretched and nothing is cropped. */
+.v5-story-fit {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .v5-story-sticker {
   position: relative;
@@ -1925,22 +1960,18 @@
   text-transform: uppercase;
   color: var(--gold-dim, #b9975a);
 }
+/* Container geometry now comes from the shared `.v5-story-stage,
+   .v5-compose-preview` rule above — the preview used to be 9/14 with `cover`,
+   which is a different crop from the viewer, so composing was guesswork. */
 .v5-compose-preview {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 9 / 14;
-  max-height: 46vh;
-  border-radius: var(--r-card, 28px);
-  overflow: hidden;
-  background: var(--gallery-raised, #1b1b19);
-  box-shadow: var(--elev-2);
+  max-height: 42vh;
 }
-.v5-compose-preview img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.v5-compose-preview img.v5-story-under,
+.v5-compose-preview img.v5-story-fit {
+  /* Specificity guard: nothing here may re-crop the artwork. */
+  object-fit: contain;
+}
+.v5-compose-preview img.v5-story-under {
   object-fit: cover;
 }
 .v5-compose-hint {

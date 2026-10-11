@@ -120,6 +120,13 @@ const readSources = (): Record<string, SourceRecord> => {
 export interface BuildOptions {
   /** Skip variant generation (used by `--gate` and by tests). */
   variants?: boolean;
+  /**
+   * Skip the expensive variant re-encode when `public/memes/gen` is already
+   * complete and newer than every source file. Used by `npm run dev`, so
+   * restarting the dev server costs a directory stat instead of ~20 s of sharp
+   * work. The rights gate always runs.
+   */
+  ifStale?: boolean;
   allowUnlicensed?: boolean;
   log?: (line: string) => void;
 }
@@ -128,6 +135,8 @@ export interface BuildResult {
   manifest: MemeManifest;
   unlicensed: string[];
   wroteManifest: boolean;
+  /** True when `--if-stale` found the variants current and did no work. */
+  skipped?: boolean;
 }
 
 /**
@@ -151,6 +160,52 @@ export const buildMemes = async (options: BuildOptions = {}): Promise<BuildResul
       return IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext);
     })
     .sort();
+
+  /* `--if-stale`: the rights gate is cheap (it reads memes.meta.json), the
+     variant encode is not (~20 s of sharp for twenty memes). When the
+     committed manifest is newer than every source file and `gen/` already
+     holds a variant pair for each of them, re-encoding would produce the same
+     bytes — so skip it, still run the gate, and let the caller keep the
+     existing manifest. */
+  if (options.ifStale && existsSync(GEN_DIR) && existsSync(MANIFEST_PATH)) {
+    const newestSource = Math.max(0, ...files.map((f) => statSync(join(MEME_DIR, f)).mtimeMs));
+    const manifestAt = statSync(MANIFEST_PATH).mtimeMs;
+    /* Manifest-driven, not filename-guessed: the pipeline skips any source
+       narrower than the smallest variant width (meme-13 is 236×224, so it has
+       no variants at all), and only the manifest knows which entries those
+       are. Ask it for the variant URLs it recorded and check those exist. */
+    const prior = parseJson<MemeManifest>(readFile(MANIFEST_PATH), {
+      version: 1,
+      generatedAt: '',
+      count: 0,
+      categories: [],
+      items: [],
+    });
+    const variantUrls = prior.items.flatMap((item) => item.variants.flatMap((v) => [v.avif, v.webp]));
+    const allVariantsPresent =
+      prior.items.length > 0 &&
+      variantUrls.length > 0 &&
+      variantUrls.every((url) => existsSync(join(ROOT, 'public', url)));
+    if (manifestAt >= newestSource && allVariantsPresent) {
+      const staleMeta = parseJson<Record<string, MemeMeta>>(readFile(META_PATH), {});
+      const staleUnlicensed = files.filter(
+        (f) => (staleMeta[f] ?? staleMeta[f.slice(0, f.lastIndexOf('.'))] ?? {}).rightsCleared !== true,
+      );
+      log(`memes: variants up to date (${prior.items.length} entries), skipping re-encode`);
+      if (staleUnlicensed.length && !allowUnlicensed) {
+        throw new Error(
+          [
+            `${staleUnlicensed.length} of ${files.length} memes are not rights-cleared:`,
+            ...staleUnlicensed.map((src) => `  - ${src}`),
+            '',
+            'Mark them cleared in src/content/memes.meta.json once you own the rights,',
+            'or override for a local build with ALLOW_UNLICENSED=1.',
+          ].join('\n'),
+        );
+      }
+      return { manifest: prior, unlicensed: staleUnlicensed.map((src) => `/${src}`), wroteManifest: false, skipped: true };
+    }
+  }
 
   if (withVariants) {
     if (existsSync(GEN_DIR)) rmSync(GEN_DIR, { recursive: true, force: true });
@@ -288,11 +343,14 @@ export const writeManifest = (manifest: MemeManifest): void => {
 
 const main = async (): Promise<void> => {
   const gateOnly = process.argv.includes('--gate');
-  const result = await buildMemes({ variants: !gateOnly });
-  if (!gateOnly) {
-    writeManifest(result.manifest);
-    process.stdout.write(`wrote ${relative(ROOT, MANIFEST_PATH)} (${result.manifest.items.length} items)\n`);
+  const ifStale = process.argv.includes('--if-stale');
+  const result = await buildMemes({ variants: !gateOnly, ifStale });
+  if (gateOnly || result.skipped) {
+    if (!gateOnly && result.skipped) process.stdout.write('memes: up to date, manifest unchanged\n');
+    return;
   }
+  writeManifest(result.manifest);
+  process.stdout.write(`wrote ${relative(ROOT, MANIFEST_PATH)} (${result.manifest.items.length} items)\n`);
 };
 
 // Referenced so the content dir is part of the pipeline contract even when the

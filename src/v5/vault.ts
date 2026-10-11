@@ -34,6 +34,7 @@ interface VaultRow {
   title: string;
   subtitle: string;
   thumb: string | null;
+  thumbFb: string | null;
   alt: string;
   category: string;
   emoji: string | null;
@@ -56,6 +57,7 @@ const resolveRow = (key: string, emoji: string | null): VaultRow | null => {
       title: meme.title,
       subtitle: memeCategoryName(meme.category),
       thumb: meme.variants[0]?.webp ?? meme.src,
+      thumbFb: meme.src,
       alt: meme.alt,
       category: meme.category,
       emoji,
@@ -71,6 +73,7 @@ const resolveRow = (key: string, emoji: string | null): VaultRow | null => {
     title: song.title,
     subtitle: song.artist,
     thumb: song.artworkUrl,
+    thumbFb: song.artworkUrl,
     alt: `${song.title} by ${song.artist}`,
     category: song.genre,
     emoji,
@@ -160,7 +163,7 @@ export const mountVault = (host: HTMLElement, options: { onClose?: () => void } 
           ? `<div class="v5-vault-grid">${rows
               .map(
                 (row) => `<button type="button" class="v5-tile ${selected.has(row.key) ? 'is-selected' : ''}" data-key="${esc(row.key)}" data-kind="${row.kind}" aria-label="${esc(row.alt)}">
-                  ${row.thumb ? `<img src="${esc(row.thumb)}" alt="${esc(row.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+                  ${row.thumb ? `<img src="${esc(row.thumb)}" data-fbk="${esc(row.thumbFb ?? row.thumb)}" alt="${esc(row.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
                   ${row.emoji ? `<span class="v5-tile-emoji" aria-hidden="true">${esc(row.emoji)}</span>` : ''}
                   <span class="v5-tile-title">${esc(row.title)}</span>
                 </button>`,
@@ -273,7 +276,7 @@ export const mountVault = (host: HTMLElement, options: { onClose?: () => void } 
       grid.innerHTML = rows
         .map(
           (row) => `<button type="button" class="v5-tile" data-key="${esc(row.key)}" data-kind="${row.kind}" aria-label="${esc(row.alt)}">
-            ${row.thumb ? `<img src="${esc(row.thumb)}" alt="${esc(row.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+            ${row.thumb ? `<img src="${esc(row.thumb)}" data-fbk="${esc(row.thumbFb ?? row.thumb)}" alt="${esc(row.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
             <span class="v5-tile-title">${esc(row.title)}</span>
           </button>`,
         )

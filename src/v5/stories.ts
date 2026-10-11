@@ -16,7 +16,7 @@ import { memeCategoryName } from '../copy/taxonomy.ts';
 import { getStore } from '../store/index.ts';
 import { liveStories } from '../store/selectors.ts';
 import { v5config } from '../store/config.ts';
-import { memeById, servableMemes, songById, songs } from '../content/index.ts';
+import { memeById, memeThumb, servableMemes, songById, songs } from '../content/index.ts';
 import type { StoreState } from '../store/index.ts';
 import type { Story } from '../store/types.ts';
 import { haptics } from '../lib/haptics.ts';
@@ -74,8 +74,9 @@ export const layersFor = (draft: StoryDraft): StoryLayer[] => {
 /** Reads a layer stack back into something the viewer can render. */
 export const describeLayers = (
   layers: readonly unknown[],
-): { src: string | null; alt: string; caption: string; sticker: string | null } => {
+): { src: string | null; fb: string | null; alt: string; caption: string; sticker: string | null } => {
   let src: string | null = null;
+  let fb: string | null = null;
   let alt = '';
   let caption = '';
   let sticker: string | null = null;
@@ -85,13 +86,14 @@ export const describeLayers = (
     if (layer?.type === 'meme') {
       const meme = memeById(layer.id);
       if (!meme) continue;
-      src = meme.variants.at(-1)?.webp ?? meme.src;
+      ({ src, fb } = memeThumb(meme));
       alt = meme.alt;
       caption = memeCategoryName(meme.category);
     } else if (layer?.type === 'song') {
       const song = songById(layer.id);
       if (!song) continue;
       src = song.artworkUrl;
+      fb = song.artworkUrl;
       alt = `${song.title} by ${song.artist}`;
       caption = `${song.title} · ${song.artist}`;
     } else if (layer?.type === 'sticker') {
@@ -100,7 +102,7 @@ export const describeLayers = (
       caption = layer.body;
     }
   }
-  return { src, alt, caption, sticker };
+  return { src, fb, alt, caption, sticker };
 };
 
 /** "3h 12m left", or "Gone." — never a rounded-up lie. */
@@ -156,7 +158,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
             <span class="v5-story-aud">${esc(viewing.audience)}</span>
           </header>
           <div class="v5-story-stage" style="${shown.src ? '' : 'background:var(--gallery-raised,#1b1b19)'}">
-            ${shown.src ? `<img src="${esc(shown.src)}" alt="${esc(shown.alt)}">` : ''}
+            ${shown.src ? `<img class="v5-story-under" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="" aria-hidden="true"><img class="v5-story-fit" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}
             ${shown.sticker ? `<span class="v5-story-sticker">${esc(shown.sticker)}</span>` : ''}
             ${shown.caption ? `<p class="v5-story-caption">${esc(shown.caption)}</p>` : ''}
           </div>
@@ -183,7 +185,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
               draft.backdrop
                 ? (() => {
                     const shown = describeLayers(layersFor(draft));
-                    return `${shown.src ? `<img src="${esc(shown.src)}" alt="${esc(shown.alt)}">` : ''}${
+                    return `${shown.src ? `<img class="v5-story-under" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="" aria-hidden="true"><img class="v5-story-fit" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}${
                       draft.sticker ? `<span class="v5-story-sticker">${esc(draft.sticker)}</span>` : ''
                     }${draft.text ? `<p class="v5-story-caption">${esc(draft.text)}</p>` : ''}`;
                   })()
@@ -194,7 +196,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
           <div class="v5-compose-row">
             ${pool
               .map(
-                (meme) => `<button type="button" class="v5-pick ${draft.backdrop?.id === meme.id ? 'is-on' : ''}" data-meme="${esc(meme.id)}" aria-label="${esc(meme.alt)}"><img src="${esc(meme.variants.at(-1)?.webp ?? meme.src)}" alt=""></button>`,
+                (meme) => `<button type="button" class="v5-pick ${draft.backdrop?.id === meme.id ? 'is-on' : ''}" data-meme="${esc(meme.id)}" aria-label="${esc(meme.alt)}"><img src="${esc(memeThumb(meme).src)}" data-fbk="${esc(memeThumb(meme).fb)}" alt=""></button>`,
               )
               .join('')}
             ${tracks
@@ -276,7 +278,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
 
   const thumbFor = (story: Story): string => {
     const shown = describeLayers(story.layers);
-    return `${shown.src ? `<img src="${esc(shown.src)}" alt="${esc(shown.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
+    return `${shown.src ? `<img src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}" loading="lazy" decoding="async">` : '<span class="v5-tile-fallback" aria-hidden="true">♪</span>'}
       <i>${esc(timeLeft(story.expiresAt, Date.now()))}</i>`;
   };
 
