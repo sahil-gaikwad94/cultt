@@ -302,6 +302,19 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
        shell anyway, so nothing leaks between tests. */
   });
 
+  /**
+   * Waits for markup that a lazily imported screen paints after the tab
+   * changes. Both new screens are dynamic imports, so they land a tick late by
+   * design; polling for the real node beats a fixed sleep that is either too
+   * short on a loaded machine or too slow on a fast one.
+   */
+  const settle = async (selector: string, tries = 80) => {
+    for (let i = 0; i < tries; i += 1) {
+      if (document.querySelector(selector)) return;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+  };
+
   it('renders the licensed corpus, with a responsive srcset on every image', () => {
     const images = [...feed().querySelectorAll('img.mm-photo')];
     expect(images.length).toBeGreaterThan(0);
@@ -360,8 +373,11 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
     expect(Number.parseInt(header(), 10)).toBe(cards().length);
   });
 
-  it('survives a trip to Tomorrow and back without duplicating the tab bar', () => {
+  it('survives a trip to Tomorrow and back without duplicating the tab bar', async () => {
     click('.ftabs[data-k="day"] .ft[data-v="1"]');
+    /* Dine-in is a lazy chunk now, so the kept Draft markup arrives a tick
+       after the tab changes. */
+    await settle('.draft');
     expect(feed().querySelector('.draft')).toBeTruthy();
     expect(feed().querySelector('#mmhost')).toBeNull();
 
@@ -560,5 +576,145 @@ describe('the Culture Feed, rendered by the legacy seam', () => {
     const again = cards().find((c) => c.getAttribute('data-m') === card.getAttribute('data-m')) as HTMLElement;
     expect(again.querySelector('[data-act="mm-like"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(feed().querySelectorAll('i.bp')).toHaveLength(0);
+  });
+
+  describe('the Live and Dine-in tabs', () => {
+    const tap = (el: Element | null | undefined) =>
+      (el as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const dayTabs = () => [...document.querySelectorAll<HTMLElement>('#s-feed .ftabs[data-k="day"] .ft')];
+    const tab = (label: string) => dayTabs().find((t) => t.textContent?.trim() === label);
+    const placeCards = () => [...document.querySelectorAll<HTMLElement>('#hbody .pl-card')];
+    const goTo = async (label: string) => {
+      tap(tab(label));
+      await settle('#hbody .pl-card');
+    };
+    const chips = (group: string) =>
+      [...document.querySelectorAll<HTMLElement>(`[data-act="${group}"]`)].filter((el) => el.dataset.v !== undefined);
+
+    it('hands the Rewind and Tomorrow slots to the two new screens', () => {
+      expect(dayTabs().map((t) => t.textContent?.trim())).toEqual(['Live', 'Today', 'Dine-in']);
+    });
+
+    it('renders the concert pack, with the sample-data badge on every card', async () => {
+      await goTo('Live');
+      const list = placeCards();
+      expect(list.length).toBeGreaterThan(3);
+      for (const card of list) {
+        expect(card.querySelector('.pl-src')?.textContent).toBe('Sample listing');
+        expect(card.querySelector('.pl-art svg')).toBeTruthy();
+        expect(card.querySelector('.pl-book span')?.textContent).toContain('Get tickets');
+        expect(card.querySelector('.pl-meta')?.textContent).toContain('Doors');
+      }
+      expect(document.querySelector('.pl-ticker')).toBeTruthy();
+      expect(chips('pl-genre').find((c) => c.dataset.v === '')?.classList.contains('on')).toBe(true);
+    });
+
+    it('names a real ticketing destination on every booking button', async () => {
+      await goTo('Live');
+      for (const button of document.querySelectorAll<HTMLElement>('#hbody .pl-book span')) {
+        expect(button.textContent).toMatch(/Get tickets · (BookMyShow|SortMyScene|Ticketmaster)/);
+      }
+    });
+
+    it('filters by genre and stays on the screen', async () => {
+      await goTo('Live');
+      const before = placeCards().length;
+      tap(chips('pl-genre').find((c) => c.dataset.v === 'Ambient'));
+      await settle('[data-act="pl-genre"][data-v="Ambient"].on');
+      const after = placeCards();
+      expect(after.length).toBeGreaterThan(0);
+      expect(after.length).toBeLessThan(before);
+      expect(chips('pl-genre').find((c) => c.dataset.v === 'Ambient')?.classList.contains('on')).toBe(true);
+      // Still on Live, not bounced back to Today.
+      expect(dayTabs().find((t) => t.textContent?.trim() === 'Live')?.classList.contains('on')).toBe(true);
+    });
+
+    it('keeps the rewind behind a disclosure instead of deleting it', async () => {
+      await goTo('Live');
+      const keep = document.querySelector<HTMLElement>('#hbody details.pl-keep');
+      expect(keep?.querySelector('summary')?.textContent?.toLowerCase()).toContain('rewind');
+      expect((keep?.querySelector('.pl-keep-body')?.textContent ?? '').length).toBeGreaterThan(0);
+    });
+
+    it('opens the ticketing site and copies the search term', async () => {
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+
+      await goTo('Live');
+      const first = placeCards()[0];
+      const term = first.querySelector('.pl-book')?.getAttribute('title') ?? '';
+      tap(first.querySelector('[data-act="pl-book"]'));
+      await new Promise((r) => setTimeout(r, 10));
+
+      /* Not an exact call count: `beforeEach` re-imports the seam with
+         `vi.resetModules()`, and each import self-executes `init()`, which adds
+         another document-level click listener to the persistent jsdom document.
+         One tap therefore reaches every instance still attached. That is a
+         property of the harness, not of the handler — so assert on what was
+         opened, not on how many stacked copies opened it. */
+      expect(openSpy.mock.calls.length).toBeGreaterThan(0);
+      for (const call of openSpy.mock.calls) expect(call[0]).toMatch(/^https:\/\//);
+      expect(new Set(openSpy.mock.calls.map((c) => c[0])).size).toBe(1);
+      expect(writeText).toHaveBeenCalled();
+      expect((document.querySelector('#toast')?.textContent ?? '')).toContain('copied');
+      expect(term).toContain('BookMyShow');
+      openSpy.mockRestore();
+    });
+
+    it('renders Dine-in with an open/closed state on every table', async () => {
+      await goTo('Dine-in');
+      const list = placeCards();
+      expect(list.length).toBeGreaterThan(3);
+      for (const card of list) {
+        expect(card.querySelector('.pl-open')?.textContent).toMatch(/Open now|Closing soon|Closed now/);
+        expect(card.querySelector('.pl-src')?.textContent).toBe('Sample listing');
+        expect(card.querySelector('.pl-book span')?.textContent).toMatch(/Reserve · (Zomato|Swiggy)/);
+      }
+      expect(chips('dn-vibe').length).toBeGreaterThan(2);
+    });
+
+    it('filters tables by what they are good for', async () => {
+      await goTo('Dine-in');
+      const before = placeCards().length;
+      tap(chips('dn-vibe').find((c) => c.dataset.v === 'late-night'));
+      await settle('[data-act="dn-vibe"][data-v="late-night"].on');
+      const after = placeCards();
+      expect(after.length).toBeGreaterThan(0);
+      expect(after.length).toBeLessThan(before);
+      for (const card of after) expect(card.querySelector('.pl-tags')?.textContent).toContain('Late night');
+    });
+
+    it('keeps tomorrow’s draft reachable', async () => {
+      await goTo('Dine-in');
+      const keep = document.querySelector<HTMLElement>('#hbody details.pl-keep');
+      expect(keep?.querySelector('summary')?.textContent?.toLowerCase()).toContain('draft');
+      expect((keep?.querySelector('.pl-keep-body')?.textContent ?? '').length).toBeGreaterThan(0);
+    });
+
+    it('invites a match rather than pretending to book a table for you', async () => {
+      await goTo('Dine-in');
+      tap(placeCards()[0].querySelector('[data-act="dn-invite"]'));
+      await settle('#sheetwrap .sheet');
+      const sheet = document.querySelector('#sheetwrap .sheet');
+      expect(sheet?.querySelector('.sh-t')?.textContent).toBe('Who’s going?');
+      expect(sheet?.textContent ?? '').toMatch(/Match with someone first|resonance/);
+    });
+
+    it('replaces rather than stacks a genre filter', async () => {
+      /* The chips are single-select, so picking a second genre swaps the first
+         instead of intersecting with it — which is the behaviour that keeps a
+         long filter row from ever dead-ending on an empty screen. */
+      await goTo('Live');
+      tap(chips('pl-genre').find((c) => c.dataset.v === 'Ambient'));
+      await settle('[data-act="pl-genre"][data-v="Ambient"].on');
+      tap(chips('pl-genre').find((c) => c.dataset.v === 'Comedy'));
+      await settle('[data-act="pl-genre"][data-v="Comedy"].on');
+      const shown = placeCards();
+      expect(shown.length).toBeGreaterThan(0);
+      for (const card of shown) expect(card.querySelector('.pl-kind')?.textContent).toContain('Comedy');
+      expect(chips('pl-genre').find((c) => c.dataset.v === 'Ambient')?.classList.contains('on')).toBe(false);
+      expect(chips('pl-genre').find((c) => c.dataset.v === '')?.classList.contains('on')).toBe(false);
+    });
   });
 });

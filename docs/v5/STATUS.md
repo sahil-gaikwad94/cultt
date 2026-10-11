@@ -416,3 +416,94 @@ One test-environment trap worth recording: `feed-screen.test.ts` calls
 and a statically imported `getStore()` reads a different, empty one. Import it
 inside the test after the app boots, or every store assertion silently sees
 nothing.
+
+## Stories layout, and two new screens: Live and Dine-in
+
+### Stories (ask #6) — the recorded diagnosis was wrong
+
+`docs/v6/SESSION_BRIEF.md` said `.v5-story-stage img` had *no* `object-fit` at
+all. It has had `object-fit: cover` since the base commit `970f5b9`
+(`git log -S` confirms). The actual defect was different and worse:
+
+- The stage was `flex: 1`, so its box was whatever vertical space the header
+  and footer left — never 9:16.
+- `cover` on top of that cropped the artwork. The first meme in the corpus is
+  700×368, so a tall box throws away most of its width — i.e. the punchline.
+- The composer previewed at **9/14**, a third shape again, so what you composed
+  was not what you saw.
+
+Both now share one rule: `aspect-ratio: 9/16`, `max-height: 58vh`, artwork
+fitted with `contain`, letterbox filled by a blurred copy of itself (the
+Instagram treatment). `tests/unit/stories-layout.test.ts` pins the geometry by
+reading the stylesheet, because a jsdom mount cannot tell you what
+`object-fit` resolved to.
+
+### Live and Dine-in (asks #4 and #5)
+
+The Rewind and Tomorrow slots now lead with going somewhere together. Neither
+previous feature was deleted: `rewindHTML()` and `draftHTML()` still render,
+inside a `<details>` at the bottom of the new screen, so the countdown and the
+vote keep working.
+
+- `src/screens/live.ts`, `src/screens/dining.ts` — pure planning + markup, same
+  contract as `src/screens/feed.ts`. No DOM, no store, no provider calls.
+- `src/data/seed/{concerts,dining}.ts` — seeded packs. Dates are **day offsets**
+  resolved against a clock, not frozen timestamps, so nothing renders as "last
+  March" a year from now.
+- `src/lib/places/providers.ts` — the provider seam. Every listing carries a
+  `source` the UI renders as a `Sample listing` badge.
+- Both screens are **dynamic imports** (3.87 + 3.29 kB gz). They were static
+  first and cost the critical path 7.8 kB gz; `legacy` went back from 73.57 to
+  **67.57 kB gz**.
+
+**Booking is a deep link, not an API call.** BookMyShow and SortMyScene have no
+public developer API; Zomato's `developers.zomato.com` user-key API was
+discontinued; Swiggy is partner-only. Ticketmaster Discovery is the one real
+self-serve option and is the adapter a production build would switch on. The
+button opens the provider and copies the search term, so a stale search path
+degrades to "right site, right words in hand" rather than a dead end.
+
+**The URLs in `providers.ts` are unverified.** This sandbox can only reach
+github.com, npm and PyPI, so no search path there has been fetched. They are
+single constants for that reason.
+
+**No video ships.** All 20 corpus memes are `.webp` stills and no ffmpeg is
+available here to synthesise a clip. The `<video>` element, `poster` and
+`preload` plumbing is real and wired to a `clip` field on the event type; the
+demo pack has no clips, so the card renders a CSS motion poster labelled as
+one. Nothing pretends to be footage.
+
+### Four bugs found while wiring it
+
+- **`LIVE` already existed in the seam** (`src/legacy.ts:251`, the
+  "who's listening" array). The transformer silently renamed the import to
+  `LIVE2`, and `@ts-nocheck` hid it, so `LIVE.planLive` was `undefined` at
+  runtime. Renamed to `LIVE_SCREEN` / `DINING_SCREEN`.
+- **`icons:LIVE_ICONS` passed the function, not its result.** Same blind spot.
+- **`planLive`'s empty copy lied.** A pack whose gigs have all played reported
+  "No listings in this pack yet." There are now three distinct reasons —
+  `none` / `past` / `filter` — because telling someone to change a filter that
+  cannot help is worse than saying nothing.
+- **`src/v5/stories.ts` reads `Date.now()`** at lines 145, 282 and 366 while the
+  store carries an injectable clock. A story written with a T0-relative expiry
+  reads as long expired and the rail renders its empty state. Not fixed — it
+  needs `StoriesOptions` to carry a clock — but recorded, because it makes the
+  Stories surface untestable against a fixed clock.
+
+Two harness notes, both artifacts of the test shell rather than the product:
+`beforeEach` calls `vi.resetModules()`, so every import re-runs `init()` and
+stacks another document-level click listener on the persistent jsdom document —
+one tap reaches every instance still attached, so tests assert on *what* was
+opened, not how many copies opened it. And the store hydrates in a microtask,
+so a synchronous `putStory` before `await store.ready` is silently overwritten.
+
+### Checks
+
+`tsc --noEmit` 0 · `eslint .` 0 · `vitest run` **541 passed / 31 files** (was
+484 / 28), run green five times consecutively · build OK, `legacy` 197.24 kB /
+**67.57 kB gz**, `live` 8.89 / 3.87 kB gz and `dining` 7.49 / 3.29 kB gz as
+lazy chunks.
+
+One caveat worth stating plainly: a single full-suite run partway through
+reported 1 failure that did not reproduce in the five runs after it, and I
+could not capture which test it was. Everything since has been clean.

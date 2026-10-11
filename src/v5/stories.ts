@@ -158,7 +158,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
             <span class="v5-story-aud">${esc(viewing.audience)}</span>
           </header>
           <div class="v5-story-stage" style="${shown.src ? '' : 'background:var(--gallery-raised,#1b1b19)'}">
-            ${shown.src ? `<img src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}
+            ${shown.src ? `<img class="v5-story-under" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="" aria-hidden="true"><img class="v5-story-fit" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}
             ${shown.sticker ? `<span class="v5-story-sticker">${esc(shown.sticker)}</span>` : ''}
             ${shown.caption ? `<p class="v5-story-caption">${esc(shown.caption)}</p>` : ''}
           </div>
@@ -185,7 +185,7 @@ export const mountStories = (host: HTMLElement, options: StoriesOptions = {}): S
               draft.backdrop
                 ? (() => {
                     const shown = describeLayers(layersFor(draft));
-                    return `${shown.src ? `<img src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}${
+                    return `${shown.src ? `<img class="v5-story-under" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="" aria-hidden="true"><img class="v5-story-fit" src="${esc(shown.src)}" data-fbk="${esc(shown.fb ?? shown.src)}" alt="${esc(shown.alt)}">` : ''}${
                       draft.sticker ? `<span class="v5-story-sticker">${esc(draft.sticker)}</span>` : ''
                     }${draft.text ? `<p class="v5-story-caption">${esc(draft.text)}</p>` : ''}`;
                   })()

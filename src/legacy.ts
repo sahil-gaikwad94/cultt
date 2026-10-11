@@ -40,6 +40,7 @@ import * as FEED from './screens/feed';
    capability probe, so the sheet can never offer a target the device cannot
    deliver — the rule at openShare() above, applied everywhere. */
 import * as SHARE from './lib/share';
+import {bookingLink as placeLink} from './lib/places/providers';
 import {
   laughedItemKeys as v5LaughedKeys,
   laughsGivenCount as v5LaughsGiven,
@@ -169,7 +170,10 @@ const I={
   chevd:ic('<path d="M6 9l6 6 6-6"/>',2),
   chevr:ic('<path d="M9 6l6 6-6 6"/>',2),
   pin:ic('<path d="M12 21s6-5.6 6-11a6 6 0 0 0-12 0c0 5.4 6 11 6 11z"/><circle cx="12" cy="10" r="2.2"/>'),
-  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.7 6.2.7-4.6 4.2 1.3 6.1L12 16.6 6.5 19.7l1.3-6.1L3.2 9.4l6.2-.7z"/></svg>'
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.7 6.2.7-4.6 4.2 1.3 6.1L12 16.6 6.5 19.7l1.3-6.1L3.2 9.4l6.2-.7z"/></svg>',
+  clock:ic('<circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.3 2"/>'),
+  ticket:ic('<path d="M4 9.4V6.8h16v2.6a2.6 2.6 0 0 0 0 5.2v2.6H4v-2.6a2.6 2.6 0 0 0 0-5.2z"/><path d="M12 8.2v7.6" stroke-dasharray="2 2.4"/>'),
+  table:ic('<path d="M4 10.5h16M6.8 10.5V19M17.2 10.5V19M4.6 10.5 6.2 5.5h11.6l1.6 5"/>')
 };
 const SEAT='<svg viewBox="0 0 24 24"><path d="M7 11V8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V11"/><rect x="4.5" y="11" width="15" height="7" rx="2.5"/><path d="M7 18v1.5M17 18v1.5"/></svg>';
 const RING_GLYPH=`<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="2.6"/><circle cx="14" cy="14" r="7.6" stroke-dasharray="36 12"/><circle cx="14" cy="14" r="12.2" stroke-dasharray="54 23" transform="rotate(40 14 14)"/></svg>`;
@@ -627,9 +631,16 @@ function draftHTML(){
     ${vote!==null?(vote===winner?'<div class="called">🎯 Called it — +1 to your profile</div>':'<div class="called-no">Not this time. Tomorrow is a new draft.</div>'):''}
   </div>`;
 }
+/* The Rewind and Tomorrow slots now lead with going somewhere together. Neither
+   feature was deleted: `rewindHTML()` and `draftHTML()` still render, inside a
+   <details> at the bottom of their new screen, so the countdown and the vote
+   keep working and nothing that shipped goes missing. */
 function homeBodyHTML(){
-  if(DK.day===1){DK.items=[];DK.order=[];return draftHTML()}
-  if(DK.day===-1){DK.items=[];DK.order=[];return rewindHTML()}
+  /* Both screens are lazy. They are two tabs most sessions never open, and
+     together they are ~7.8 kB gz of packs and planning code that has no
+     business sitting in the first-paint chunk. The shell paints immediately so
+     the tab change never looks like a hang. */
+  if(DK.day===1||DK.day===-1){DK.items=[];DK.order=[];void paintPlaces();return PLACE_SHELL}
   const raw=deckItems();DK.items=raw.slice(0,6);DK.order=DK.items.map(p=>p.id);
   return `<div class="drow stg"><div><span class="eyebrow">Daily drop · ${DK.day===0?'curated for you':'from your circles'}</span>${bigDateHTML(DK.day)}</div><button class="cnt" id="cnt" data-act="nextcard" aria-label="Next drop">1/${DK.items.length}</button></div>
     <div class="deck stg" style="--d:1" id="hdeck">${DK.items.map(dcardHTML).join('')}</div>`+(DK.day===0?`<div id="mmhost">${mmHTML()}</div>`:'');
@@ -682,7 +693,7 @@ function renderFeed(){
     <div class="srail-wrap" data-stories-rail>${storiesRailHTML()}</div>
     <div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="12" r="6.5" stroke-dasharray="26 15"/><circle cx="12" cy="12" r="10" stroke-dasharray="40 23" opacity=".6"/></svg></div>
     <div id="feedBody">
-      ${ftabsHTML('day',[['-1','Rewind'],['0','Today'],['1','Tomorrow']],String(DK.day))}
+      ${ftabsHTML('day',[['-1','Live'],['0','Today'],['1','Dine-in']],String(DK.day))}
       <div class="sbody" id="hbody">${homeBodyHTML()}</div>
       <section class="circles" id="circles" style="${DK.day===0?'':'display:none'}"><h2 class="sec stg">From your circles</h2>${circleList().slice(2).map((p,i)=>ccardHTML(p,i)).join('')||'<div class="blk tight stg"><div class="empty-stk"><span aria-hidden="true">🎧</span><p class="hint">Circles fill up when you and a match are both online. Nothing is seeded here on your behalf.</p></div></div>'}</section>
     </div>`;
@@ -2328,6 +2339,86 @@ ACT['mm-share']=b=>{
     <div class="shp"><div class="tile">${mmVisual(mmOf(id))}</div><div><b>${esc(item.title)}</b><span>A cultured meme</span></div></div>
     <div class="share-list">${opts.map(o=>`<button class="sh-tile" data-act="mm-share-go" data-w="${o.id}" data-id="${esc(id)}"><b>${esc(o.label)}</b><span>${esc(o.hint)}</span></button>`).join('')}</div>
     ${opts.length?'':'<p class="hint">'+esc(SHARE.EMPTY_SHARE_HINT)+'</p>'}`);
+};
+/* ================= Live and Dine-in ================= */
+/* Filter state lives here rather than in the screens, which stay pure. It is
+   deliberately not persisted: these are session-scoped views of a pack. */
+let PLF={genre:null,sort:'soon'};
+let DNF={cuisine:null,vibe:null,sort:'rating'};
+const PLACE_SHELL='<div class="pl-load" aria-busy="true"><i></i><i></i><i></i><span class="hint">Loading…</span></div>';
+let PLACES_MOD=null;
+const placesMod=()=>PLACES_MOD||(PLACES_MOD=Promise.all([import('./screens/live'),import('./screens/dining')]).then(m=>({LIVE:m[0],DINING:m[1]})));
+
+async function paintPlaces(){
+  const day=DK.day;
+  const {LIVE,DINING}=await placesMod();
+  /* The chunk resolves on a later tick, and the user can leave in the meantime.
+     Painting the Live screen into the Today tab would be a visible lie. */
+  if(DK.day!==day)return;
+  const host=$('#hbody');if(!host)return;
+  const sc=$('#s-feed'),y=sc?sc.scrollTop:0;
+  const now=Date.now();
+  host.innerHTML=day===-1
+    ? LIVE.liveScreenWithPlanHTML(LIVE.planLive(LIVE.livePack(now),PLF,now),{now,icons:{ticket:I.ticket,place:I.pin,clock:I.clock,send:I.send},keptHTML:rewindHTML(),keptLabel:'Yesterday’s rewind'})
+    : DINING.diningScreenWithPlanHTML(DINING.planDining(DINING.diningPack(),DNF,now),{now,icons:{place:I.pin,clock:I.clock,star:I.star,send:I.send,table:I.table},keptHTML:draftHTML(),keptLabel:'Tomorrow’s draft'});
+  /* Only restore the scroll if the shell had been scrolled; a fresh tab change
+     should land at the top. */
+  if(sc&&y)sc.scrollTop=y;
+  fitMeme(host);
+}
+/* A chip tap repaints the body, not the whole screen, so the scroll position
+   and the tab bar survive it. */
+function rerenderPlaces(){void paintPlaces()}
+ACT['pl-genre']=b=>{PLF={genre:b.dataset.v||null,sort:PLF.sort};rerenderPlaces()};
+ACT['pl-sort']=b=>{PLF={genre:PLF.genre,sort:b.dataset.v||'soon'};rerenderPlaces()};
+ACT['dn-cuisine']=b=>{DNF={cuisine:b.dataset.v||null,vibe:DNF.vibe,sort:DNF.sort};rerenderPlaces()};
+ACT['dn-vibe']=b=>{DNF={cuisine:DNF.cuisine,vibe:b.dataset.v||null,sort:DNF.sort};rerenderPlaces()};
+ACT['dn-sort']=b=>{DNF={cuisine:DNF.cuisine,vibe:DNF.vibe,sort:b.dataset.v||'rating'};rerenderPlaces()};
+
+async function placeItem(kind,id){
+  const {LIVE,DINING}=await placesMod();
+  return kind==='live'
+    ? LIVE.livePack(Date.now()).find(e=>e.id===id)
+    : DINING.diningPack().find(x=>x.id===id);
+}
+
+/* Booking is a deep link. There is no public API to book through — see
+   src/lib/places/providers.ts — and a button that implied otherwise is the
+   exact thing this codebase removed once before. The search term goes to the
+   clipboard as well, so a stale search path still leaves you one paste away. */
+ACT['pl-book']=async b=>placeBook('live',b.dataset.id);
+ACT['dn-book']=async b=>placeBook('dine',b.dataset.id);
+async function placeBook(kind,id){
+  const item=await placeItem(kind,id);if(!item)return;
+  const link=placeLink(item);
+  window.open(link.url,'_blank','noopener,noreferrer');
+  let copied=false;
+  if(navigator.clipboard){try{await navigator.clipboard.writeText(link.term);copied=true}catch(e){}}
+  toast(copied?`Opened ${link.label} · “${link.term}” copied`:`Opened ${link.label}`);
+  haptic([10,20,10]);
+  track(kind==='live'?'live_book_click':'dine_book_click',{via:link.label,item:id,copied});
+}
+
+/* "Who's going" reuses the match sheet, but as its own action so the payload is
+   a plain invitation rather than a meme reference the thread cannot render. */
+let PLACE_INVITE=null;
+async function placeInvite(kind,id){
+  const item=await placeItem(kind,id);if(!item)return;
+  const label='title' in item?`${item.title} · ${item.venue}`:`${item.name} · ${item.area}`;
+  PLACE_INVITE={kind,id,label};
+  const ids=matchIds();
+  openSheet(`<h3 class="sh-t">Who’s going?</h3><p class="hint" style="margin-top:-4px">${esc(label)}</p>${ids.length?ids.map(pid=>{const p=person(pid);return `<button class="trk" data-act="place-invite-go" data-to="${pid}"><div class="tile">${orb(p,44)}</div><div><b>${esc(p.name)}</b><span>${p.score}% resonance</span></div></button>`}).join(''):'<p class="hint">Match with someone first, then invite them along.</p>'}`);
+}
+ACT['pl-invite']=b=>{void placeInvite('live',b.dataset.id)};
+ACT['dn-invite']=b=>{void placeInvite('dine',b.dataset.id)};
+ACT['place-invite-go']=b=>{
+  const pid=b.dataset.to,who=person(pid);
+  if(!who||!PLACE_INVITE){toast('That match is no longer here');closeSheet();return}
+  ensureThread(pid);
+  S.threads[pid].msgs.push({f:'me',t:`Want to go? ${PLACE_INVITE.label}`,ts:Date.now()});
+  save();closeSheet();toast(`Invite sent to ${who.name}`);haptic(8);reply(pid);
+  track('place_invite_sent',{kind:PLACE_INVITE.kind,item:PLACE_INVITE.id});
+  PLACE_INVITE=null;
 };
 ACT['mm-share-go']=async b=>{
   const w=b.dataset.w,id=b.dataset.id,item=shareItemFor(id);if(!item)return;
