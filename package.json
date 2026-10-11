@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run content:gate && tsc --noEmit && vite build && node scripts/prune-demo-assets.mjs",
+    "predev": "node --experimental-strip-types scripts/build-memes.ts --if-stale",
+    "build": "npm run content:memes && tsc --noEmit && vite build && node scripts/prune-demo-assets.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

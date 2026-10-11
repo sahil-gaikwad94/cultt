@@ -1488,7 +1488,7 @@ ACT['bub-react']=b=>{
   if(!m.rx[e])delete m.rx[e];
   save();haptic(6);renderMsgs(id);
 };
-function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
+function memeBub(m,i){const x=mmOf(m.ref);if(!x)return '';const tools=i!==undefined?`<span class="bub-tools"><button data-act="reply-to" data-i="${i}" aria-label="Reply to this message">↩</button></span>`:'';return `<div class="bub-m ${m.f}" data-i="${i}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" data-fbk="${x.fb||x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async">${tools}</div>`}
 function reply(id){
   TYPING[id]=true;renderMsgs(id);const t=S.threads[id];
   setTimeout(()=>{
@@ -2147,13 +2147,13 @@ const TOPIC_EMOJI={work:'🐛',music:'🎧',screen:'📺',life:'🫠',love:'🎵
    The 122 generated typographic text cards and the 13 hand-written ones that
    used to sit here are gone: cultured only shows real image and video memes,
    and only ones the content pipeline has actually built a manifest for. */
-const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
+const MM=SEED_MEMES.map(m=>({id:m.id,k:m.topic,e:TOPIC_EMOJI[m.topic]||'✨',t:m.text,img:m.img,fb:m.fb||m.img,bg:m.bg,fg:m.fg,alt:m.alt}));
 let mmTab='all';
 const mmS=()=>S.mm||(S.mm={l:{},s:{}});
 const mmOf=id=>MM.find(m=>m.id===id);
 const mmList=()=>mmTab==='all'?MM:MM.filter(m=>m.k===mmTab);
-function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
-function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
+function mmVisual(m){return `<div class="mm-photo-wrap"><img class="mm-photo" src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"></div>`}
+function mmMini(m,cls=''){return `<div class="mm-mini ${cls}" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'}"><img src="${m.img}" data-fbk="${m.fb||m.img}" alt="${esc(m.alt||m.t)}" loading="lazy" decoding="async"><i>${esc(m.t)}</i></div>`}
 function mmCard(m,i){const st=mmS();return `<article class="mm-card has-photo" data-m="${m.id}" data-rxn-kind="meme" style="--bg:${m.bg||'#EFE9DA'};--fg:${m.fg||'#141413'};--i:${i}"><div class="mm-visual">${mmVisual(m)}</div><p class="mm-cap">${esc(m.t)}</p><div class="mm-bar"><span class="mm-k">${m.k}</span><span class="sp"></span><button class="mm-b ${st.l[m.id]?'on':''}" data-act="mm-like" data-fx="like" data-id="${m.id}" aria-label="Like" aria-pressed="${!!st.l[m.id]}">${I.heart}</button><button class="mm-b ${st.s[m.id]?'on':''}" data-act="mm-save" data-fx="pin" data-id="${m.id}" aria-label="Save" aria-pressed="${!!st.s[m.id]}">${I.bookmark}</button><button class="mm-b" data-act="mm-share" data-fx="share" aria-label="Send to a match">${I.share}</button></div></article>`}
 function mmHTML(){return `<section class="mm stg" style="--d:2"><div class="mm-h"><h2 class="sec" style="padding:0">Today’s memes</h2><span class="mm-n">${Math.min(MM.length,6)} of ${MM.length} in the gallery</span></div><div class="mm-row" id="mmrow">${mmList().slice(0,6).map(mmCard).join('')}</div></section>`}
 ACT['mm-tab']=b=>{toast('Topic tabs are off in this phase');};
@@ -2183,7 +2183,7 @@ ACT['mm-share']=b=>{
 };
 ACT['mm-send']=b=>{const pid=b.dataset.to;const who=person(pid);if(!who){toast('That match is no longer here');closeSheet();return}
   ensureThread(pid);S.threads[pid].msgs.push({f:'me',kind:'meme',ref:b.dataset.id,ts:Date.now()});save();closeSheet();toast('Sent to '+who.name);haptic(8);reply(pid);track('prompt_meme_reply_sent',{source:DEMO_DATA?'demo':'live'})};
-function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
+function memeBub(m){const x=mmOf(m.ref);return x?`<div class="bub-m ${m.f}" style="--bg:${x.bg||'#EFE9DA'};--fg:${x.fg||'#141413'}"><img src="${x.img}" data-fbk="${x.fb||x.img}" alt="${esc(x.alt||x.t)}" loading="lazy" decoding="async"></div>`:''}
 function mmMiniRow(m){return `<button class="mm-mini" data-act="mm-chat" data-id="${m.id}">${mmVisual(m)}<i>${esc(m.t.split('\n')[0])}</i></button>`}
 ACT['meme-pick']=()=>{
   const state=V5.getState();

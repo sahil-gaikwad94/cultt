@@ -37,6 +37,20 @@ export const songById = (id: string): SongEntry | null => songs.items.find((song
 export const memeById = (id: string): MemeEntry | null => memes.items.find((meme) => meme.id === id) ?? null;
 
 /**
+ * The URL pair every meme surface should render with.
+ *
+ * `src` is the largest generated variant; `fb` is the committed original.
+ * `public/memes/gen/` is gitignored and produced by `npm run content:memes`, so
+ * on a checkout that has not run the pipeline the variant 404s — the global
+ * `error` listener in `main.ts` reads `data-fbk` and swaps to `fb`. Callers put
+ * both on the `<img>`; nothing here needs to know which one the browser picked.
+ */
+export const memeThumb = (meme: MemeEntry): { src: string; fb: string } => ({
+  src: meme.variants.at(-1)?.webp ?? meme.src,
+  fb: meme.src,
+});
+
+/**
  * A playable track for the audio controller, shaped from the manifest.
  * `resolved: false` means the pipeline could not reach a provider, and the UI
  * shows the honest "No preview for this one." line.

@@ -237,3 +237,52 @@ tells us nothing about how they score. Font weight is likewise unverified:
 `fonts.gstatic.com` is outside the network allowlist here.
 
 `PERF_REPORT.md` states all of this rather than quoting numbers nobody took.
+
+## Meme images were invisible in every build — both causes fixed
+
+The rights are cleared (`rightsCleared: true` on all 20 entries in
+`src/content/memes.meta.json`) and the gate passes, but no meme image rendered.
+Two independent causes, either of which was sufficient on its own:
+
+1. **Dev.** `src/data/seed/memes.ts` resolved `img` to
+   `variants.at(-1).webp`, i.e. `/memes/gen/meme-01-480.webp`. That directory is
+   gitignored and only `npm run content:memes` creates it — and nothing ran it.
+   On a fresh checkout 19 of 20 meme URLs 404'd (the 20th, `meme-13.webp`, is
+   236×224 — narrower than the smallest variant width, so it has no variants and
+   fell back to its original by accident).
+2. **Production.** `scripts/prune-demo-assets.mjs` deleted `dist/memes`
+   wholesale. It was written when all 20 memes were unlicensed web-search
+   material and predated the rights purchase. Verified against a real build:
+   `pruned dist/memes` → `ls: cannot access 'dist/memes'`.
+
+Fixes:
+
+- The prune is now **per-file and manifest-driven**: rights-cleared media ships,
+  media the manifest does not vouch for is deleted, and provenance files
+  (`sources.json`, `README.md`) are dropped without being mislabelled as
+  unlicensed memes.
+- `predev` runs `build-memes.ts --if-stale`; `build` runs the full
+  `content:memes` (which includes the gate) rather than the gate alone.
+- `--if-stale` is manifest-driven, not filename-guessed — the pipeline skips any
+  source narrower than the smallest variant width, so only the manifest knows
+  which entries have no variants. 0.13 s when current, full re-encode when a
+  source is touched.
+- Every meme `<img>` carries `data-fbk` with the committed original, and one
+  capture-phase `error` listener in `main.ts` swaps to it — dropping
+  `srcset`/`sizes` first, because while `srcset` is present the browser resolves
+  the request from it and ignores `src`, so the swap would be invisible and the
+  error would fire again. `memeThumb()` in `src/content/index.ts` is the one
+  place the pair is resolved.
+
+`tests/unit/meme-assets.test.ts` (12 tests) pins all of it, including running the
+real prune script against a temp `dist/`.
+
+Also noted: `vercel.json` serves `max-age=31536000, immutable` for `*.webp|avif`,
+but `public/memes/gen/*` filenames are not content-hashed. Re-generating a meme
+in place would leave returning users on stale bytes for a year.
+
+407 tests / 25 files green (was 391 + 4 skipped / 24); tsc, eslint and the
+production build all clean. `dist/memes` goes from 0 to 64 media files.
+
+Full read of the codebase and the plan for the next round:
+`docs/v6/SESSION_BRIEF.md`.

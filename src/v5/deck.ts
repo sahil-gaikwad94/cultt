@@ -206,6 +206,9 @@ export interface CardArt {
   alt: string;
   width: number;
   height: number;
+  /** The committed original. `public/memes/gen` is generated and gitignored, so
+   *  the `onerror` listener in main.ts falls back to this and drops `srcset`. */
+  fb: string;
 }
 
 /** `<img>` attributes for a meme, with the AVIF/WebP variants when present. */
@@ -226,6 +229,7 @@ export const memeArt = (meme: MemeEntry): CardArt => {
     alt: meme.alt,
     width: meme.width,
     height: meme.height,
+    fb: meme.src,
   };
 };
 

@@ -38,6 +38,13 @@ export interface SeedMeme {
   readonly laughs: number;
   /** The rendered image. Always present — there are no text cards any more. */
   readonly img: string;
+  /**
+   * The un-optimised original, used as the `onerror` fallback. `public/memes/gen`
+   * is gitignored and generated, so a checkout whose pipeline has not run yet
+   * would otherwise paint twenty broken images; the global `error` listener in
+   * `main.ts` swaps to this instead.
+   */
+  readonly fb: string;
 }
 
 /**
@@ -71,6 +78,7 @@ const adapt = (meme: MemeEntry): SeedMeme => ({
   likes: 0,
   laughs: 0,
   img: meme.variants.at(-1)?.webp ?? meme.src,
+  fb: meme.src,
 });
 
 export const SEED_MEMES: readonly SeedMeme[] = (memeManifest as unknown as MemeManifest).items.map(adapt);

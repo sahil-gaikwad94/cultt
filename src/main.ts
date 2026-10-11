@@ -23,6 +23,31 @@ const v5store = getStore();
   store: v5store,
 };
 
+/* Meme images resolve to an optimised variant under /memes/gen (generated,
+   gitignored) with the original as a fallback. One capture-phase listener
+   covers every surface — feed cards, the shelf, chat bubbles, stories, the
+   profile wall — so a checkout whose content pipeline has not run paints the
+   original instead of twenty broken-image rectangles. Guarded against loops:
+   it only ever swaps once, to a different URL. */
+document.addEventListener(
+  'error',
+  (event) => {
+    const target = event.target as HTMLImageElement | null;
+    if (!target || target.tagName !== 'IMG') return;
+    const fallback = target.dataset.fbk;
+    if (!fallback) return;
+    const current = target.getAttribute('src') ?? '';
+    if (current.endsWith(fallback)) return;
+    /* Drop the responsive hints first: while `srcset` is present the browser
+       resolves the request from it and ignores `src`, so the swap would be
+       invisible and the error would fire again. */
+    target.removeAttribute('srcset');
+    target.removeAttribute('sizes');
+    target.setAttribute('src', fallback);
+  },
+  true,
+);
+
 /* Deep link: /d/:id (or ?d=id on static hosts without an SPA rewrite) opens the
    duel recipient page — no app shell, no account, no nav. */
 const duelMatch =
